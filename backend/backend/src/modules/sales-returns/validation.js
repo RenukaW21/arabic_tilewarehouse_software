@@ -33,7 +33,7 @@ const updateReturnSchema = Joi.object({
 
 const listQuerySchema = Joi.object({
   page: Joi.number().integer().min(1).optional(),
-  limit: Joi.number().integer().min(1).max(100).optional(),
+  limit: Joi.number().integer().min(1).max(500).optional(),
   search: Joi.string().allow('').optional(),
   status: Joi.string().valid('draft', 'received', 'inspected', 'completed', 'cancelled').optional(),
   customer_id: Joi.string().uuid().optional(),

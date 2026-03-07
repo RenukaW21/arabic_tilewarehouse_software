@@ -4,12 +4,14 @@ const Joi = require('joi');
 const loginSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().min(6).required(),
-  tenantSlug: Joi.string().alphanum().min(2).max(50).required(),
+  tenantSlug: Joi.string().pattern(/^[a-z0-9-]+$/).min(2).max(50).required()
+    .messages({ 'string.pattern.base': '"tenantSlug" must only contain lowercase letters, numbers, or hyphens' }),
 });
 
 const registerTenantSchema = Joi.object({
   tenantName: Joi.string().min(2).max(255).required(),
-  tenantSlug: Joi.string().alphanum().min(2).max(50).required(),
+  tenantSlug: Joi.string().pattern(/^[a-z0-9-]+$/).min(2).max(50).required()
+    .messages({ 'string.pattern.base': '"tenantSlug" must only contain lowercase letters, numbers, or hyphens' }),
   plan: Joi.string().valid('basic', 'pro', 'enterprise').default('trial'),
   adminName: Joi.string().min(2).max(255).required(),
   adminEmail: Joi.string().email().required(),

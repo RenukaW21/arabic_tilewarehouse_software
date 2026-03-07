@@ -61,7 +61,7 @@ export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initial
       if (!initialData && autoNumber) {
         fetchNextDocNumber(autoNumber.docType)
           .then(num => setFormData(prev => ({ ...prev, [autoNumber.fieldKey]: num })))
-          .catch(() => {/* keep placeholder */});
+          .catch(() => {/* keep placeholder */ });
       }
     }
   }, [open, initialData, fields, autoNumber]);
@@ -123,7 +123,7 @@ export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initial
               {f.type === 'textarea' ? (
                 <Textarea id={f.key} value={formData[f.key] || ''} onChange={e => setValue(f.key, e.target.value)} placeholder={f.placeholder} required={f.required} className={errors[f.key] ? 'border-destructive' : ''} />
               ) : f.type === 'select' ? (
-              <Select value={formData[f.key] || 'none'} onValueChange={v => setValue(f.key, v)}>
+                <Select value={formData[f.key] || (f.required ? '' : 'none')} onValueChange={v => setValue(f.key, v)}>
                   <SelectTrigger className={errors[f.key] ? 'border-destructive' : ''}><SelectValue placeholder={f.placeholder || 'Select...'} /></SelectTrigger>
                   <SelectContent>
                     {!f.required && <SelectItem value="none">— None —</SelectItem>}

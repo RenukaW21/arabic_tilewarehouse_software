@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { customerApi } from '@/api/customerApi';
 import { invoiceApi } from '@/api/invoiceApi';
 import { customerPaymentsApi, type CustomerPayment } from '@/api/paymentsApi';
+import { useAuth } from '@/hooks/useAuth';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTableShell } from '@/components/shared/DataTableShell';
 import { StatusBadge } from '@/components/shared/StatusBadge';
@@ -14,6 +15,7 @@ import { toast } from 'sonner';
 
 export default function PaymentsReceivedPage() {
   const qc = useQueryClient();
+  const { user } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<CustomerPayment | null>(null);
   const [deleting, setDeleting] = useState<CustomerPayment | null>(null);
@@ -38,10 +40,10 @@ export default function PaymentsReceivedPage() {
   const fields: FieldDef[] = [
     { key: 'payment_number', label: 'Payment #', type: 'text', required: true, placeholder: 'REC-2025-0001' },
     { key: 'customer_id', label: 'Customer', type: 'select', required: true, options: customers.map((c) => ({ value: c.id, label: c.name })) },
-    { key: 'invoice_id', label: 'Invoice', type: 'select', options: [{ value: '', label: '— None —' }, ...invoices.map((i) => ({ value: i.id, label: i.invoice_number }))] },
+    { key: 'invoice_id', label: 'Invoice', type: 'select', options: invoices.map((i) => ({ value: i.id, label: i.invoice_number })) },
     { key: 'amount', label: 'Amount', type: 'number', required: true, defaultValue: 0 },
     { key: 'payment_date', label: 'Payment Date', type: 'date' },
-    { key: 'payment_mode', label: 'Mode', type: 'select', options: [{ value: 'cash', label: 'Cash' }, { value: 'cheque', label: 'Cheque' }, { value: 'bank_transfer', label: 'Bank Transfer' }, { value: 'upi', label: 'UPI' }, { value: 'other', label: 'Other' }], defaultValue: 'cash' },
+    { key: 'payment_mode', label: 'Mode', type: 'select', options: [{ value: 'cash', label: 'Cash' }, { value: 'cheque', label: 'Cheque' }, { value: 'neft', label: 'NEFT' }, { value: 'rtgs', label: 'RTGS' }, { value: 'upi', label: 'UPI' }, { value: 'other', label: 'Other' }], defaultValue: 'cash' },
     { key: 'reference_number', label: 'Reference #', type: 'text' },
   ];
 
@@ -50,11 +52,12 @@ export default function PaymentsReceivedPage() {
       const payload = {
         payment_number: String(fd.payment_number),
         customer_id: String(fd.customer_id),
-        invoice_id: fd.invoice_id ? String(fd.invoice_id) : null,
+        invoice_id: fd.invoice_id && fd.invoice_id !== 'none' ? String(fd.invoice_id) : null,
         amount: Number(fd.amount || 0),
         payment_date: fd.payment_date ? String(fd.payment_date).slice(0, 10) : null,
         payment_mode: String(fd.payment_mode || 'cash'),
         reference_number: fd.reference_number ? String(fd.reference_number) : null,
+        created_by: user?.id,
       };
       if (editing) return customerPaymentsApi.update(editing.id, payload);
       return customerPaymentsApi.create(payload);
@@ -106,9 +109,9 @@ export default function PaymentsReceivedPage() {
   return (
     <div>
       <PageHeader title="Payments Received" subtitle="Track payments from customers" onAdd={() => { setEditing(null); setDialogOpen(true); }} addLabel="New Payment" />
-      {isLoading ? <p className="text-muted-foreground">Loading...</p> : <DataTableShell data={items} columns={columns} searchKey="payment_number" searchPlaceholder="Search payment#..." />}
-      <CrudFormDialog open={dialogOpen} onClose={() => { setDialogOpen(false); setEditing(null); }} onSubmit={(d) => saveMutation.mutateAsync(d)} fields={fields} title={editing ? 'Edit Payment' : 'New Payment Received'} initialData={editing ? { ...editing, invoice_id: editing.invoice_id ?? '' } : undefined} loading={saveMutation.isPending} />
-      <DeleteConfirmDialog open={!!deleting} onClose={() => setDeleting(null)} onConfirm={() => deleting && deleteMutation.mutateAsync(deleting.id)} loading={deleteMutation.isPending} />
+      {isLoading ? <p className="text-muted-foreground">Loading...</p> : <DataTableShell data={items as any[]} columns={columns as any[]} searchKey="payment_number" searchPlaceholder="Search payment#..." />}
+      <CrudFormDialog open={dialogOpen} onClose={() => { setDialogOpen(false); setEditing(null); }} onSubmit={(d) => saveMutation.mutateAsync(d).then(() => { })} fields={fields} title={editing ? 'Edit Payment' : 'New Payment Received'} initialData={editing ? { ...editing, invoice_id: editing.invoice_id ?? '' } : undefined} loading={saveMutation.isPending} />
+      <DeleteConfirmDialog open={!!deleting} onClose={() => setDeleting(null)} onConfirm={() => deleting && deleteMutation.mutateAsync(deleting.id).then(() => { })} loading={deleteMutation.isPending} />
     </div>
   );
 }

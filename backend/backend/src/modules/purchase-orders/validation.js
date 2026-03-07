@@ -59,7 +59,7 @@ const updatePOItemSchema = createPOItemSchema;
 
 const listQuerySchema = Joi.object({
   page: Joi.number().integer().min(1).optional(),
-  limit: Joi.number().integer().min(1).max(100).optional(),
+  limit: Joi.number().integer().min(1).max(500).optional(),
   search: Joi.string().max(100).allow('').optional(),
   sortBy: Joi.string().valid('po_number', 'order_date', 'created_at', 'status').optional(),
   sortOrder: Joi.string().valid('ASC', 'DESC').optional(),

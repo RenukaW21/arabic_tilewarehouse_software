@@ -34,7 +34,7 @@ const getAllWarehouses = async (tenantId, options = {}) => {
   const params = [tenantId];
   if (options.is_active !== undefined && options.is_active !== '') {
     conditions.push('is_active = ?');
-    params.push(options.is_active === true || options.is_active === '1' ? 1 : 0);
+    params.push(options.is_active === true || options.is_active === '1' || options.is_active === 'true' ? 1 : 0);
   }
   const { clause: searchClause, params: searchParams } = buildSearchClause(search, ['name', 'code']);
   if (searchClause) {

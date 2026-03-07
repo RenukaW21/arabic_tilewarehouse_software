@@ -54,7 +54,7 @@ const getAllVendors = async (tenantId, options = {}) => {
   // Optional: filter by is_active
   if (options.is_active !== undefined && options.is_active !== '') {
     conditions.push('is_active = ?');
-    params.push(options.is_active === true || options.is_active === '1' ? 1 : 0);
+    params.push(options.is_active === true || options.is_active === '1' || options.is_active === 'true' ? 1 : 0);
   }
 
   const searchColumns = ['name', 'code'];

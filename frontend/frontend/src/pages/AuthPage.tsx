@@ -25,7 +25,7 @@ export default function AuthPage() {
         const res = await axiosInstance.post('/auth/login', {
           email,
           password,
-          tenantSlug: tenantName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 15)
+          tenantSlug: tenantName.toLowerCase().trim().replace(/[^a-z0-9-]/g, '').substring(0, 50)
         });
         if (res.data?.success) {
           toast.success('Logged in successfully');
@@ -40,7 +40,7 @@ export default function AuthPage() {
         // local express api for Tenant registration
         const payload = {
           tenantName,
-          tenantSlug: tenantName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 15),
+          tenantSlug: tenantName.toLowerCase().trim().replace(/[^a-z0-9-]/g, '').substring(0, 50),
           adminName: userName,
           adminEmail: email,
           adminPassword: password
@@ -70,7 +70,7 @@ export default function AuthPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="tenantName">Company/Tenant Name</Label>
-              <Input id="tenantName" value={tenantName} onChange={e => setTenantName(e.target.value)} required placeholder="e.g. My Company" />
+              <Input id="tenantName" value={tenantName} onChange={e => setTenantName(e.target.value)} required placeholder="e.g. tiles-india" />
             </div>
             {!isLogin && (
               <div className="space-y-2">

@@ -1,85 +1,137 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { customerApi } from '@/api/customerApi';
+import { invoiceApi } from '@/api/invoiceApi';
+import { salesReturnApi } from '@/api/miscApi';
+import { creditNotesApi, type CreditNote } from '@/api/notesApi';
 import { useAuth } from '@/hooks/useAuth';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTableShell } from '@/components/shared/DataTableShell';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { CrudFormDialog, FieldDef, AutoNumberConfig } from '@/components/shared/CrudFormDialog';
+import { CrudFormDialog, FieldDef } from '@/components/shared/CrudFormDialog';
 import { DeleteConfirmDialog } from '@/components/shared/DeleteConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function CreditNotesPage() {
-  const { user } = useAuth();
   const qc = useQueryClient();
+  const { user } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<any>(null);
-  const [deleting, setDeleting] = useState<any>(null);
+  const [editing, setEditing] = useState<CreditNote | null>(null);
+  const [deleting, setDeleting] = useState<CreditNote | null>(null);
 
-  const { data: customers = [] } = useQuery({ queryKey: ['customers-active'], queryFn: async () => { const { data, error } = await supabase.from('customers').select('id, name').eq('is_active', true).order('name'); if (error) throw error; return data; } });
-  const { data: invoices = [] } = useQuery({ queryKey: ['invoices-list'], queryFn: async () => { const { data, error } = await supabase.from('invoices').select('id, invoice_number').order('created_at', { ascending: false }); if (error) throw error; return data; } });
-  const { data: salesReturns = [] } = useQuery({ queryKey: ['sr-list'], queryFn: async () => { const { data, error } = await supabase.from('sales_returns').select('id, return_number').order('created_at', { ascending: false }); if (error) throw error; return data; } });
-
-  const { data: items = [], isLoading } = useQuery({
-    queryKey: ['credit_notes'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('credit_notes').select('*, customers(name), invoices(invoice_number), sales_returns(return_number)').order('created_at', { ascending: false });
-      if (error) throw error;
-      return data;
-    },
+  const { data: customersRes } = useQuery({
+    queryKey: ['customers-active'],
+    queryFn: () => customerApi.getAll({ limit: 500, is_active: true }),
+  });
+  const { data: invoicesRes } = useQuery({
+    queryKey: ['invoices-list'],
+    queryFn: () => invoiceApi.getAll({ page: 1, limit: 500 }),
+  });
+  const { data: srRes } = useQuery({
+    queryKey: ['sr-list'],
+    queryFn: () => salesReturnApi.getAll({ page: 1, limit: 500 }),
   });
 
+  const customers = customersRes?.data ?? [];
+  const invoices = (invoicesRes?.data ?? []) as any[];
+  const salesReturns = (srRes?.data ?? []) as any[];
+
+  const { data: notesRes, isLoading } = useQuery({
+    queryKey: ['credit_notes'],
+    queryFn: () => creditNotesApi.getAll({ page: 1, limit: 500, sortBy: 'created_at', sortOrder: 'DESC' }),
+  });
+  const items: CreditNote[] = notesRes?.data ?? [];
+
   const fields: FieldDef[] = [
-    { key: 'credit_note_number', label: 'Credit Note #', type: 'text', required: true, placeholder: 'CN-2025-0001' },
-    { key: 'customer_id', label: 'Customer', type: 'select', required: true, options: customers.map(c => ({ value: c.id, label: c.name })) },
-    { key: 'invoice_id', label: 'Invoice', type: 'select', options: invoices.map(i => ({ value: i.id, label: i.invoice_number })) },
-    { key: 'sales_return_id', label: 'Sales Return', type: 'select', options: salesReturns.map(s => ({ value: s.id, label: s.return_number })) },
-    { key: 'amount', label: 'Amount', type: 'number', required: true, defaultValue: 0 },
-    { key: 'issue_date', label: 'Issue Date', type: 'date' },
-    { key: 'reason', label: 'Reason', type: 'text' },
-    { key: 'status', label: 'Status', type: 'select', options: [{ value: 'draft', label: 'Draft' }, { value: 'issued', label: 'Issued' }, { value: 'used', label: 'Used' }, { value: 'cancelled', label: 'Cancelled' }], defaultValue: 'draft' },
+    { key: 'cn_number', label: 'Credit Note #', type: 'text', required: true, placeholder: 'CN-2025-0001' },
+    { key: 'customer_id', label: 'Customer', type: 'select', required: true, options: customers.map((c) => ({ value: c.id, label: c.name })) },
+    { key: 'invoice_id', label: 'Invoice (optional)', type: 'select', options: invoices.map((i) => ({ value: i.id, label: i.invoice_number })) },
+    { key: 'sales_return_id', label: 'Sales Return (optional)', type: 'select', options: salesReturns.map((s) => ({ value: s.id, label: s.return_number })) },
+    { key: 'amount', label: 'Amount (₹)', type: 'number', required: true, defaultValue: 0 },
+    { key: 'cn_date', label: 'Issue Date', type: 'date' },
+    { key: 'status', label: 'Status', type: 'select', required: true, options: [{ value: 'draft', label: 'Draft' }, { value: 'issued', label: 'Issued' }, { value: 'adjusted', label: 'Adjusted' }, { value: 'cancelled', label: 'Cancelled' }], defaultValue: 'draft' },
     { key: 'notes', label: 'Notes', type: 'textarea' },
   ];
 
   const saveMutation = useMutation({
-    mutationFn: async (fd: Record<string, any>) => {
-      const payload: any = { credit_note_number: fd.credit_note_number, customer_id: fd.customer_id, invoice_id: fd.invoice_id || null, sales_return_id: fd.sales_return_id || null, amount: Number(fd.amount || 0), issue_date: fd.issue_date || null, reason: fd.reason || null, status: fd.status, notes: fd.notes || null, created_by: user?.id || null };
-      if (editing) { const { error } = await supabase.from('credit_notes').update(payload).eq('id', editing.id); if (error) throw error; }
-      else { const { error } = await supabase.from('credit_notes').insert([payload]); if (error) throw error; }
+    mutationFn: async (fd: Record<string, unknown>) => {
+      const payload: Partial<CreditNote> = {
+        cn_number: String(fd.cn_number),
+        customer_id: String(fd.customer_id),
+        invoice_id: fd.invoice_id && fd.invoice_id !== 'none' ? String(fd.invoice_id) : null,
+        sales_return_id: fd.sales_return_id && fd.sales_return_id !== 'none' ? String(fd.sales_return_id) : null,
+        amount: Number(fd.amount || 0),
+        cn_date: fd.cn_date ? String(fd.cn_date).slice(0, 10) : new Date().toISOString().slice(0, 10),
+        status: String(fd.status || 'draft') as any,
+        notes: fd.notes ? String(fd.notes) : null,
+        created_by: user?.id as any,
+      };
+      if (editing) return creditNotesApi.update(editing.id, payload);
+      return creditNotesApi.create(payload);
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['credit_notes'] }); setDialogOpen(false); setEditing(null); toast.success(editing ? 'Updated' : 'Created'); },
-    onError: (e: any) => toast.error(e.message),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['credit_notes'] });
+      setDialogOpen(false);
+      setEditing(null);
+      toast.success(editing ? 'Credit note updated!' : 'Credit note created!');
+    },
+    onError: (e: any) =>
+      toast.error(e?.response?.data?.error?.message ?? e.message ?? 'Operation failed'),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => { const { error } = await supabase.from('credit_notes').delete().eq('id', id); if (error) throw error; },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['credit_notes'] }); setDeleting(null); toast.success('Deleted'); },
-    onError: (e: any) => toast.error(e.message),
+    mutationFn: (id: string) => creditNotesApi.remove(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['credit_notes'] });
+      setDeleting(null);
+      toast.success('Credit note deleted!');
+    },
+    onError: (e: any) =>
+      toast.error(e?.response?.data?.error?.message ?? e.message ?? 'Delete failed'),
   });
 
+  const getCustomerName = (customerId: string) => customers.find((c) => c.id === customerId)?.name ?? '—';
+  const getInvoiceNumber = (invoiceId: string | null | undefined) =>
+    invoiceId ? invoices.find((i) => i.id === invoiceId)?.invoice_number ?? '—' : '—';
+
   const columns = [
-    { key: 'credit_note_number', label: 'CN #', render: (r: any) => <span className="font-mono text-sm font-medium">{r.credit_note_number}</span> },
-    { key: 'customer', label: 'Customer', render: (r: any) => r.customers?.name || '—' },
-    { key: 'invoice', label: 'Invoice', render: (r: any) => r.invoices?.invoice_number || '—' },
-    { key: 'amount', label: 'Amount', render: (r: any) => `₹${Number(r.amount || 0).toLocaleString()}` },
-    { key: 'status', label: 'Status', render: (r: any) => <StatusBadge status={r.status} /> },
-    { key: 'issue_date', label: 'Date', render: (r: any) => r.issue_date ? new Date(r.issue_date).toLocaleDateString() : '—' },
-    { key: 'actions', label: 'Actions', render: (r: any) => (
-      <div className="flex gap-1">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditing(r); setDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleting(r)}><Trash2 className="h-4 w-4" /></Button>
-      </div>
-    )},
+    { key: 'cn_number', label: 'CN #', render: (r: CreditNote) => <span className="font-mono text-sm font-medium">{r.cn_number}</span> },
+    { key: 'customer', label: 'Customer', render: (r: CreditNote) => getCustomerName(r.customer_id) },
+    { key: 'invoice', label: 'Invoice', render: (r: CreditNote) => getInvoiceNumber(r.invoice_id) },
+    { key: 'amount', label: 'Amount', render: (r: CreditNote) => `₹${Number(r.amount || 0).toLocaleString()}` },
+    { key: 'cn_date', label: 'Date', render: (r: CreditNote) => (r.cn_date ? new Date(r.cn_date).toLocaleDateString() : '—') },
+    { key: 'status', label: 'Status', render: (r: CreditNote) => <StatusBadge status={r.status} /> },
+    {
+      key: 'actions', label: 'Actions', render: (r: CreditNote) => (
+        <div className="flex gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditing(r); setDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleting(r)}><Trash2 className="h-4 w-4" /></Button>
+        </div>
+      )
+    },
   ];
 
   return (
     <div>
       <PageHeader title="Credit Notes" subtitle="Manage credit notes for customers" onAdd={() => { setEditing(null); setDialogOpen(true); }} addLabel="New Credit Note" />
-      {isLoading ? <p className="text-muted-foreground">Loading...</p> : <DataTableShell data={items} columns={columns} searchKey="credit_note_number" searchPlaceholder="Search CN#..." />}
-      <CrudFormDialog open={dialogOpen} onClose={() => { setDialogOpen(false); setEditing(null); }} onSubmit={d => saveMutation.mutateAsync(d)} fields={fields} title={editing ? 'Edit Credit Note' : 'New Credit Note'} initialData={editing} loading={saveMutation.isPending} autoNumber={{ fieldKey: 'credit_note_number', docType: 'credit_note' }} />
-      <DeleteConfirmDialog open={!!deleting} onClose={() => setDeleting(null)} onConfirm={() => deleteMutation.mutateAsync(deleting?.id)} loading={deleteMutation.isPending} />
+      {isLoading ? <p className="text-muted-foreground">Loading...</p> : <DataTableShell data={items as any[]} columns={columns as any[]} searchKey="cn_number" searchPlaceholder="Search CN#..." />}
+      <CrudFormDialog
+        open={dialogOpen}
+        onClose={() => { setDialogOpen(false); setEditing(null); }}
+        onSubmit={(d) => saveMutation.mutateAsync(d).then(() => { })}
+        fields={fields}
+        title={editing ? 'Edit Credit Note' : 'New Credit Note'}
+        initialData={editing ? { ...editing, invoice_id: editing.invoice_id ?? 'none', sales_return_id: editing.sales_return_id ?? 'none' } : undefined}
+        loading={saveMutation.isPending}
+      />
+      <DeleteConfirmDialog
+        open={!!deleting}
+        onClose={() => setDeleting(null)}
+        onConfirm={() => deleting && deleteMutation.mutateAsync(deleting.id).then(() => { })}
+        loading={deleteMutation.isPending}
+      />
     </div>
   );
 }

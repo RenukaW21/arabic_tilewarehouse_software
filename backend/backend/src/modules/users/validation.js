@@ -23,7 +23,7 @@ const updateUserSchema = Joi.object({
 // Allow role as string (e.g. "warehouse_manager,sales") or array (e.g. role[]=a&role[]=b); validated in service
 const listQuerySchema = Joi.object({
   page: Joi.number().integer().min(1).optional(),
-  limit: Joi.number().integer().min(1).max(100).optional(),
+  limit: Joi.number().integer().min(1).max(500).optional(),
   search: Joi.string().max(255).allow('').optional(),
   sortBy: Joi.string().valid('name', 'email', 'role', 'created_at', 'last_login_at').optional(),
   sortOrder: Joi.string().valid('asc', 'desc', 'ASC', 'DESC').optional(),

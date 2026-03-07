@@ -36,7 +36,7 @@ export const reportApi = {
    * GST report — GSTR-1 style data.
    * @param params — { from, to } ISO date strings
    */
-  getGSTReport: async (params?: { from?: string; to?: string }): Promise<ApiResponse<GSTReportRow[]>> => {
+  getGSTReport: async (params?: { month?: number; year?: number; from?: string; to?: string }): Promise<ApiResponse<GSTReportRow[]>> => {
     const res = await axiosInstance.get<ApiResponse<GSTReportRow[]>>('/reports/gst', { params });
     return res.data;
   },
@@ -45,7 +45,7 @@ export const reportApi = {
    * Revenue report grouped by period.
    * @param params — { from, to, groupBy: 'day'|'month'|'year' }
    */
-  getRevenueReport: async (params?: { from?: string; to?: string; groupBy?: string }): Promise<ApiResponse<RevenueReportRow[]>> => {
+  getRevenueReport: async (params?: { months?: number; from?: string; to?: string; groupBy?: string }): Promise<ApiResponse<RevenueReportRow[]>> => {
     const res = await axiosInstance.get<ApiResponse<RevenueReportRow[]>>('/reports/revenue', { params });
     return res.data;
   },
@@ -83,8 +83,8 @@ export const stockApi = {
   getSummary: async (params?: StockSummaryParams): Promise<ApiResponse<StockSummary[]>> => {
     const queryParams = params ? {
       ...(params.warehouseId && { warehouseId: params.warehouseId }),
-      ...(params.productId   && { productId:   params.productId }),
-      ...(params.lowStock    && { lowStock:     'true' }),
+      ...(params.productId && { productId: params.productId }),
+      ...(params.lowStock && { lowStock: 'true' }),
     } : undefined;
     const res = await axiosInstance.get<ApiResponse<StockSummary[]>>('/stock/summary', { params: queryParams });
     return res.data;
@@ -95,13 +95,13 @@ export const stockApi = {
    */
   getLedger: async (params?: StockLedgerParams): Promise<ApiPaginatedResponse<StockLedgerEntry>> => {
     const queryParams = params ? {
-      ...(params.productId   && { productId:   params.productId }),
+      ...(params.productId && { productId: params.productId }),
       ...(params.warehouseId && { warehouseId: params.warehouseId }),
-      ...(params.type        && { type:         params.type }),
-      ...(params.from        && { from:          params.from }),
-      ...(params.to          && { to:            params.to }),
-      ...(params.page        && { page:          params.page }),
-      ...(params.limit       && { limit:         params.limit }),
+      ...(params.type && { type: params.type }),
+      ...(params.from && { from: params.from }),
+      ...(params.to && { to: params.to }),
+      ...(params.page && { page: params.page }),
+      ...(params.limit && { limit: params.limit }),
     } : undefined;
     const res = await axiosInstance.get<ApiPaginatedResponse<StockLedgerEntry>>('/stock/ledger', { params: queryParams });
     return res.data;

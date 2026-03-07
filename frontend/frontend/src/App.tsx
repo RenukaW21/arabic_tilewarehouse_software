@@ -40,6 +40,9 @@ import StockCountsPage from "@/pages/StockCountsPage";
 import { StockCountDetailPage } from "@/pages/StockCountsPage";
 import StockLedgerPage from "@/pages/StockLedgerPage";
 import NotFound from "@/pages/NotFound";
+import GSTReportPage from "@/pages/GSTReportPage";
+import RevenueReportPage from "@/pages/RevenueReportPage";
+import AgingReportPage from "@/pages/AgingReportPage";
 
 const queryClient = new QueryClient();
 
@@ -77,9 +80,9 @@ function AppRoutes() {
         <Route path="/accounts/paid" element={<PaymentsMadePage />} />
         <Route path="/accounts/credit-notes" element={<CreditNotesPage />} />
         <Route path="/accounts/debit-notes" element={<DebitNotesPage />} />
-        <Route path="/reports/gst" element={<PlaceholderPage title="GST Report" />} />
-        <Route path="/reports/revenue" element={<PlaceholderPage title="Revenue Report" />} />
-        <Route path="/reports/aging" element={<PlaceholderPage title="Aging Report" />} />
+        <Route path="/reports/gst" element={<GSTReportPage />} />
+        <Route path="/reports/revenue" element={<RevenueReportPage />} />
+        <Route path="/reports/aging" element={<AgingReportPage />} />
         <Route path="/alerts" element={<AlertsPage />} />
         <Route path="/settings" element={<PlaceholderPage title="Settings" />} />
         <Route path="/setup/company" element={<GstConfigurationPage />} />

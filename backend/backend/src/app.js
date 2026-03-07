@@ -94,7 +94,10 @@ const buildCrudRouter = (tableName, allowedSortFields = ['created_at']) => {
     delete body.id;
     delete body.tenant_id;
     delete body.created_at;
-    body.updated_at = new Date();
+    const columns = await query(`SHOW COLUMNS FROM ${tableName} LIKE 'updated_at'`);
+    if (columns.length) {
+      body.updated_at = new Date();
+    }
     const keys = Object.keys(body);
     const setClause = keys.map(k => `${k} = ?`).join(', ');
     const values = [...keys.map(k => body[k]), req.params.id, req.tenantId];
