@@ -140,7 +140,7 @@ export default function PurchaseOrdersPage() {
     { key: 'status', label: 'Status', render: (r: PurchaseOrder) => <StatusBadge status={r.status} /> },
     {
       key: 'order_date',
-      label: 'Date',
+      label: 'Order Date',
       render: (r: PurchaseOrder) =>
         r.order_date ? new Date(r.order_date).toLocaleDateString('en-IN') : '—',
     },
@@ -163,7 +163,7 @@ export default function PurchaseOrdersPage() {
           >
             <Eye className="h-4 w-4" />
           </Button>
-          {r.status === 'draft' && (
+          {/* {r.status === 'draft' && ( */}
             <>
               <Button
                 variant="ghost"
@@ -187,7 +187,7 @@ export default function PurchaseOrdersPage() {
                 <Trash2 className="h-4 w-4" />
               </Button>
             </>
-          )}
+          {/* )} */}
         </div>
       ),
     },

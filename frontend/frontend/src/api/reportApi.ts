@@ -29,6 +29,7 @@ export const reportApi = {
    */
   getDashboard: async (): Promise<ApiResponse<DashboardData>> => {
     const res = await axiosInstance.get<ApiResponse<DashboardData>>('/reports/dashboard');
+    // console.log(res)
     return res.data;
   },
 

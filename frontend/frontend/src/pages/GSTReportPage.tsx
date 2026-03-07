@@ -133,27 +133,27 @@ export default function GSTReportPage() {
                                         </thead>
                                         <tbody>
                                             {filtered.map((r: any, i: number) => (
-                                                <tr key={i} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                                                <tr key={i} className="border-b last:border-0 hover:bg-muted/30 transition-colors ">
                                                     <td className="px-4 py-3 font-mono font-medium text-primary">{r.invoice_number}</td>
                                                     <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{new Date(r.invoice_date).toLocaleDateString('en-IN')}</td>
                                                     <td className="px-4 py-3 max-w-36 truncate">{r.customer_name}</td>
                                                     <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{r.customer_gstin || '—'}</td>
-                                                    <td className="px-4 py-3 text-right whitespace-nowrap">{fmt(r.sub_total)}</td>
-                                                    <td className="px-4 py-3 text-right whitespace-nowrap text-blue-600">{fmt(r.cgst_amount)}</td>
-                                                    <td className="px-4 py-3 text-right whitespace-nowrap text-purple-600">{fmt(r.sgst_amount)}</td>
-                                                    <td className="px-4 py-3 text-right whitespace-nowrap text-amber-600">{fmt(r.igst_amount)}</td>
-                                                    <td className="px-4 py-3 text-right whitespace-nowrap font-semibold">{fmt(r.grand_total)}</td>
+                                                    <td className="px-4 py-3  whitespace-nowrap">{fmt(r.sub_total)}</td>
+                                                    <td className="px-4 py-3  whitespace-nowrap text-blue-600">{fmt(r.cgst_amount)}</td>
+                                                    <td className="px-4 py-3  whitespace-nowrap text-purple-600">{fmt(r.sgst_amount)}</td>
+                                                    <td className="px-4 py-3  whitespace-nowrap text-amber-600">{fmt(r.igst_amount)}</td>
+                                                    <td className="px-4 py-3  whitespace-nowrap font-semibold">{fmt(r.grand_total)}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
                                         <tfoot>
                                             <tr className="bg-muted/50 border-t-2">
                                                 <td colSpan={4} className="px-4 py-3 text-sm font-semibold">Total ({filtered.length} invoices)</td>
-                                                <td className="px-4 py-3 text-right font-semibold">{fmt(filtered.reduce((s, r) => s + parseFloat(r.sub_total || 0), 0))}</td>
-                                                <td className="px-4 py-3 text-right font-semibold text-blue-600">{fmt(filtered.reduce((s, r) => s + parseFloat(r.cgst_amount || 0), 0))}</td>
-                                                <td className="px-4 py-3 text-right font-semibold text-purple-600">{fmt(filtered.reduce((s, r) => s + parseFloat(r.sgst_amount || 0), 0))}</td>
-                                                <td className="px-4 py-3 text-right font-semibold text-amber-600">{fmt(filtered.reduce((s, r) => s + parseFloat(r.igst_amount || 0), 0))}</td>
-                                                <td className="px-4 py-3 text-right font-bold">{fmt(filtered.reduce((s, r) => s + parseFloat(r.grand_total || 0), 0))}</td>
+                                                <td className="px-4 py-3  font-semibold">{fmt(filtered.reduce((s, r) => s + parseFloat(r.sub_total || 0), 0))}</td>
+                                                <td className="px-4 py-3  font-semibold text-blue-600">{fmt(filtered.reduce((s, r) => s + parseFloat(r.cgst_amount || 0), 0))}</td>
+                                                <td className="px-4 py-3  font-semibold text-purple-600">{fmt(filtered.reduce((s, r) => s + parseFloat(r.sgst_amount || 0), 0))}</td>
+                                                <td className="px-4 py-3  font-semibold text-amber-600">{fmt(filtered.reduce((s, r) => s + parseFloat(r.igst_amount || 0), 0))}</td>
+                                                <td className="px-4 py-3  font-bold">{fmt(filtered.reduce((s, r) => s + parseFloat(r.grand_total || 0), 0))}</td>
                                             </tr>
                                         </tfoot>
                                     </table>

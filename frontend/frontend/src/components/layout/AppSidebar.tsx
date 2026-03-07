@@ -98,7 +98,7 @@ const navItems: NavItem[] = [
       { label: 'Aging', path: '/reports/aging', icon: ScrollText },
     ]
   },
-  { label: 'Alerts', icon: AlertTriangle, path: '/alerts', badge: 3, allowedRoles: ALL_ROLES },
+  // { label: 'Alerts', icon: AlertTriangle, path: '/alerts', badge: 1, allowedRoles: ALL_ROLES },
   { label: 'Settings', icon: Settings, path: '/settings', allowedRoles: ['super_admin', 'admin'] },
   { label: 'Logout', icon: LogOut },
   
