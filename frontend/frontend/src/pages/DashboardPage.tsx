@@ -32,6 +32,7 @@ import type {
   DashboardRecentGRN,
   DashboardRecentTransfer,
 } from "@/types/stock.types";
+import { useNavigate } from "react-router-dom";
 
 const CHART_COLORS = [
   "hsl(217, 91%, 53%)",
@@ -58,6 +59,7 @@ function formatDate(dateStr: string): string {
 }
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const { data, isLoading, isError, error } = useDashboard();
 
   const summary = data?.summary;
@@ -93,54 +95,88 @@ export default function DashboardPage() {
           ))
         ) : (
           <>
-            <KPICard
-              title="Warehouses"
-              value={String(summary?.totalWarehouses ?? 0)}
-              icon={<Layers className="h-5 w-5" />}
-              variant="default"
-            />
-            <KPICard
-              title="Products"
-              value={String(summary?.totalProducts ?? 0)}
-              icon={<Package className="h-5 w-5" />}
-              variant="primary"
-            />
-            <KPICard
-              title="Vendors"
-              value={String(summary?.totalVendors ?? 0)}
-              icon={<Truck className="h-5 w-5" />}
-              variant="default"
-            />
-            <KPICard
-              title="Customers"
-              value={String(summary?.totalCustomers ?? 0)}
-              icon={<Users className="h-5 w-5" />}
-              variant="default"
-            />
-            <KPICard
-              title="Pending POs"
-              value={String(summary?.pendingPurchaseOrders ?? 0)}
-              icon={<ShoppingCart className="h-5 w-5" />}
-              variant="warning"
-            />
+            <div
+              onClick={() => navigate("/setup/warehouses")}
+              className="cursor-pointer"
+            >
+              <KPICard
+                title="Warehouses"
+                value={String(summary?.totalWarehouses ?? 0)}
+                icon={<Layers className="h-5 w-5" />}
+                variant="default"
+              />
+            </div>
+
+            <div
+              onClick={() => navigate("/master/products")}
+              className="cursor-pointer"
+            >
+              <KPICard
+                title="Products"
+                value={String(summary?.totalProducts ?? 0)}
+                icon={<Package className="h-5 w-5" />}
+                variant="primary"
+              />
+            </div>
+
+            <div
+              onClick={() => navigate("/master/vendors")}
+              className="cursor-pointer"
+            >
+              <KPICard
+                title="Vendors"
+                value={String(summary?.totalVendors ?? 0)}
+                icon={<Truck className="h-5 w-5" />}
+                variant="default"
+              />
+            </div>
+            <div
+              onClick={() => navigate("/master/customers")}
+              className="cursor-pointer"
+            >
+              <KPICard
+                title="Customers"
+                value={String(summary?.totalCustomers ?? 0)}
+                icon={<Users className="h-5 w-5" />}
+                variant="default"
+              />
+            </div>
+            <div onClick={() => navigate("/purchase/orders")}className="cursor-pointer">
+              <KPICard
+                title="Pending POs"
+                value={String(summary?.pendingPurchaseOrders ?? 0)}
+                icon={<ShoppingCart className="h-5 w-5" />}
+                variant="warning"
+              />
+            </div>
+
+            <div onClick={() => navigate("/inventory/stock")}className="cursor-pointer">
             <KPICard
               title="Total Stock (boxes)"
               value={String(summary?.totalStock ?? 0)}
               icon={<Layers className="h-5 w-5" />}
               variant="default"
             />
+            </div>
+
+            <div onClick={() => navigate("/sales/orders")}className="cursor-pointer">
             <KPICard
               title="Sales (this month)"
               value={formatCurrency(summary?.monthlySales ?? 0)}
               icon={<TrendingUp className="h-5 w-5" />}
               variant="success"
             />
+            </div>
+
+            <div onClick={() => navigate("/purchase/orders")}className="cursor-pointer">
             <KPICard
               title="Purchases (this month)"
               value={formatCurrency(summary?.monthlyPurchases ?? 0)}
               icon={<ShoppingCart className="h-5 w-5" />}
               variant="warning"
             />
+
+            </div>
           </>
         )}
       </div>
