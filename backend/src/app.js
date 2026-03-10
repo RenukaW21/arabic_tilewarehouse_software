@@ -37,6 +37,7 @@ const deliveryChallansRoutes = require('./modules/delivery-challans/routes');
 const salesReturnsRoutes = require('./modules/sales-returns/routes');
 const usersRoutes = require('./modules/users/routes');
 const gstConfigRoutes = require('./modules/gst-config/routes');
+const rackInventoryRoutes = require('./modules/rack-inventory/routes');
 
 // Inline route handlers for CRUD modules (same pattern as products)
 const buildCrudRouter = (tableName, allowedSortFields = ['created_at']) => {
@@ -137,8 +138,8 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant-ID'],
 }));
 app.use(compression());
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 app.use(morgan(env.isProd ? 'combined' : 'dev', {
   stream: { write: (msg) => logger.http(msg.trim()) },
 }));
@@ -180,6 +181,7 @@ app.use(`${API}/delivery-challans`, deliveryChallansRoutes);
 app.use(`${API}/sales-returns`, salesReturnsRoutes);
 app.use(`${API}/users`, usersRoutes);
 app.use(`${API}/setup/gst`, gstConfigRoutes);
+app.use(`${API}/rack-inventory`, rackInventoryRoutes);
 
 // Full CRUD modules (GET, POST, PUT, DELETE) — Vendors uses full module (pagination, search, soft delete)
 app.use(`${API}/vendors`, vendorRoutes);

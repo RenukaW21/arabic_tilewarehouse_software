@@ -125,7 +125,23 @@ CREATE TABLE IF NOT EXISTS racks (
   KEY idx_rack_tenant_wh (tenant_id, warehouse_id),
   CONSTRAINT fk_rack_tenant    FOREIGN KEY (tenant_id)    REFERENCES tenants(id),
   CONSTRAINT fk_rack_warehouse FOREIGN KEY (warehouse_id) REFERENCES warehouses(id)
+-- ─── PRODUCT RACKS (Mapping products to rack locations) ───────────────────────
+CREATE TABLE IF NOT EXISTS product_racks (
+  id              VARCHAR(36) NOT NULL,
+  tenant_id       VARCHAR(36) NOT NULL,
+  product_id      VARCHAR(36) NOT NULL,
+  rack_id         VARCHAR(36) NOT NULL,
+  boxes_stored    INT         NOT NULL DEFAULT 0,
+  created_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_product_rack (product_id, rack_id),
+  KEY idx_pr_tenant (tenant_id),
+  CONSTRAINT fk_pr_tenant  FOREIGN KEY (tenant_id)  REFERENCES tenants(id),
+  CONSTRAINT fk_pr_product FOREIGN KEY (product_id) REFERENCES products(id),
+  CONSTRAINT fk_pr_rack    FOREIGN KEY (rack_id)    REFERENCES racks(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 
 -- ─── VENDORS ──────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS vendors (

@@ -9,11 +9,14 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { fetchNextDocNumber } from '@/hooks/useNextDocNumber';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Check, ChevronsUpDown } from 'lucide-react';
 
 export interface FieldDef {
   key: string;
   label: string;
-  type: 'text' | 'number' | 'email' | 'textarea' | 'select' | 'switch' | 'date';
+  type: 'text' | 'number' | 'email' | 'textarea' | 'select' | 'combobox' | 'switch' | 'date' | 'file';
   required?: boolean;
   options?: { value: string; label: string }[];
   placeholder?: string;
@@ -93,7 +96,8 @@ export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initial
       if (Array.isArray(details) && details.length) {
         const next: Record<string, string> = {};
         details.forEach(d => {
-          const key = Array.isArray(d.path) ? d.path.join('.') : String(d.path ?? '');
+          const pathArr = (d as any).path || (d as any).field;
+          const key = Array.isArray(pathArr) ? pathArr.join('.') : String(pathArr ?? '');
           if (key && d.message) next[key] = d.message;
         });
         setErrors(next);
@@ -130,6 +134,52 @@ export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initial
                     {f.options?.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
+              ) : f.type === 'combobox' ? (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className={cn(
+                        "w-full justify-between font-normal text-left",
+                        !formData[f.key] && "text-muted-foreground",
+                        errors[f.key] && "border-destructive"
+                      )}
+                    >
+                      {formData[f.key]
+                        ? f.options?.find(o => o.value === formData[f.key])?.label
+                        : (f.placeholder || "Select...")}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder={`Search ${f.label.toLowerCase()}...`} />
+                      <CommandList>
+                        <CommandEmpty>No {f.label.toLowerCase()} found.</CommandEmpty>
+                        <CommandGroup>
+                          {f.options?.map(o => (
+                            <CommandItem
+                              key={o.value}
+                              value={o.label}
+                              onSelect={() => {
+                                setValue(f.key, o.value);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  o.value === formData[f.key] ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {o.label}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               ) : f.type === 'switch' ? (
                 <div className="flex items-center gap-2">
                   <Switch id={f.key} checked={!!formData[f.key]} onCheckedChange={v => setValue(f.key, v)} />
@@ -139,10 +189,17 @@ export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initial
                 <Input
                   id={f.key}
                   type={f.type}
-                  value={f.type === 'date' && formData[f.key] ? String(formData[f.key]).slice(0, 10) : (formData[f.key] ?? '')}
-                  onChange={e => setValue(f.key, e.target.value)}
+                  value={f.type === 'date' && formData[f.key] ? String(formData[f.key]).slice(0, 10) : (f.type === 'file' ? undefined : (formData[f.key] ?? ''))}
+                  onChange={e => {
+                    if (f.type === 'file') {
+                      const file = (e.target as HTMLInputElement).files?.[0];
+                      if (file) setValue(f.key, file);
+                    } else {
+                      setValue(f.key, e.target.value);
+                    }
+                  }}
                   placeholder={f.placeholder}
-                  required={f.required}
+                  required={f.required && (f.type === 'file' ? !initialData : true)}
                   step={f.type === 'number' ? 'any' : undefined}
                   readOnly={isAutoNumberField(f.key)}
                   className={cn(isAutoNumberField(f.key) && 'bg-muted font-mono', errors[f.key] && 'border-destructive')}

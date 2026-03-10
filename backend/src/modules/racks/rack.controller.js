@@ -121,10 +121,30 @@ const deleteRack = async (req, res, next) => {
   }
 };
 
+const assignProduct = async (req, res, next) => {
+  try {
+    const data = await rackService.assignProductToRack(req.tenantId, req.body);
+    return success(res, data, 'Storage updated successfully');
+  } catch (e) {
+    next(e);
+  }
+};
+
+const getProductStorage = async (req, res, next) => {
+  try {
+    const data = await rackService.getProductRacks(req.tenantId, req.params.productId);
+    return success(res, data, 'Product storage fetched');
+  } catch (e) {
+    next(e);
+  }
+};
+
 module.exports = {
   createRack,
   getRacks,
   getRackById,
   updateRack,
   deleteRack,
+  assignProduct,
+  getProductStorage
 };

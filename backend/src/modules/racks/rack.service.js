@@ -7,23 +7,14 @@ const SELECT_COLUMNS = [
   'id',
   'tenant_id',
   'warehouse_id',
-  'zone',
   'name',
   'aisle',
   '`row`',
   'level',
-  'rack_type',
   'capacity_boxes',
-  'occupied_boxes',
-  'available_boxes',
-  'max_weight',
-  'rack_status',
   'qr_code',
-  'notes',
   'is_active',
-  'created_by',
-  'created_at',
-  'updated_at'
+  'created_at'
 ].join(', ');
 
 const ALLOWED_SORT_FIELDS = ['name', 'aisle', 'created_at'];
@@ -34,35 +25,20 @@ const ALLOWED_SORT_FIELDS = ['name', 'aisle', 'created_at'];
 // ─────────────────────────────────────────────────────────────
 
 const createRack = async (data) => {
-
-  const capacity = data.capacity_boxes ?? null;
-  const occupied = data.occupied_boxes ?? 0;
-
-  const available =
-    capacity !== null ? capacity - occupied : null;
-
   const sql = `
   INSERT INTO racks (
     id,
     tenant_id,
     warehouse_id,
-    zone,
     name,
     aisle,
     \`row\`,
     level,
-    rack_type,
     capacity_boxes,
-    occupied_boxes,
-    available_boxes,
-    max_weight,
-    rack_status,
     qr_code,
-    notes,
-    is_active,
-    created_by
+    is_active
   )
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   const pool = getPool();
@@ -71,21 +47,13 @@ const createRack = async (data) => {
     data.id,
     data.tenant_id,
     data.warehouse_id,
-    data.zone ?? null,
     data.name,
     data.aisle ?? null,
     data.row ?? null,
     data.level ?? null,
-    data.rack_type ?? 'PALLET',
-    capacity,
-    occupied,
-    available,
-    data.max_weight ?? null,
-    data.rack_status ?? 'ACTIVE',
+    data.capacity_boxes ?? null,
     data.qr_code ?? null,
-    data.notes ?? null,
-    data.is_active !== false ? 1 : 0,
-    data.created_by ?? null
+    data.is_active !== false ? 1 : 0
   ]);
 };
 
@@ -107,8 +75,8 @@ const getAllRacks = async (tenantId, options = {}) => {
   if (options.is_active !== undefined && options.is_active !== '') {
     filterMap.is_active =
       options.is_active === true ||
-      options.is_active === '1' ||
-      options.is_active === 'true'
+        options.is_active === '1' ||
+        options.is_active === 'true'
         ? 1
         : 0;
   }
@@ -141,11 +109,21 @@ const getAllRacks = async (tenantId, options = {}) => {
 
   const whereSql = conditions.join(' AND ');
 
-  const baseSql = `SELECT ${SELECT_COLUMNS} FROM racks WHERE ${whereSql}`;
+  const baseSql = `
+    SELECT r.*, w.name as warehouse_name,
+           COALESCE(SUM(CASE WHEN p.is_active = 1 THEN pr.boxes_stored ELSE 0 END), 0) AS occupied_boxes,
+           (r.capacity_boxes - COALESCE(SUM(CASE WHEN p.is_active = 1 THEN pr.boxes_stored ELSE 0 END), 0)) AS available_boxes
+    FROM racks r
+    LEFT JOIN warehouses w ON r.warehouse_id = w.id
+    LEFT JOIN product_racks pr ON r.id = pr.rack_id
+    LEFT JOIN products p ON pr.product_id = p.id
+    WHERE r.${whereSql}
+    GROUP BY r.id
+  `;
 
   const [rows, countResult] = await Promise.all([
-    query(`${baseSql} ORDER BY ${orderBy} ${order} LIMIT ${limit} OFFSET ${offset}`, params),
-    query(`SELECT COUNT(*) AS total FROM racks WHERE ${whereSql}`, params),
+    query(`${baseSql} ORDER BY r.${orderBy} ${order} LIMIT ${limit} OFFSET ${offset}`, params),
+    query(`SELECT COUNT(DISTINCT id) AS total FROM racks WHERE ${whereSql}`, params),
   ]);
 
   const total = countResult[0]?.total ?? 0;
@@ -169,7 +147,15 @@ const getAllRacks = async (tenantId, options = {}) => {
 const getRackById = async (id, tenantId) => {
 
   const rows = await query(
-    `SELECT ${SELECT_COLUMNS} FROM racks WHERE id = ? AND tenant_id = ?`,
+    `SELECT r.*, w.name as warehouse_name,
+            COALESCE(SUM(CASE WHEN p.is_active = 1 THEN pr.boxes_stored ELSE 0 END), 0) AS occupied_boxes,
+            (r.capacity_boxes - COALESCE(SUM(CASE WHEN p.is_active = 1 THEN pr.boxes_stored ELSE 0 END), 0)) AS available_boxes
+     FROM racks r
+     LEFT JOIN warehouses w ON r.warehouse_id = w.id
+     LEFT JOIN product_racks pr ON r.id = pr.rack_id
+     LEFT JOIN products p ON pr.product_id = p.id
+     WHERE r.id = ? AND r.tenant_id = ?
+     GROUP BY r.id`,
     [id, tenantId]
   );
 
@@ -187,29 +173,14 @@ const updateRack = async (id, tenantId, fields) => {
 
   if (!existing) return null;
 
-  const capacity =
-    fields.capacity_boxes ?? existing.capacity_boxes;
-
-  const occupied =
-    fields.occupied_boxes ?? existing.occupied_boxes;
-
-  const available =
-    capacity !== null ? capacity - occupied : null;
-
   const allowed = [
     'warehouse_id',
-    'zone',
     'name',
     'aisle',
     'row',
     'level',
-    'rack_type',
     'capacity_boxes',
-    'occupied_boxes',
-    'max_weight',
-    'rack_status',
     'qr_code',
-    'notes',
     'is_active'
   ];
 
@@ -233,10 +204,7 @@ const updateRack = async (id, tenantId, fields) => {
     );
   }
 
-  // always update available boxes
-  setParts.push(`available_boxes = ?`);
-  values.push(available);
-
+  // No additional fields
   const pool = getPool();
 
   const [result] = await pool.execute(
@@ -266,6 +234,73 @@ const deleteRack = async (id, tenantId) => {
   return result.affectedRows > 0;
 };
 
+// ─────────────────────────────────────────────────────────────
+// PRODUCT RACK MAPPING
+// ─────────────────────────────────────────────────────────────
+
+const assignProductToRack = async (tenantId, data) => {
+  const { v4: uuidv4 } = require('uuid');
+  const id = uuidv4();
+
+  // 1. Get rack capacity and current occupancy
+  const rack = await getRackById(data.rack_id, tenantId);
+  if (!rack) throw new Error('Rack not found');
+
+  // get current boxes for this specific product-rack mapping (if any)
+  const existingRows = await query(
+    'SELECT boxes_stored FROM product_racks WHERE product_id = ? AND rack_id = ? AND tenant_id = ?',
+    [data.product_id, data.rack_id, tenantId]
+  );
+  const existingBoxesForThisProduct = existingRows[0]?.boxes_stored || 0;
+
+  // Calculate potential new total: TotalOccupied - OldValueForThisProduct + NewValue
+  const newOccupiedTotal = (Number(rack.occupied_boxes) || 0) - existingBoxesForThisProduct + Number(data.boxes_stored);
+
+  if (rack.capacity_boxes !== null && newOccupiedTotal > rack.capacity_boxes) {
+    const available = rack.capacity_boxes - ((Number(rack.occupied_boxes) || 0) - existingBoxesForThisProduct);
+    throw new Error(`Rack capacity exceeded. Only ${available} boxes available.`);
+  }
+
+  await query(sql, [id, tenantId, data.product_id, data.rack_id, data.boxes_stored, data.boxes_stored]);
+
+  // 3. Sync the 'racks' table columns
+  await syncRackOccupancy(data.rack_id, tenantId);
+
+  return { success: true };
+};
+
+const syncRackOccupancy = async (rackId, tenantId) => {
+  // Recalculates based on active products only
+  const sql = `
+    UPDATE racks r
+    SET 
+      occupied_boxes = (
+        SELECT COALESCE(SUM(pr.boxes_stored), 0)
+        FROM product_racks pr
+        JOIN products p ON pr.product_id = p.id
+        WHERE pr.rack_id = ? AND p.is_active = 1
+      ),
+      available_boxes = capacity_boxes - (
+        SELECT COALESCE(SUM(pr.boxes_stored), 0)
+        FROM product_racks pr
+        JOIN products p ON pr.product_id = p.id
+        WHERE pr.rack_id = ? AND p.is_active = 1
+      )
+    WHERE r.id = ? AND r.tenant_id = ?
+  `;
+  await query(sql, [rackId, rackId, rackId, tenantId]);
+};
+
+const getProductRacks = async (tenantId, productId) => {
+  return query(
+    `SELECT pr.*, r.name as rack_name, w.name as warehouse_name
+     FROM product_racks pr
+     JOIN racks r ON pr.rack_id = r.id
+     JOIN warehouses w ON r.warehouse_id = w.id
+     WHERE pr.tenant_id = ? AND pr.product_id = ?`,
+    [tenantId, productId]
+  );
+};
 
 module.exports = {
   createRack,
@@ -273,4 +308,7 @@ module.exports = {
   getRackById,
   updateRack,
   deleteRack,
+  assignProductToRack,
+  getProductRacks,
+  syncRackOccupancy
 };

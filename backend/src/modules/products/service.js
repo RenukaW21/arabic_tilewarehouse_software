@@ -1,6 +1,5 @@
 'use strict';
 const repo = require('./repository');
-const { query } = require('../../config/db');
 const { AppError } = require('../../middlewares/error.middleware');
 const { checkProductLinked } = require('../../utils/deleteGuard');
 
@@ -9,6 +8,18 @@ const getAll = (tenantId, queryParams) => repo.findAll(tenantId, queryParams);
 const getById = async (id, tenantId) => {
   const product = await repo.findById(id, tenantId);
   if (!product) throw new AppError('Product not found', 404, 'NOT_FOUND');
+
+  // Attach related entities for detailed view
+  const rackService = require('../racks/rack.service');
+  const [vendors, customers, rackAssignments] = await Promise.all([
+    repo.getProductVendors(id, tenantId),
+    repo.getProductCustomers(id, tenantId),
+    rackService.getProductRacks(tenantId, id)
+  ]);
+  product.vendors = vendors;
+  product.customers = customers;
+  product.rackAssignments = rackAssignments;
+
   return product;
 };
 
@@ -19,23 +30,22 @@ const create = async (tenantId, data) => {
 };
 
 const update = async (id, tenantId, data) => {
-  await getById(id, tenantId);
-  const codeConflict = await repo.findByCode(data.code, tenantId, id);
-  if (codeConflict) throw new AppError(`Product code '${data.code}' already in use`, 409, 'DUPLICATE_CODE');
+  await getById(id, tenantId); // ensures product exists
+  // Only check code conflict if a new code is actually being supplied
+  if (data.code) {
+    const codeConflict = await repo.findByCode(data.code, tenantId, id);
+    if (codeConflict) throw new AppError(`Product code '${data.code}' already in use`, 409, 'DUPLICATE_CODE');
+  }
+  // Rack upsert / delete is handled inside repo.update() in a transaction
   return repo.update(id, tenantId, data);
 };
 
 const remove = async (id, tenantId) => {
   await getById(id, tenantId);
   await checkProductLinked(id, tenantId);
-  try {
-    await query('DELETE FROM products WHERE id = ? AND tenant_id = ?', [id, tenantId]);
-  } catch (err) {
-    if (err.code === 'ER_ROW_IS_REFERENCED_2' || err.code === 'ER_NO_REFERENCED_ROW_2') {
-      throw new AppError('Cannot delete because record is linked to existing transactions.', 400, 'LINKED_TO_TRANSACTIONS');
-    }
-    throw err;
-  }
+  // Uses repo.softDelete() which runs inside a transaction:
+  // marks is_active=FALSE AND clears product_racks in one atomic operation
+  await repo.softDelete(id, tenantId);
 };
 
 module.exports = { getAll, getById, create, update, remove };

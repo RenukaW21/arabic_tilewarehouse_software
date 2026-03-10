@@ -59,6 +59,22 @@ export const rackApi = {
   delete: async (id: string): Promise<void> => {
     await api.delete(`/racks/${id}`);
   },
+  assignProduct: async (data: { product_id: string; rack_id: string; boxes_stored: number }): Promise<any> => {
+    const res = await api.post('/racks/assign', data);
+    return res.data;
+  },
+  getProductStorage: async (productId: string): Promise<any> => {
+    const res = await api.get(`/racks/product/${productId}`);
+    return res.data;
+  },
+};
+
+// ─── Rack Inventory API ────────────────────────────────────────────────────────
+export const rackInventoryApi = {
+  getAll: async (params?: PaginationParams): Promise<ApiPaginatedResponse<any>> => {
+    const res = await api.get<ApiPaginatedResponse<any>>('/rack-inventory', { params });
+    return res.data;
+  },
 };
 
 // ─── Category API (may use different backend) ──────────────────────────────────

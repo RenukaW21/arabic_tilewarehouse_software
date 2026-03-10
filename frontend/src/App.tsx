@@ -8,6 +8,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import AuthPage from "@/pages/AuthPage";
 import DashboardPage from "@/pages/DashboardPage";
 import ProductsPage from "@/pages/ProductsPage";
+import ProductDetailsPage from "@/pages/ProductDetailsPage";
 import CategoriesPage from "@/pages/CategoriesPage";
 import VendorsPage from "@/pages/VendorsPage";
 import CustomersPage from "@/pages/CustomersPage";
@@ -20,6 +21,7 @@ import GRNDetailPage from "@/pages/GRNDetailPage";
 import SalesOrdersPage from "@/pages/SalesOrdersPage";
 import StockPage from "@/pages/StockPage";
 import InventoryStockPage from "@/pages/InventoryStockPage";
+import RackInventoryPage from "@/pages/RackInventoryPage";
 import StockTransfersPage from "@/pages/StockTransfersPage";
 import StockAdjustmentsPage from "@/pages/StockAdjustmentsPage";
 import DamageEntriesPage from "@/pages/DamageEntriesPage";
@@ -56,6 +58,7 @@ function AppRoutes() {
       <Route element={<DashboardLayout />}>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/master/products" element={<ProductsPage />} />
+        <Route path="/master/products/:id" element={<ProductDetailsPage />} />
         <Route path="/master/categories" element={<CategoriesPage />} />
         <Route path="/master/vendors" element={<VendorsPage />} />
         <Route path="/master/customers" element={<CustomersPage />} />
@@ -64,6 +67,7 @@ function AppRoutes() {
         <Route path="/purchase/grn" element={<GRNPage />} />
         <Route path="/purchase/grn/:id" element={<GRNDetailPage />} />
         <Route path="/purchase/returns" element={<PurchaseReturnsPage />} />
+        <Route path="/inventory/rack-inventory" element={<RackInventoryPage />} />
         <Route path="/inventory/stock" element={<InventoryStockPage />} />
         <Route path="/inventory/ledger" element={<StockLedgerPage />} />
         <Route path="/inventory/transfers" element={<StockTransfersPage />} />

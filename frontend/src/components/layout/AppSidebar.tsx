@@ -63,6 +63,7 @@ const navItems: NavItem[] = [
   {
     label: 'Inventory', icon: Warehouse, allowedRoles: ['super_admin', 'admin', 'warehouse_manager'],
     children: [
+      { label: 'Rack Inventory', path: '/inventory/rack-inventory', icon: Layers },
       { label: 'Stock', path: '/inventory/stock', icon: Boxes },
       { label: 'Ledger', path: '/inventory/ledger', icon: ScrollText },
       { label: 'Transfers', path: '/inventory/transfers', icon: ArrowLeftRight },
