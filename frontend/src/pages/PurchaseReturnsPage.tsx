@@ -10,7 +10,7 @@ import { DataTableShell } from '@/components/shared/DataTableShell';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { DeleteConfirmDialog } from '@/components/shared/DeleteConfirmDialog';
 import { Button } from '@/components/ui/button';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Truck, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -37,6 +37,7 @@ export default function PurchaseReturnsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<PurchaseReturn | null>(null);
   const [deleting, setDeleting] = useState<PurchaseReturn | null>(null);
+  const [dispatchingId, setDispatchingId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -104,7 +105,7 @@ export default function PurchaseReturnsPage() {
       qc.invalidateQueries({ queryKey: ['purchase-returns'] });
       setDialogOpen(false);
       resetForm();
-      toast.success('Purchase return created. Stock has been reduced.');
+      toast.success('Purchase return created as draft. Dispatch it to reduce stock.');
     },
     onError: (e: { response?: { data?: { error?: { message?: string }; message?: string } } }) => {
       const msg =
@@ -124,6 +125,32 @@ export default function PurchaseReturnsPage() {
     },
     onError: (e: { response?: { data?: { error?: { message?: string } } } }) => {
       toast.error(e?.response?.data?.error?.message ?? 'Update failed');
+    },
+  });
+
+  const dispatchMutation = useMutation({
+    mutationFn: (id: string) => purchaseReturnApi.dispatch(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['purchase-returns'] });
+      setDispatchingId(null);
+      toast.success('Return dispatched — stock reduced');
+    },
+    onError: (e: { response?: { data?: { error?: { message?: string } } } }) => {
+      toast.error(e?.response?.data?.error?.message ?? 'Dispatch failed');
+      setDispatchingId(null);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => purchaseReturnApi.delete(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['purchase-returns'] });
+      setDeleting(null);
+      toast.success('Return deleted');
+    },
+    onError: (e: { response?: { data?: { error?: { message?: string } } } }) => {
+      toast.error(e?.response?.data?.error?.message ?? 'Delete failed');
+      setDeleting(null);
     },
   });
 
@@ -228,9 +255,34 @@ export default function PurchaseReturnsPage() {
       render: (r: PurchaseReturn) => (
         <div className="flex gap-1">
           {r.status === 'draft' && (
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(r)} title="Edit">
-              <Pencil className="h-4 w-4" />
-            </Button>
+            <>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(r)} title="Edit">
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-green-600"
+                onClick={() => { setDispatchingId(r.id); dispatchMutation.mutate(r.id); }}
+                disabled={dispatchMutation.isPending}
+                title="Dispatch (reduce stock)"
+              >
+                {dispatchingId === r.id && dispatchMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Truck className="h-4 w-4" />
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-destructive"
+                onClick={() => setDeleting(r)}
+                title="Delete"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </>
           )}
         </div>
       ),
@@ -243,7 +295,7 @@ export default function PurchaseReturnsPage() {
     <div>
       <PageHeader
         title="Purchase Returns"
-        subtitle="Manage purchase returns to vendors. Creating a return reduces stock."
+        subtitle="Manage purchase returns to vendors. Create as draft, then dispatch to reduce stock."
         onAdd={openCreate}
         addLabel="New Return"
       />
@@ -270,7 +322,7 @@ export default function PurchaseReturnsPage() {
             <Alert variant="default" className="border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                Creating a return will reduce stock for the selected warehouse. Return quantity must not exceed available stock (unallocated).
+                Created as draft. Dispatch the return to reduce stock. Quantity must not exceed available stock at dispatch time.
               </AlertDescription>
             </Alert>
           )}
@@ -398,6 +450,15 @@ export default function PurchaseReturnsPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <DeleteConfirmDialog
+        open={!!deleting}
+        onClose={() => setDeleting(null)}
+        onConfirm={() => deleting && deleteMutation.mutate(deleting.id)}
+        loading={deleteMutation.isPending}
+        title="Delete purchase return?"
+        description="This will permanently delete this draft return. Only draft returns can be deleted."
+      />
     </div>
   );
 }

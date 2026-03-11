@@ -59,10 +59,30 @@ const update = async (req, res, next) => {
   }
 };
 
+const dispatch = async (req, res, next) => {
+  try {
+    const data = await service.dispatch(req.params.id, req.tenantId, req.user.id);
+    return success(res, data, 'Return dispatched — stock reduced');
+  } catch (err) {
+    next(err);
+  }
+};
+
+const remove = async (req, res, next) => {
+  try {
+    const result = await service.remove(req.params.id, req.tenantId);
+    return success(res, result, 'Purchase return deleted');
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getAll,
   getById,
   create,
   update,
+  dispatch,
+  remove,
   validate,
 };

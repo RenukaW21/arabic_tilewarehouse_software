@@ -33,6 +33,8 @@ import type {
   DashboardRecentTransfer,
 } from "@/types/stock.types";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
 
 const CHART_COLORS = [
   "hsl(217, 91%, 53%)",
@@ -59,6 +61,21 @@ function formatDate(dateStr: string): string {
 }
 
 export default function DashboardPage() {
+  // 🔔 Low stock alerts (same API as Alerts page)
+  const { data: alerts = [] } = useQuery({
+    queryKey: ["dashboard_low_stock_alerts"],
+    queryFn: async () => {
+      const res = await axios.get(
+        `${import.meta.env.VITE_API_BASE_URL}/alerts/low-stock`,
+      );
+
+      const data = res.data.data;
+
+      if (!data) return [];
+      return Array.isArray(data) ? data : [data];
+    },
+  });
+
   const navigate = useNavigate();
   const { data, isLoading, isError, error } = useDashboard();
 
@@ -141,7 +158,10 @@ export default function DashboardPage() {
                 variant="default"
               />
             </div>
-            <div onClick={() => navigate("/purchase/orders")}className="cursor-pointer">
+            <div
+              onClick={() => navigate("/purchase/orders")}
+              className="cursor-pointer"
+            >
               <KPICard
                 title="Pending POs"
                 value={String(summary?.pendingPurchaseOrders ?? 0)}
@@ -150,32 +170,40 @@ export default function DashboardPage() {
               />
             </div>
 
-            <div onClick={() => navigate("/inventory/stock")}className="cursor-pointer">
-            <KPICard
-              title="Total Stock (boxes)"
-              value={String(summary?.totalStock ?? 0)}
-              icon={<Layers className="h-5 w-5" />}
-              variant="default"
-            />
+            <div
+              onClick={() => navigate("/inventory/stock")}
+              className="cursor-pointer"
+            >
+              <KPICard
+                title="Total Stock (boxes)"
+                value={String(summary?.totalStock ?? 0)}
+                icon={<Layers className="h-5 w-5" />}
+                variant="default"
+              />
             </div>
 
-            <div onClick={() => navigate("/sales/orders")}className="cursor-pointer">
-            <KPICard
-              title="Sales (this month)"
-              value={formatCurrency(summary?.monthlySales ?? 0)}
-              icon={<TrendingUp className="h-5 w-5" />}
-              variant="success"
-            />
+            <div
+              onClick={() => navigate("/sales/orders")}
+              className="cursor-pointer"
+            >
+              <KPICard
+                title="Sales (this month)"
+                value={formatCurrency(summary?.monthlySales ?? 0)}
+                icon={<TrendingUp className="h-5 w-5" />}
+                variant="success"
+              />
             </div>
 
-            <div onClick={() => navigate("/purchase/orders")}className="cursor-pointer">
-            <KPICard
-              title="Purchases (this month)"
-              value={formatCurrency(summary?.monthlyPurchases ?? 0)}
-              icon={<ShoppingCart className="h-5 w-5" />}
-              variant="warning"
-            />
-
+            <div
+              onClick={() => navigate("/purchase/orders")}
+              className="cursor-pointer"
+            >
+              <KPICard
+                title="Purchases (this month)"
+                value={formatCurrency(summary?.monthlyPurchases ?? 0)}
+                icon={<ShoppingCart className="h-5 w-5" />}
+                variant="warning"
+              />
             </div>
           </>
         )}
@@ -600,6 +628,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
+
         {/* Low Stock */}
         <div className="bg-card rounded-lg border shadow-sm">
           <div className="flex items-center justify-between p-4 border-b">
@@ -613,38 +642,34 @@ export default function DashboardPage() {
               View All
             </Link>
           </div>
+
           <div className="p-2 space-y-1">
-            {isLoading ? (
-              <div className="space-y-2 p-2">
-                {[1, 2, 3, 4].map((i) => (
-                  <Skeleton key={i} className="h-14 w-full" />
-                ))}
-              </div>
-            ) : lowStock.length === 0 ? (
+            {alerts.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
                 No alerts
               </p>
             ) : (
-              lowStock.map((alert) => (
+              alerts.slice(0, 5).map((alert: any) => (
                 <div
                   key={alert.id}
-                  className="flex items-center justify-between px-3 py-2 rounded-md hover:bg-muted/30 transition-colors"
+                  className="flex items-center justify-between px-6 py-2 rounded-md hover:bg-muted/30 transition-colors "
                 >
                   <div>
                     <p className="text-xs font-medium text-foreground">
-                      {alert.product_code ?? "—"}
+                      {alert.product_code}
                     </p>
                     <p className="text-[10px] text-muted-foreground truncate max-w-[140px]">
-                      {alert.product_name ?? ""}
+                      {alert.product_name}
                     </p>
                   </div>
+
                   <div className="text-right">
                     <p className="text-xs font-mono font-bold text-destructive">
-                      {alert.current_stock_boxes}
+                      {alert.current_stock_boxes} <span className="text-[10px] text-muted-foreground">/{alert.reorder_level_boxes}</span>
                     </p>
-                    <p className="text-[10px] text-muted-foreground">
+                    {/* <p className="text-[10px] text-muted-foreground">
                       / {alert.reorder_level_boxes}
-                    </p>
+                    </p> */}
                   </div>
                 </div>
               ))

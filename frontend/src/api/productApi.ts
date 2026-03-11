@@ -13,6 +13,11 @@ export const productApi = {
     return res.data;
   },
 
+  getShades: async (productId: string) => {
+    const res = await axiosInstance.get(`/products/${productId}/shades`);
+    return res.data;
+  },
+
   create: async (data: FormData) => {
     const res = await axiosInstance.post<ApiResponse<Product>>('/products', data);
     return res.data;

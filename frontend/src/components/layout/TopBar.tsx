@@ -21,13 +21,13 @@ export function TopBar({ onToggleSidebar, title }: TopBarProps) {
       </div>
 
       <div className="flex items-center gap-2">
-        <div className="relative hidden md:block">
+        {/* <div className="relative hidden md:block">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search products, orders..."
             className="w-64 pl-9 h-9 text-sm bg-background"
           />
-        </div>
+        </div> */}
 
         <Button variant="ghost" size="icon" className="relative text-muted-foreground">
           <Bell className="h-5 w-5" />

@@ -1,7 +1,9 @@
 // ─── Miscellaneous Module Types ───────────────────────────────────────────────
 
 // Purchase Order
-export type POStatus = 'draft' | 'confirmed' | 'partial' | 'received' | 'cancelled';
+export type POStatus         = 'draft' | 'confirmed' | 'partial' | 'received' | 'cancelled';
+export type POReturnStatus   = 'none' | 'partial' | 'full';
+export type POPaymentStatus  = 'pending' | 'partial' | 'paid';
 
 export interface PurchaseOrderItem {
   id: string;
@@ -10,6 +12,9 @@ export interface PurchaseOrderItem {
   product_name?: string;
   product_code?: string;
   shade_id?: string | null;
+  shade_name?: string | null;   // ← added
+  shade_code?: string | null;   // ← added
+  shade_hex?: string | null;    // ← added
   ordered_boxes: number;
   ordered_pieces: number;
   received_boxes: number;
@@ -28,13 +33,21 @@ export interface PurchaseOrder {
   warehouse_id: string;
   warehouse_name?: string;
   status: POStatus;
+  return_status?: POReturnStatus;    // ← added
+  payment_status?: POPaymentStatus;  // ← added
   order_date: string;
   expected_date?: string | null;
+  received_date?: string | null;     // ← added
   notes?: string | null;
   total_amount: number;
   discount_amount: number;
   tax_amount: number;
   grand_total: number;
+  created_by?: string | null;        // ← added
+  created_by_name?: string | null;   // ← added
+  approved_by?: string | null;       // ← added
+  approved_by_name?: string | null;  // ← added
+  approved_at?: string | null;       // ← added
   created_at?: string;
   updated_at?: string;
   items?: PurchaseOrderItem[];
@@ -51,12 +64,14 @@ export interface CreatePOItemDto {
 }
 
 export interface CreatePODto {
-  vendor_id: string;
-  warehouse_id: string;
-  order_date: string;
+  vendor_id?: string;
+  warehouse_id?: string;
+  order_date?: string;
   expected_date?: string | null;
+  received_date?: string | null;
   notes?: string | null;
-  items: CreatePOItemDto[];
+  discount_amount?: number;
+  items?: CreatePOItemDto[];
 }
 
 // Purchase Return
@@ -166,7 +181,7 @@ export interface CustomerPayment {
   invoice_number?: string | null;
   payment_date: string;
   amount: number;
-  payment_mode: string;    // 'cash' | 'bank_transfer' | 'cheque' | 'upi'
+  payment_mode: string;
   reference?: string | null;
   notes?: string | null;
   created_at: string;

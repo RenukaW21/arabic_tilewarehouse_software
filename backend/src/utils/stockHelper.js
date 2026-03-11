@@ -26,6 +26,34 @@ const postStockMovement = async (trx, {
   notes = null,
   createdBy,
 }) => {
+  // CREATE REQUIRED TABLES
+  await trx.query(
+    `CREATE TABLE IF NOT EXISTS inventory (
+        id VARCHAR(36) PRIMARY KEY,
+        tenant_id VARCHAR(36) NOT NULL,
+        product_id VARCHAR(36) NOT NULL,
+        shade_id VARCHAR(36),
+        rack_id VARCHAR(36),
+        batch_id VARCHAR(36),
+        boxes DECIMAL(10,2) NOT NULL DEFAULT 0,
+        pieces DECIMAL(10,2) NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )`
+  );
+
+  await trx.query(
+    `CREATE TABLE IF NOT EXISTS stock_movements (
+        id VARCHAR(36) PRIMARY KEY,
+        tenant_id VARCHAR(36) NOT NULL,
+        product_id VARCHAR(36) NOT NULL,
+        rack_id VARCHAR(36),
+        movement_type VARCHAR(50) NOT NULL,
+        quantity DECIMAL(10,2) NOT NULL DEFAULT 0,
+        reference_id VARCHAR(36),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`
+  );
   // 1 — Get current balance from stock_summary (lock row for update)
   const summary = await trx.query(
     `SELECT id, total_boxes, total_pieces, total_sqft, avg_cost_per_box
@@ -64,7 +92,7 @@ const postStockMovement = async (trx, {
           total_boxes, total_pieces, total_sqft, avg_cost_per_box, updated_at)
        VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
       [tenantId, warehouseId, rackId, productId, shadeId, batchId,
-       balanceBoxes, balancePieces, totalSqft, newAvgCost]
+        balanceBoxes, balancePieces, totalSqft, newAvgCost]
     );
   } else {
     await trx.query(
@@ -85,13 +113,42 @@ const postStockMovement = async (trx, {
         transaction_date, created_by, created_at, notes)
      VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURDATE(), ?, NOW(), ?)`,
     [tenantId, warehouseId, rackId, productId, shadeId, batchId,
-     transactionType, referenceId, referenceType,
-     boxesIn, boxesOut, piecesIn, piecesOut,
-     balanceBoxes, balancePieces, sqftIn, sqftOut,
-     createdBy, notes]
+      transactionType, referenceId, referenceType,
+      boxesIn, boxesOut, piecesIn, piecesOut,
+      balanceBoxes, balancePieces, sqftIn, sqftOut,
+      createdBy, notes]
   );
 
-  // 4 — Check for low stock alert
+  // 4 — Update NEW inventory table
+  if (boxesIn > 0 || piecesIn > 0) {
+    const existingInv = await trx.query(
+      `SELECT id, boxes, pieces FROM inventory 
+       WHERE tenant_id = ? AND product_id = ? AND (shade_id <=> ?) AND (rack_id <=> ?) AND (batch_id <=> ?) FOR UPDATE`,
+      [tenantId, productId, shadeId, rackId, batchId]
+    );
+
+    if (existingInv.length > 0) {
+      await trx.query(
+        `UPDATE inventory SET boxes = boxes + ?, pieces = pieces + ? WHERE id = ?`,
+        [boxesIn, piecesIn, existingInv[0].id]
+      );
+    } else {
+      await trx.query(
+        `INSERT INTO inventory (id, tenant_id, product_id, shade_id, rack_id, batch_id, boxes, pieces)
+         VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?)`,
+        [tenantId, productId, shadeId, rackId, batchId, boxesIn, piecesIn]
+      );
+    }
+
+    // 5 — Append to NEW stock_movements table
+    await trx.query(
+      `INSERT INTO stock_movements (id, tenant_id, product_id, rack_id, movement_type, quantity, reference_id)
+       VALUES (UUID(), ?, ?, ?, ?, ?, ?)`,
+      [tenantId, productId, rackId, transactionType, boxesIn, referenceId]
+    );
+  }
+
+  // 6 — Check for low stock alert
   await checkLowStockAlert(trx, { tenantId, warehouseId, productId, shadeId, balanceBoxes });
 
   return { balanceBoxes, balancePieces };

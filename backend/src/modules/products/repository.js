@@ -3,17 +3,12 @@ const { query, beginTransaction } = require('../../config/db');
 const { parsePagination, buildSearchClause, buildFilterClauses } = require('../../utils/pagination');
 
 const findAll = async (tenantId, queryParams) => {
-  const { page, limit, offset, sortBy, sortOrder, search } =
-    parsePagination(queryParams, ['name', 'code', 'created_at']);
-
-  const { clause: searchClause, params: searchParams } =
-    buildSearchClause(search, ['p.name', 'p.code', 'p.brand']);
-
-  const { clauses: filterClauses, params: filterParams } =
-    buildFilterClauses({
-      'p.category_id': queryParams.categoryId,
-      'p.is_active': queryParams.isActive !== undefined ? queryParams.isActive : undefined,
-    });
+  const { page, limit, offset, sortBy, sortOrder, search } = parsePagination(queryParams, ['name', 'code', 'created_at']);
+  const { clause: searchClause, params: searchParams } = buildSearchClause(search, ['p.name', 'p.code', 'p.brand']);
+  const { clauses: filterClauses, params: filterParams } = buildFilterClauses({
+    'p.category_id': queryParams.categoryId,
+    'p.is_active':   queryParams.isActive !== undefined ? queryParams.isActive : undefined,
+  });
 
   const conditions = [`p.tenant_id = ?`];
   const params = [tenantId];
@@ -79,6 +74,14 @@ const findById = async (id, tenantId) => {
   return rows[0] || null;
 };
 
+const findShades = async (productId, tenantId) => {
+  const rows = await query(
+    `SELECT * FROM shades WHERE product_id = ? AND tenant_id = ? AND is_active = 1`,
+    [productId, tenantId]
+  );
+  return rows;
+};
+
 const create = async (data) => {
   const { v4: uuidv4 } = require('uuid');
   const id = uuidv4();
@@ -91,31 +94,12 @@ const create = async (data) => {
         finish, material, brand, hsn_code, gst_rate, mrp,
         reorder_level_boxes, barcode, image_url, is_active, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, NOW(), NOW())`,
-    [
-      id,
-      data.tenantId,
-      data.categoryId || null,
-      data.name,
-      data.code,
-      data.description || null,
-      data.sizeLengthMm,
-      data.sizeWidthMm,
-      data.sizeThicknessMm || null,
-      data.sizeLabel,
-      data.piecesPerBox,
-      data.sqftPerBox,
-      data.sqmtPerBox || null,
-      data.weightPerBoxKg || null,
-      data.finish || null,
-      data.material || null,
-      data.brand || null,
-      data.hsnCode || null,
-      data.gstRate || 18.0,
-      data.mrp || null,
-      data.reorderLevelBoxes || 0,
-      data.barcode || null,
-      data.imageUrl || null,
-    ]
+    [id, data.tenantId, data.categoryId || null, data.name, data.code, data.description || null,
+     data.sizeLengthMm, data.sizeWidthMm, data.sizeThicknessMm || null, data.sizeLabel,
+     data.piecesPerBox, data.sqftPerBox, data.sqmtPerBox || null, data.weightPerBoxKg || null,
+     data.finish || null, data.material || null, data.brand || null, data.hsnCode || null,
+     data.gstRate || 18.00, data.mrp || null, data.reorderLevelBoxes || 0,
+     data.barcode || null, data.imageUrl || null]
   );
 
   return findById(id, data.tenantId);
@@ -251,41 +235,4 @@ const findByCode = async (code, tenantId, excludeId = null) => {
   return rows[0] || null;
 };
 
-const getProductVendors = async (productId, tenantId) => {
-  return query(
-    `SELECT DISTINCT v.id, v.name
-     FROM grn_items gi
-     JOIN grn g ON gi.grn_id = g.id
-     JOIN vendors v ON g.vendor_id = v.id
-     WHERE gi.product_id = ?
-       AND v.tenant_id = ?
-       AND g.tenant_id = ?
-       AND gi.tenant_id = ?`,
-    [productId, tenantId, tenantId, tenantId]
-  );
-};
-
-const getProductCustomers = async (productId, tenantId) => {
-  return query(
-    `SELECT DISTINCT c.id, c.name
-     FROM sales_order_items soi
-     JOIN sales_orders so ON soi.sales_order_id = so.id
-     JOIN customers c ON so.customer_id = c.id
-     WHERE soi.product_id = ?
-       AND c.tenant_id = ?
-       AND so.tenant_id = ?
-       AND soi.tenant_id = ?`,
-    [productId, tenantId, tenantId, tenantId]
-  );
-};
-
-module.exports = {
-  findAll,
-  findById,
-  create,
-  update,
-  softDelete,
-  findByCode,
-  getProductVendors,
-  getProductCustomers,
-};
+module.exports = { findAll, findById, create, update, softDelete, findByCode };

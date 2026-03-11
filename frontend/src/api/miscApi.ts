@@ -16,10 +16,21 @@ import {
   CreatePurchaseReturnDto,
 } from '../types/misc.types';
 
+// ─── Shared Types ─────────────────────────────────────────────────────────────
 export interface PurchaseOrderListParams extends PaginationParams {
   status?: string;
   vendor_id?: string;
   warehouse_id?: string;
+}
+
+export interface POItemDto {
+  product_id: string;
+  shade_id?: string | null;
+  ordered_boxes: number;
+  ordered_pieces?: number | null;
+  unit_price: number;
+  discount_pct?: number | null;
+  tax_pct?: number | null;
 }
 
 // ─── Purchase Order API ───────────────────────────────────────────────────────
@@ -28,24 +39,96 @@ export const purchaseOrderApi = {
     const res = await axiosInstance.get<ApiPaginatedResponse<PurchaseOrder>>('/purchase-orders', { params });
     return res.data;
   },
+
   getById: async (id: string): Promise<ApiResponse<PurchaseOrder>> => {
     const res = await axiosInstance.get<ApiResponse<PurchaseOrder>>(`/purchase-orders/${id}`);
     return res.data;
   },
+
   create: async (data: CreatePODto): Promise<ApiResponse<PurchaseOrder>> => {
     const res = await axiosInstance.post<ApiResponse<PurchaseOrder>>('/purchase-orders', data);
     return res.data;
   },
+
   update: async (id: string, data: Partial<CreatePODto>): Promise<ApiResponse<PurchaseOrder>> => {
     const res = await axiosInstance.put<ApiResponse<PurchaseOrder>>(`/purchase-orders/${id}`, data);
     return res.data;
   },
+
   approve: async (id: string): Promise<ApiResponse<PurchaseOrder>> => {
     const res = await axiosInstance.post<ApiResponse<PurchaseOrder>>(`/purchase-orders/${id}/approve`);
     return res.data;
   },
+
   delete: async (id: string): Promise<ApiResponse<PurchaseOrder>> => {
     const res = await axiosInstance.delete<ApiResponse<PurchaseOrder>>(`/purchase-orders/${id}`);
+    return res.data;
+  },
+
+  // PATCH /purchase-orders/:id/payment-status
+  updatePaymentStatus: async (
+    id: string,
+    status: 'pending' | 'partial' | 'paid'
+  ): Promise<ApiResponse<PurchaseOrder>> => {
+    const res = await axiosInstance.patch<ApiResponse<PurchaseOrder>>(
+      `/purchase-orders/${id}/payment-status`,
+      { payment_status: status }
+    );
+    return res.data;
+  },
+
+  // PATCH /purchase-orders/:id/status
+  updateStatus: async (
+    id: string,
+    status: 'draft' | 'confirmed' | 'partial' | 'received' | 'cancelled'
+  ): Promise<ApiResponse<PurchaseOrder>> => {
+    const res = await axiosInstance.patch<ApiResponse<PurchaseOrder>>(
+      `/purchase-orders/${id}/status`,
+      { status }
+    );
+    return res.data;
+  },
+
+    // PATCH /purchase-orders/:poId/items/:itemId/receive   ← ADD FROM HERE
+  receiveItem: async (
+    poId: string,
+    itemId: string,
+    received_boxes: number
+  ): Promise<ApiResponse<PurchaseOrder>> => {
+    const res = await axiosInstance.patch<ApiResponse<PurchaseOrder>>(
+      `/purchase-orders/${poId}/items/${itemId}/receive`,
+      { received_boxes }
+    );
+    return res.data;
+  },
+
+  // POST /purchase-orders/:id/items
+  addItem: async (id: string, data: POItemDto): Promise<ApiResponse<PurchaseOrder>> => {
+    const res = await axiosInstance.post<ApiResponse<PurchaseOrder>>(
+      `/purchase-orders/${id}/items`,
+      data
+    );
+    return res.data;
+  },
+
+  // PUT /purchase-orders/:id/items/:itemId
+  updateItem: async (
+    id: string,
+    itemId: string,
+    data: POItemDto
+  ): Promise<ApiResponse<PurchaseOrder>> => {
+    const res = await axiosInstance.put<ApiResponse<PurchaseOrder>>(
+      `/purchase-orders/${id}/items/${itemId}`,
+      data
+    );
+    return res.data;
+  },
+
+  // DELETE /purchase-orders/:id/items/:itemId
+  deleteItem: async (id: string, itemId: string): Promise<ApiResponse<PurchaseOrder>> => {
+    const res = await axiosInstance.delete<ApiResponse<PurchaseOrder>>(
+      `/purchase-orders/${id}/items/${itemId}`
+    );
     return res.data;
   },
 };
@@ -202,8 +285,19 @@ export const purchaseReturnApi = {
     const res = await axiosInstance.post<ApiResponse<PurchaseReturn>>('/purchase-returns', data);
     return res.data;
   },
-  update: async (id: string, data: { return_date?: string; reason?: string; notes?: string | null; vehicle_number?: string | null }): Promise<ApiResponse<PurchaseReturn>> => {
+  update: async (
+    id: string,
+    data: { return_date?: string; reason?: string; notes?: string | null; vehicle_number?: string | null }
+  ): Promise<ApiResponse<PurchaseReturn>> => {
     const res = await axiosInstance.put<ApiResponse<PurchaseReturn>>(`/purchase-returns/${id}`, data);
+    return res.data;
+  },
+  dispatch: async (id: string): Promise<ApiResponse<PurchaseReturn>> => {
+    const res = await axiosInstance.post<ApiResponse<PurchaseReturn>>(`/purchase-returns/${id}/dispatch`);
+    return res.data;
+  },
+  delete: async (id: string): Promise<ApiResponse<{ id: string; deleted: boolean }>> => {
+    const res = await axiosInstance.delete<ApiResponse<{ id: string; deleted: boolean }>>(`/purchase-returns/${id}`);
     return res.data;
   },
 };

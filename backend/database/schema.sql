@@ -109,19 +109,76 @@ CREATE TABLE IF NOT EXISTS warehouses (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ─── RACKS ────────────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS racks (
-  id             VARCHAR(36)  NOT NULL,
-  tenant_id      VARCHAR(36)  NOT NULL,
-  warehouse_id   VARCHAR(36)  NOT NULL,
-  name           VARCHAR(100) NOT NULL,
-  aisle          VARCHAR(50)  NULL,
-  `row`          VARCHAR(50)  NULL,
-  level          VARCHAR(50)  NULL,
-  capacity_boxes INT          NULL,
-  qr_code        VARCHAR(255) NULL,
-  is_active      TINYINT(1)   NOT NULL DEFAULT 1,
-  created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+CREATE TABLE racks (
+  id VARCHAR(36) NOT NULL,
+
+  tenant_id VARCHAR(36) NOT NULL,
+  warehouse_id VARCHAR(36) NOT NULL,
+
+  zone VARCHAR(50) DEFAULT NULL,
+  name VARCHAR(100) NOT NULL,
+
+  aisle VARCHAR(50) DEFAULT NULL,
+  `row` VARCHAR(50) DEFAULT NULL,
+  level VARCHAR(50) DEFAULT NULL,
+
+  rack_type ENUM('PALLET','SHELF','FLOOR') DEFAULT 'PALLET',
+
+  capacity_boxes INT DEFAULT NULL,
+  occupied_boxes INT DEFAULT 0,
+  available_boxes INT DEFAULT NULL,
+
+  max_weight DECIMAL(10,2) DEFAULT NULL,
+
+  rack_status ENUM('ACTIVE','BLOCKED','MAINTENANCE','FULL') DEFAULT 'ACTIVE',
+
+  qr_code VARCHAR(255) DEFAULT NULL,
+
+  notes TEXT DEFAULT NULL,
+
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+
+  created_by VARCHAR(36) DEFAULT NULL,
+
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+
   PRIMARY KEY (id),
+
+  -- Prevent duplicate rack names in same warehouse
+  UNIQUE KEY unique_rack_per_warehouse (warehouse_id, name),
+
+  -- Indexes
+  KEY idx_racks_tenant (tenant_id),
+  KEY idx_racks_warehouse (warehouse_id),
+  KEY idx_racks_created_by (created_by),
+
+  -- Foreign Keys
+  CONSTRAINT fk_racks_tenant
+    FOREIGN KEY (tenant_id)
+    REFERENCES tenants(id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+
+  CONSTRAINT fk_racks_warehouse
+    FOREIGN KEY (warehouse_id)
+    REFERENCES warehouses(id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+
+  CONSTRAINT fk_racks_created_by
+    FOREIGN KEY (created_by)
+    REFERENCES users(id)
+    ON DELETE SET NULL
+    ON UPDATE CASCADE,
+
+  -- Ensure occupied <= capacity
+  CONSTRAINT chk_rack_capacity
+    CHECK (occupied_boxes <= capacity_boxes)
+
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_unicode_ci;
   KEY idx_rack_tenant_wh (tenant_id, warehouse_id),
   CONSTRAINT fk_rack_tenant    FOREIGN KEY (tenant_id)    REFERENCES tenants(id),
   CONSTRAINT fk_rack_warehouse FOREIGN KEY (warehouse_id) REFERENCES warehouses(id)
@@ -235,6 +292,18 @@ CREATE TABLE IF NOT EXISTS products (
   CONSTRAINT fk_product_category FOREIGN KEY (category_id) REFERENCES product_categories(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS low_stock_alerts (
+ id VARCHAR(36) PRIMARY KEY,
+ tenant_id VARCHAR(36),
+ product_id VARCHAR(36),
+ warehouse_id VARCHAR(36),
+ current_stock_boxes DECIMAL(10,2),
+ reorder_level_boxes DECIMAL(10,2),
+ status ENUM('open','acknowledged','resolved') DEFAULT 'open',
+ alerted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+ resolved_at DATETIME NULL
+);
+
 -- ─── SHADES ───────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS shades (
   id         VARCHAR(36)  NOT NULL,
@@ -272,31 +341,36 @@ CREATE TABLE IF NOT EXISTS batches (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ─── PURCHASE ORDERS ──────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS purchase_orders (
-  id              VARCHAR(36)   NOT NULL,
-  tenant_id       VARCHAR(36)   NOT NULL,
-  po_number       VARCHAR(50)   NOT NULL,
-  vendor_id       VARCHAR(36)   NOT NULL,
-  warehouse_id    VARCHAR(36)   NOT NULL,
-  status          ENUM('draft','confirmed','partial','received','cancelled') NOT NULL DEFAULT 'draft',
-  return_status   ENUM('none','partial','full') NOT NULL DEFAULT 'none',
-  order_date      DATE          NOT NULL DEFAULT (CURRENT_DATE),
-  expected_date   DATE          NULL,
-  total_amount    DECIMAL(14,2) NULL DEFAULT 0,
-  discount_amount DECIMAL(12,2) NULL DEFAULT 0,
-  tax_amount      DECIMAL(12,2) NULL DEFAULT 0,
-  grand_total     DECIMAL(14,2) NULL DEFAULT 0,
-  notes           TEXT          NULL,
-  created_by      VARCHAR(36)   NOT NULL,
-  created_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
-  UNIQUE KEY uq_po_tenant_number (tenant_id, po_number),
-  KEY idx_po_tenant_status (tenant_id, status),
-  CONSTRAINT fk_po_tenant    FOREIGN KEY (tenant_id)   REFERENCES tenants(id),
-  CONSTRAINT fk_po_vendor    FOREIGN KEY (vendor_id)   REFERENCES vendors(id),
-  CONSTRAINT fk_po_warehouse FOREIGN KEY (warehouse_id) REFERENCES warehouses(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE purchase_orders (
+  id varchar(36) PRIMARY KEY,
+  tenant_id varchar(36) NOT NULL,
+  po_number varchar(50) NOT NULL,
+  vendor_id varchar(36) NOT NULL,
+  warehouse_id varchar(36) NOT NULL,
+
+  status ENUM('draft','confirmed','partial','received','cancelled') DEFAULT 'draft',
+  return_status ENUM('none','partial','full') DEFAULT 'none',
+  payment_status ENUM('pending','partial','paid') DEFAULT 'pending',
+
+  order_date DATE DEFAULT (CURDATE()),
+  expected_date DATE NULL,
+  received_date DATE NULL,
+
+  total_amount DECIMAL(14,2) DEFAULT 0,
+  discount_amount DECIMAL(12,2) DEFAULT 0,
+  additional_discount DECIMAL(12,2) DEFAULT 0,
+  tax_amount DECIMAL(12,2) DEFAULT 0,
+  grand_total DECIMAL(14,2) DEFAULT 0,
+
+  notes TEXT NULL,
+
+  created_by VARCHAR(36) NOT NULL,
+  approved_by VARCHAR(36) NULL,
+  approved_at DATETIME NULL,
+
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
 
 -- ─── PURCHASE ORDER ITEMS ─────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS purchase_order_items (
@@ -319,50 +393,107 @@ CREATE TABLE IF NOT EXISTS purchase_order_items (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ─── GRN ──────────────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS grn (
+CREATE TABLE grn (
   id                VARCHAR(36)  NOT NULL,
   tenant_id         VARCHAR(36)  NOT NULL,
   grn_number        VARCHAR(50)  NOT NULL,
-  purchase_order_id VARCHAR(36)  NULL,
+
+  purchase_order_id VARCHAR(36)  NOT NULL,
   vendor_id         VARCHAR(36)  NOT NULL,
   warehouse_id      VARCHAR(36)  NOT NULL,
+
   receipt_date      DATE         NOT NULL DEFAULT (CURRENT_DATE),
+
   invoice_number    VARCHAR(100) NULL,
   invoice_date      DATE         NULL,
   vehicle_number    VARCHAR(50)  NULL,
-  status            ENUM('draft','verified','posted') NOT NULL DEFAULT 'draft',
-  notes             TEXT         NULL,
-  created_by        VARCHAR(36)  NOT NULL,
-  created_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  grand_total DECIMAL(14,2) NOT NULL DEFAULT 0,
+
+  status ENUM('draft','verified','posted')
+        NOT NULL DEFAULT 'draft',
+
+  notes TEXT NULL,
+
+  created_by VARCHAR(36) NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  updated_at DATETIME
+      DEFAULT CURRENT_TIMESTAMP
+      ON UPDATE CURRENT_TIMESTAMP,
+
   PRIMARY KEY (id),
+
   UNIQUE KEY uq_grn_tenant_number (tenant_id, grn_number),
+
+  KEY idx_grn_po (purchase_order_id),
   KEY idx_grn_tenant_status (tenant_id, status),
-  CONSTRAINT fk_grn_tenant    FOREIGN KEY (tenant_id)         REFERENCES tenants(id),
-  CONSTRAINT fk_grn_po        FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(id),
-  CONSTRAINT fk_grn_vendor    FOREIGN KEY (vendor_id)         REFERENCES vendors(id),
-  CONSTRAINT fk_grn_warehouse FOREIGN KEY (warehouse_id)      REFERENCES warehouses(id)
+
+  CONSTRAINT fk_grn_tenant
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+
+  CONSTRAINT fk_grn_po
+      FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(id),
+
+  CONSTRAINT fk_grn_vendor
+      FOREIGN KEY (vendor_id) REFERENCES vendors(id),
+
+  CONSTRAINT fk_grn_warehouse
+      FOREIGN KEY (warehouse_id) REFERENCES warehouses(id)
+
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ─── GRN ITEMS ────────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS grn_items (
-  id              VARCHAR(36)   NOT NULL,
-  tenant_id       VARCHAR(36)   NOT NULL,
-  grn_id          VARCHAR(36)   NOT NULL,
-  product_id      VARCHAR(36)   NOT NULL,
-  shade_id        VARCHAR(36)   NULL,
-  batch_id        VARCHAR(36)   NULL,
-  rack_id         VARCHAR(36)   NULL,
-  received_boxes  DECIMAL(10,2) NOT NULL,
+CREATE TABLE grn_items (
+
+  id VARCHAR(36) NOT NULL,
+  tenant_id VARCHAR(36) NOT NULL,
+
+  grn_id VARCHAR(36) NOT NULL,
+
+  purchase_order_item_id VARCHAR(36) NOT NULL,
+
+  product_id VARCHAR(36) NOT NULL,
+  shade_id VARCHAR(36) NULL,
+
+  batch_id VARCHAR(36) NULL,
+  rack_id VARCHAR(36) NULL,
+
+  received_boxes DECIMAL(10,2) NOT NULL,
   received_pieces DECIMAL(10,2) NOT NULL DEFAULT 0,
-  damaged_boxes   DECIMAL(10,2) NOT NULL DEFAULT 0,
-  unit_price      DECIMAL(12,2) NOT NULL,
-  quality_status  ENUM('pass','fail','pending') NOT NULL DEFAULT 'pending',
-  quality_notes   TEXT          NULL,
-  barcode_printed TINYINT(1)    NOT NULL DEFAULT 0,
+
+  damaged_boxes DECIMAL(10,2) NOT NULL DEFAULT 0,
+
+  unit_price DECIMAL(12,2) NOT NULL,
+
+  line_total DECIMAL(14,2) DEFAULT 0,
+
+  quality_status ENUM('pass','fail','pending')
+        NOT NULL DEFAULT 'pending',
+
+  quality_notes TEXT NULL,
+
+  barcode_printed TINYINT(1) NOT NULL DEFAULT 0,
+
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
   PRIMARY KEY (id),
-  KEY idx_grn_items_tenant_grn (tenant_id, grn_id),
-  CONSTRAINT fk_grn_item_grn     FOREIGN KEY (grn_id)     REFERENCES grn(id),
-  CONSTRAINT fk_grn_item_product FOREIGN KEY (product_id) REFERENCES products(id)
+
+  KEY idx_grn_items_grn (grn_id),
+  KEY idx_grn_items_poi (purchase_order_item_id),
+  KEY idx_grn_items_product (product_id),
+
+  CONSTRAINT fk_grn_item_grn
+      FOREIGN KEY (grn_id)
+      REFERENCES grn(id),
+
+  CONSTRAINT fk_grn_item_poi
+      FOREIGN KEY (purchase_order_item_id)
+      REFERENCES purchase_order_items(id),
+
+  CONSTRAINT fk_grn_item_product
+      FOREIGN KEY (product_id)
+      REFERENCES products(id)
+
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ─── STOCK LEDGER ─────────────────────────────────────────────────────────────

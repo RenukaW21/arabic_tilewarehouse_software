@@ -92,7 +92,7 @@ export default function AuthPage() {
           </form>
           <div className="text-center mt-4">
             <button type="button" className="text-sm text-secondary hover:underline" onClick={() => setIsLogin(!isLogin)}>
-              {/* {isLogin ? "Don't have an account? Register" : 'Already have an account? Sign in'} */}
+              {isLogin ? "Don't have an account? Register" : 'Already have an account? Sign in'}
             </button>
           </div>
         </CardContent>

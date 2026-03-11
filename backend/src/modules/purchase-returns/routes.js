@@ -11,5 +11,7 @@ router.get('/', ctrl.getAll);
 router.get('/:id', ctrl.getById);
 router.post('/', requireMinRole('warehouse_manager'), ctrl.validate(createReturnSchema), ctrl.create);
 router.put('/:id', requireMinRole('warehouse_manager'), ctrl.validate(updateReturnSchema), ctrl.update);
+router.post('/:id/dispatch', requireMinRole('warehouse_manager'), ctrl.dispatch);
+router.delete('/:id', requireMinRole('warehouse_manager'), ctrl.remove);
 
 module.exports = router;

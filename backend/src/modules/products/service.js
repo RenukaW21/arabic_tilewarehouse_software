@@ -23,6 +23,10 @@ const getById = async (id, tenantId) => {
   return product;
 };
 
+const getShades = async (productId, tenantId) => {
+  return repo.findShades(productId, tenantId);
+};
+
 const create = async (tenantId, data) => {
   const existing = await repo.findByCode(data.code, tenantId);
   if (existing) throw new AppError(`Product code '${data.code}' already exists`, 409, 'DUPLICATE_CODE');
@@ -48,4 +52,4 @@ const remove = async (id, tenantId) => {
   await repo.softDelete(id, tenantId);
 };
 
-module.exports = { getAll, getById, create, update, remove };
+module.exports = { getAll, getById, getShades, create, update, remove };

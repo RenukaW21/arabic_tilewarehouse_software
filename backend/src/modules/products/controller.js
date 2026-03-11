@@ -29,6 +29,10 @@ const create = async (req, res, next) => {
   }
 };
 
+const getShades = async (req, res) => {
+  const shades = await service.getShades(req.params.id, req.tenantId);
+  return success(res, shades, 'Shades fetched');
+};
 const update = async (req, res, next) => {
   try {
     const id = req.params.id;
@@ -68,4 +72,4 @@ const remove = async (req, res) => {
   return success(res, {}, 'Product deactivated');
 };
 
-module.exports = { getAll, getById, create, update, remove };
+module.exports = { getAll, getById, getShades, create, update, remove };

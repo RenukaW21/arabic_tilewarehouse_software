@@ -131,12 +131,14 @@ export interface UpdateCategoryDto extends Partial<CreateCategoryDto> {
 
 // ─── Shade Types ──────────────────────────────────────────────────────────────
 
+
 export interface Shade {
   id: string;
   tenant_id: string;
   product_id: string;
   shade_code: string;
   shade_name?: string | null;
+  hex_color?: string | null;   // ← add this line
   is_active: boolean;
   created_at: string;
   updated_at: string;
