@@ -5,7 +5,7 @@ const service = require('./services');
 exports.getLowStockAlerts = async (req, res) => {
   try {
 
-    const alerts = await service.getLowStockAlerts();
+    const alerts = await service.getLowStockAlerts(req.tenantId);
 
     res.json({
       success: true,
@@ -40,7 +40,7 @@ exports.updateAlertStatus = async (req, res, next) => {
       });
     }
 
-    const alert = await service.updateAlertStatus(id, status);
+    const alert = await service.updateAlertStatus(id, status, req.tenantId);
 
     return res.json({
       success: true,
