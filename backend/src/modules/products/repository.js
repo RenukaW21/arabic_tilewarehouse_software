@@ -4,7 +4,7 @@ const { parsePagination, buildSearchClause, buildFilterClauses } = require('../.
 
 const findAll = async (tenantId, queryParams) => {
   const { page, limit, offset, sortBy, sortOrder, search } = parsePagination(queryParams, ['name', 'code', 'created_at']);
-  const { clause: searchClause, params: searchParams } = buildSearchClause(search, ['p.name', 'p.code', 'p.brand']);
+  const { clause: searchClause, params: searchParams } = buildSearchClause(search, ['p.name', 'p.code', 'p.brand', 'p.description', 'p.size_label']);
   const { clauses: filterClauses, params: filterParams } = buildFilterClauses({
     'p.category_id': queryParams.categoryId,
     'p.is_active':   queryParams.isActive !== undefined ? queryParams.isActive : undefined,

@@ -5,18 +5,19 @@ const db = require('../../config/db');
 exports.getLowStockAlerts = async (tenantId) => {
   const [rows] = await db.query(`
     SELECT 
+      a.id,
       p.name AS product_name,
       p.code AS product_code,
-      IFNULL(SUM(i.total_boxes), 0) AS current_stock_boxes,
-      i.warehouse_id,
-      p.reorder_level_boxes
-    FROM stock_summary i
-    JOIN products p 
-      ON p.id = i.product_id
-    WHERE i.tenant_id = ?
-    GROUP BY p.id, p.name, p.code, i.warehouse_id, p.reorder_level_boxes
-    HAVING current_stock_boxes <= p.reorder_level_boxes
-    ORDER BY current_stock_boxes ASC
+      a.current_stock_boxes,
+      a.reorder_level_boxes,
+      w.name AS warehouse_name,
+      a.status,
+      a.alerted_at
+    FROM low_stock_alerts a
+    JOIN products p ON p.id = a.product_id
+    LEFT JOIN warehouses w ON w.id = a.warehouse_id
+    WHERE a.tenant_id = ? AND a.status != 'resolved'
+    ORDER BY a.alerted_at DESC
   `, [tenantId]);
 
   return rows;

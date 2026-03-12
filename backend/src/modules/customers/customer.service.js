@@ -54,7 +54,7 @@ const getAllCustomers = async (tenantId, options = {}) => {
     params.push(active ? 1 : 0);
   }
 
-  const searchColumns = ['name', 'code'];
+  const searchColumns = ['name', 'code', 'contact_person', 'phone', 'email', 'gstin'];
   const { clause: searchClause, params: searchParams } = buildSearchClause(search, searchColumns);
   if (searchClause) {
     conditions.push(searchClause);

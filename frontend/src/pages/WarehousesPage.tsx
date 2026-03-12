@@ -59,17 +59,22 @@ export default function WarehousesPage() {
 
   const saveMutation = useMutation({
     mutationFn: async (fd: Record<string, unknown>) => {
-      const payload: CreateWarehouseDto = {
-        name: String(fd.name),
-        code: String(fd.code),
+      // Use the form data directly, but sanitize optional fields
+      const payload: any = {
+        name: fd.name ? String(fd.name) : undefined,
+        code: fd.code ? String(fd.code) : undefined,
         address: fd.address ? String(fd.address) : null,
         city: fd.city ? String(fd.city) : null,
         state: fd.state ? String(fd.state) : null,
         pincode: fd.pincode ? String(fd.pincode) : null,
-        is_active: (fd.is_active as boolean) ?? true,
+        is_active: fd.is_active ?? true,
       };
+
+      // Remove undefined keys to keep it clean for partial updates
+      Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
+
       if (editing) return warehouseApi.update(editing.id, payload);
-      return warehouseApi.create(payload);
+      return warehouseApi.create(payload as CreateWarehouseDto);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["warehouses"] });

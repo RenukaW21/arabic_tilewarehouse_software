@@ -1,20 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
+import { alertApi } from '@/api/miscApi';
+import { LowStockAlert as Alert } from '@/types/misc.types';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTableShell } from '@/components/shared/DataTableShell';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-
-interface Alert {
-  id?: string;
-  product_name: string;
-  product_code: string;
-  warehouse_name?: string;
-  current_stock_boxes: number;
-  reorder_level_boxes: number;
-  status?: string;
-}
 
 export default function AlertsPage() {
   const qc = useQueryClient();
@@ -23,22 +14,15 @@ export default function AlertsPage() {
   const { data: alerts = [], isLoading } = useQuery({
     queryKey: ['low_stock_alerts'],
     queryFn: async () => {
-      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/alerts/low-stock`);
-
-      const data = res.data.data;
-      console.log("data",data);
-
-      // ensure array
-      if (!data) return [];
-
-      return Array.isArray(data) ? data : [data];
+      const res = await alertApi.getLowStock();
+      return res.data ?? [];
     },
   });
 
   // 🔹 Update alert status
   const ackMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      await axios.patch(`/api/v1/alerts/${id}`, { status });
+      await alertApi.update(id, status);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['low_stock_alerts'] });

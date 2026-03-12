@@ -182,6 +182,7 @@ export interface SalesReturn {
   status: string;
   total_boxes?: number;
   credit_note_id?: string | null;
+  notes?: string | null;
   items?: SalesReturnItem[];
 }
 

@@ -12,7 +12,15 @@ const createWarehouseSchema = Joi.object({
   is_active: Joi.boolean().default(true),
 });
 
-const updateWarehouseSchema = createWarehouseSchema.min(1);
+const updateWarehouseSchema = Joi.object({
+  name: Joi.string().min(2).max(255).allow(null, '').optional(),
+  code: Joi.string().max(50).allow(null, '').optional(),
+  address: Joi.string().allow(null, '').optional(),
+  city: Joi.string().max(100).allow(null, '').optional(),
+  state: Joi.string().max(100).allow(null, '').optional(),
+  pincode: Joi.string().max(20).allow(null, '').optional(),
+  is_active: Joi.boolean().optional(),
+}).min(1).unknown(true);
 
 const listQuerySchema = Joi.object({
   page: Joi.number().integer().min(1).optional(),

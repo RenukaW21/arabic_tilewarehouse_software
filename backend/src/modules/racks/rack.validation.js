@@ -7,6 +7,7 @@ const createRackSchema = Joi.object({
   name: Joi.string().min(1).max(100).required(),
   aisle: Joi.string().max(50).allow(null, ''),
   row: Joi.string().max(50).allow(null, ''),
+  column: Joi.string().max(50).allow(null, ''),
   level: Joi.string().max(50).allow(null, ''),
   capacity_boxes: Joi.number().integer().min(0).allow(null),
   qr_code: Joi.string().max(255).allow(null, ''),

@@ -3,7 +3,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 interface DeleteConfirmDialogProps {
   open: boolean;
   onClose: () => void;
-  onConfirm: () => Promise<void>;
+  onConfirm: () => void | Promise<any>;
   title?: string;
   description?: string;
   loading?: boolean;

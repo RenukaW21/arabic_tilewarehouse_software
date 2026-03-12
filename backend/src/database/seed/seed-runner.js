@@ -51,8 +51,8 @@ async function runSeed() {
       const id = uuid();
       ctx.tenantIds.push(id);
       await trx.query(
-        `INSERT INTO tenants (id, name, slug, plan, status, max_warehouses, max_users, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+        `INSERT INTO tenants (id, name, slug, plan, status, max_warehouses, max_users, is_dummy, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 1, NOW(), NOW())`,
         [id, t.name, t.slug, t.plan, t.status, t.max_warehouses, t.max_users]
       );
     }
@@ -80,8 +80,8 @@ async function runSeed() {
         ctx.userIdsByTenant[tenantId].push(uid);
         const email = `${ut.email}@${domain}`;
         await trx.query(
-          `INSERT INTO users (id, tenant_id, name, email, password_hash, role, phone, is_active, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, 1, NOW(), NOW())`,
+          `INSERT INTO users (id, tenant_id, name, email, password_hash, role, phone, is_active, is_dummy, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1, NOW(), NOW())`,
           [uid, tenantId, ut.name, email, passwordHash, ut.role, ut.phone]
         );
       }
@@ -90,8 +90,8 @@ async function runSeed() {
       // ─── 3. GST Configuration (1 per tenant) ───────────────────────────────
       const gst = GST_CONFIG[ti];
       await trx.query(
-        `INSERT INTO gst_configurations (id, tenant_id, gstin, legal_name, trade_name, state_code, state_name, pan, default_gst_rate, fiscal_year_start, is_composition_scheme, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 18.00, '04-01', 0, NOW(), NOW())`,
+        `INSERT INTO gst_configurations (id, tenant_id, gstin, legal_name, trade_name, state_code, state_name, pan, default_gst_rate, fiscal_year_start, is_composition_scheme, is_dummy, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 18.00, '04-01', 0, 1, NOW(), NOW())`,
         [uuid(), tenantId, gst.gstin, gst.legal_name, gst.trade_name, gst.state_code, gst.state_name, gst.pan]
       );
       log(`GST config (tenant ${ti + 1})`, 1);
@@ -102,8 +102,8 @@ async function runSeed() {
         const wid = uuid();
         ctx.warehouseIdsByTenant[tenantId].push(wid);
         await trx.query(
-          `INSERT INTO warehouses (id, tenant_id, name, code, address, city, state, pincode, is_active, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, NOW())`,
+          `INSERT INTO warehouses (id, tenant_id, name, code, address, city, state, pincode, is_active, is_dummy, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 1, NOW())`,
           [wid, tenantId, wh.name, wh.code, `${wh.name}, ${wh.city}`, wh.city, wh.state, wh.pincode]
         );
       }
@@ -118,8 +118,8 @@ async function runSeed() {
           if (!ctx.rackIdsByTenant[tenantId].length) ctx.rackIdsByTenant[tenantId] = [];
           ctx.rackIdsByTenant[tenantId].push(rid);
           await trx.query(
-            `INSERT INTO racks (id, tenant_id, warehouse_id, name, aisle, \`row\`, level, capacity_boxes, is_active, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, NOW())`,
+            `INSERT INTO racks (id, tenant_id, warehouse_id, name, aisle, \`row\`, level, capacity_boxes, is_active, is_dummy, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 1, NOW())`,
             [rid, tenantId, wid, rn.name, rn.aisle, rn.row, rn.level, rn.capacity_boxes]
           );
         }
@@ -132,8 +132,8 @@ async function runSeed() {
         const vid = uuid();
         ctx.vendorIdsByTenant[tenantId].push(vid);
         await trx.query(
-          `INSERT INTO vendors (id, tenant_id, name, code, contact_person, phone, email, address, gstin, pan, payment_terms_days, is_active, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 30, 1, NOW())`,
+          `INSERT INTO vendors (id, tenant_id, name, code, contact_person, phone, email, address, gstin, pan, payment_terms_days, is_active, is_dummy, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 30, 1, 1, NOW())`,
           [vid, tenantId, vn.name, vn.code, vn.contact, vn.phone, vn.email, `${vn.name}, ${vn.city}`, vn.gstin, vn.pan]
         );
       }
@@ -145,8 +145,8 @@ async function runSeed() {
         const cid = uuid();
         ctx.customerIdsByTenant[tenantId].push(cid);
         await trx.query(
-          `INSERT INTO customers (id, tenant_id, name, code, contact_person, phone, email, billing_address, shipping_address, gstin, state_code, credit_limit, payment_terms_days, is_active, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 500000, 30, 1, NOW())`,
+          `INSERT INTO customers (id, tenant_id, name, code, contact_person, phone, email, billing_address, shipping_address, gstin, state_code, credit_limit, payment_terms_days, is_active, is_dummy, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 500000, 30, 1, 1, NOW())`,
           [cid, tenantId, cn.name, cn.code, cn.contact, cn.phone, cn.email, `${cn.name}, ${cn.city}`, `${cn.name}, ${cn.city}`, cn.gstin, cn.state_code]
         );
       }
@@ -157,7 +157,7 @@ async function runSeed() {
         const cid = uuid();
         ctx.categoryIdsByTenant[tenantId].push(cid);
         await trx.query(
-          `INSERT INTO product_categories (id, tenant_id, name, parent_id, is_active) VALUES (?, ?, ?, NULL, 1)`,
+          `INSERT INTO product_categories (id, tenant_id, name, parent_id, is_active, is_dummy) VALUES (?, ?, ?, NULL, 1, 1)`,
           [cid, tenantId, CATEGORIES[cat].name]
         );
       }
@@ -171,8 +171,8 @@ async function runSeed() {
         const catId = ctx.categoryIdsByTenant[tenantId][p % 4];
         const sqmt = (pt.sqft * 0.092903).toFixed(4);
         await trx.query(
-          `INSERT INTO products (id, tenant_id, category_id, name, code, description, size_length_mm, size_width_mm, size_thickness_mm, size_label, pieces_per_box, sqft_per_box, sqmt_per_box, gst_rate, mrp, reorder_level_boxes, brand, finish, material, hsn_code, is_active, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 10, ?, ?, ?, ?, 1, NOW(), NOW())`,
+          `INSERT INTO products (id, tenant_id, category_id, name, code, description, size_length_mm, size_width_mm, size_thickness_mm, size_label, pieces_per_box, sqft_per_box, sqmt_per_box, gst_rate, mrp, reorder_level_boxes, brand, finish, material, hsn_code, is_active, is_dummy, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 10, ?, ?, ?, ?, 1, 1, NOW(), NOW())`,
           [pid, tenantId, catId, pt.name, `PRD-${String(p + 1).padStart(3, '0')}`, pt.name, pt.sizeL, pt.sizeW, pt.sizeT, pt.sizeLabel, pt.pieces, pt.sqft, sqmt, pt.gst, pt.mrp, pt.brand, pt.finish, pt.material, pt.hsn]
         );
       }
@@ -189,8 +189,8 @@ async function runSeed() {
           const shName = SHADE_NAMES[(pi + s) % SHADE_NAMES.length];
           const hex = SHADE_HEX[(pi + s) % SHADE_HEX.length];
           await trx.query(
-            `INSERT INTO shades (id, tenant_id, product_id, shade_code, shade_name, hex_color, is_active, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, 1, NOW())`,
+            `INSERT INTO shades (id, tenant_id, product_id, shade_code, shade_name, hex_color, is_active, is_dummy, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, 1, 1, NOW())`,
             [sid, tenantId, pid, `SH-${pi}-${s}`, shName, hex]
           );
         }
@@ -207,8 +207,8 @@ async function runSeed() {
         const shadeId = shadeIds[0] || null;
         const vid = vendorIds[pi % vendorIds.length];
         await trx.query(
-          `INSERT INTO batches (id, tenant_id, product_id, shade_id, batch_number, production_date, expiry_date, grade, vendor_id, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, 'A', ?, NOW())`,
+          `INSERT INTO batches (id, tenant_id, product_id, shade_id, batch_number, production_date, expiry_date, grade, vendor_id, is_dummy, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 'A', ?, 1, NOW())`,
           [bid, tenantId, pid, shadeId, `BAT-${today().replace(/-/g, '')}-${pi + 1}`, addDays(today(), -30), addDays(today(), 365), vid]
         );
       }
@@ -239,8 +239,8 @@ async function runSeed() {
         const poNum = `PO-${year}-${String(po + 1).padStart(4, '0')}`;
         const orderDate = addDays(today(), -15 - po * 5);
         await trx.query(
-          `INSERT INTO purchase_orders (id, tenant_id, po_number, vendor_id, warehouse_id, status, return_status, order_date, expected_date, total_amount, discount_amount, tax_amount, grand_total, created_by, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, 'received', 'none', ?, ?, 0, 0, 0, 0, ?, NOW(), NOW())`,
+          `INSERT INTO purchase_orders (id, tenant_id, po_number, vendor_id, warehouse_id, status, return_status, order_date, expected_date, total_amount, discount_amount, tax_amount, grand_total, created_by, is_dummy, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, 'received', 'none', ?, ?, 0, 0, 0, 0, ?, 1, NOW(), NOW())`,
           [poId, tenantId, poNum, vId, mainWh, orderDate, addDays(orderDate, 7), adminId]
         );
         const itemsToAdd = 2 + (po % 2);
@@ -276,8 +276,8 @@ async function runSeed() {
         const vId = vendorIds[g % vendorIds.length];
         const poId = poIds[g] || poIds[0];
         await trx.query(
-          `INSERT INTO grn (id, tenant_id, grn_number, purchase_order_id, vendor_id, warehouse_id, receipt_date, invoice_number, status, created_by, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'posted', ?, NOW())`,
+          `INSERT INTO grn (id, tenant_id, grn_number, purchase_order_id, vendor_id, warehouse_id, receipt_date, invoice_number, status, created_by, is_dummy, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'posted', ?, 1, NOW())`,
           [grnId, tenantId, grnNum, poId, vId, mainWh, addDays(today(), -10 - g), `INV-V-${g + 1}`, adminId]
         );
         for (let it = 0; it < 2; it++) {
@@ -311,8 +311,8 @@ async function runSeed() {
         const sqftPerBox = PRODUCT_TEMPLATES[pi].sqft;
         const totalSqft = (boxes * sqftPerBox).toFixed(4);
         await trx.query(
-          `INSERT INTO stock_summary (id, tenant_id, warehouse_id, rack_id, product_id, shade_id, batch_id, total_boxes, total_pieces, total_sqft, avg_cost_per_box, last_receipt_date, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 38, ?, NOW())`,
+          `INSERT INTO stock_summary (id, tenant_id, warehouse_id, rack_id, product_id, shade_id, batch_id, total_boxes, total_pieces, total_sqft, avg_cost_per_box, last_receipt_date, is_dummy, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 38, ?, 1, NOW())`,
           [uuid(), tenantId, mainWh, rackId, pid, shadeId, batchId, boxes, totalSqft, addDays(today(), -5)]
         );
       }
@@ -328,8 +328,8 @@ async function runSeed() {
         const boxes = 20;
         const sqft = (PRODUCT_TEMPLATES[pi].sqft * boxes).toFixed(4);
         await trx.query(
-          `INSERT INTO stock_ledger (id, tenant_id, warehouse_id, rack_id, product_id, shade_id, batch_id, transaction_type, reference_id, reference_type, boxes_in, boxes_out, pieces_in, pieces_out, balance_boxes, balance_pieces, sqft_in, sqft_out, transaction_date, created_by, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, 'opening', NULL, NULL, ?, 0, 0, 0, ?, 0, ?, 0, ?, ?, NOW())`,
+          `INSERT INTO stock_ledger (id, tenant_id, warehouse_id, rack_id, product_id, shade_id, batch_id, transaction_type, reference_id, reference_type, boxes_in, boxes_out, pieces_in, pieces_out, balance_boxes, balance_pieces, sqft_in, sqft_out, transaction_date, created_by, is_dummy, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 'opening', NULL, NULL, ?, 0, 0, 0, ?, 0, ?, 0, ?, ?, 1, NOW())`,
           [uuid(), tenantId, mainWh, rackId, pid, shadeId, batchId, boxes, boxes, sqft, addDays(today(), -20), adminId]
         );
       }
@@ -345,8 +345,8 @@ async function runSeed() {
         const soNum = `SO-${year}-${String(so + 1).padStart(4, '0')}`;
         const orderDate = addDays(today(), -8 - so);
         await trx.query(
-          `INSERT INTO sales_orders (id, tenant_id, so_number, customer_id, warehouse_id, status, order_date, expected_delivery_date, sub_total, discount_amount, tax_amount, grand_total, payment_status, created_by, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, 'pending', ?, NOW(), NOW())`,
+          `INSERT INTO sales_orders (id, tenant_id, so_number, customer_id, warehouse_id, status, order_date, expected_delivery_date, sub_total, discount_amount, tax_amount, grand_total, payment_status, created_by, is_dummy, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, 'pending', ?, 1, NOW(), NOW())`,
           [soId, tenantId, soNum, cId, mainWh, so < 2 ? 'delivered' : 'confirmed', orderDate, addDays(orderDate, 3), adminId]
         );
         let soTotal = 0;
@@ -385,8 +385,8 @@ async function runSeed() {
         const tax = soRow.tax_amount || 0;
         const cgst = tax / 2;
         await trx.query(
-          `INSERT INTO invoices (id, tenant_id, invoice_number, sales_order_id, customer_id, invoice_date, due_date, sub_total, discount_amount, cgst_amount, sgst_amount, igst_amount, grand_total, payment_status, status, created_by, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, 0, ?, 'pending', 'issued', ?, NOW(), NOW())`,
+          `INSERT INTO invoices (id, tenant_id, invoice_number, sales_order_id, customer_id, invoice_date, due_date, sub_total, discount_amount, cgst_amount, sgst_amount, igst_amount, grand_total, payment_status, status, created_by, is_dummy, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, 0, ?, 'pending', 'issued', ?, 1, NOW(), NOW())`,
           [invId, tenantId, invNum, soId, soRow.customer_id, addDays(today(), -5 - inv), addDays(today(), 25), soRow.sub_total, cgst, cgst, grandTotal, adminId]
         );
         const items = await trx.query(`SELECT product_id, shade_id, ordered_boxes, unit_price, line_total FROM sales_order_items WHERE sales_order_id = ?`, [soId]);
@@ -409,8 +409,8 @@ async function runSeed() {
         const invId = invIds[cp] || invIds[0];
         const payNum = `CP-${year}-${String(cp + 1).padStart(4, '0')}`;
         await trx.query(
-          `INSERT INTO customer_payments (id, tenant_id, payment_number, customer_id, invoice_id, payment_date, amount, payment_mode, reference_number, bank_name, status, created_by, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, 5000, 'neft', 'NEFT123456', 'HDFC Bank', 'cleared', ?, NOW())`,
+          `INSERT INTO customer_payments (id, tenant_id, payment_number, customer_id, invoice_id, payment_date, amount, payment_mode, reference_number, bank_name, status, created_by, is_dummy, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, 5000, 'neft', 'NEFT123456', 'HDFC Bank', 'cleared', ?, 1, NOW())`,
           [uuid(), tenantId, payNum, cId, invId, addDays(today(), -2), adminId]
         );
       }
@@ -422,8 +422,8 @@ async function runSeed() {
         const poId = poIds[vp];
         const payNum = `VP-${year}-${String(vp + 1).padStart(4, '0')}`;
         await trx.query(
-          `INSERT INTO vendor_payments (id, tenant_id, payment_number, vendor_id, purchase_order_id, payment_date, amount, payment_mode, reference_number, bank_name, status, created_by, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, 10000, 'neft', 'NEFT789012', 'ICICI Bank', 'cleared', ?, NOW())`,
+          `INSERT INTO vendor_payments (id, tenant_id, payment_number, vendor_id, purchase_order_id, payment_date, amount, payment_mode, reference_number, bank_name, status, created_by, is_dummy, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, 10000, 'neft', 'NEFT789012', 'ICICI Bank', 'cleared', ?, 1, NOW())`,
           [uuid(), tenantId, payNum, vId, poId, addDays(today(), -4), adminId]
         );
       }
@@ -432,8 +432,8 @@ async function runSeed() {
       // ─── 21. Notifications (2 per tenant) ─────────────────────────────────
       for (let n = 0; n < 2; n++) {
         await trx.query(
-          `INSERT INTO notifications (id, tenant_id, user_id, type, title, message, is_read, created_at)
-           VALUES (?, ?, ?, 'info', ?, ?, 0, NOW())`,
+          `INSERT INTO notifications (id, tenant_id, user_id, type, title, message, is_read, is_dummy, created_at)
+           VALUES (?, ?, ?, 'info', ?, ?, 0, 1, NOW())`,
           [uuid(), tenantId, adminId, n === 0 ? 'Low stock alert' : 'New order', n === 0 ? 'Product PRD-005 is below reorder level.' : 'Sales order SO-0001 has been confirmed.']
         );
       }

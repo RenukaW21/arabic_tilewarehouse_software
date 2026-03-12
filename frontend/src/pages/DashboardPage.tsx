@@ -34,7 +34,7 @@ import type {
 } from "@/types/stock.types";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
+import api from "@/lib/api";
 
 const CHART_COLORS = [
   "hsl(217, 91%, 53%)",
@@ -65,8 +65,8 @@ export default function DashboardPage() {
   const { data: alerts = [] } = useQuery({
     queryKey: ["dashboard_low_stock_alerts"],
     queryFn: async () => {
-      const res = await axios.get(
-        `${import.meta.env.VITE_API_BASE_URL}/alerts/low-stock`,
+      const res = await api.get(
+        `/alerts/low-stock`,
       );
 
       const data = res.data.data;

@@ -74,7 +74,7 @@ export default function CustomersPage() {
         shipping_address: fd.shipping_address ? String(fd.shipping_address) : null,
         credit_limit: fd.credit_limit != null && fd.credit_limit !== "" ? Number(fd.credit_limit) : null,
         payment_terms_days: fd.payment_terms_days != null && fd.payment_terms_days !== "" ? Number(fd.payment_terms_days) : null,
-        is_active: fd.is_active ?? true,
+        is_active: Boolean(fd.is_active ?? true),
       };
       if (editing) return customerApi.update(editing.id, payload);
       return customerApi.create(payload);
@@ -157,7 +157,7 @@ export default function CustomersPage() {
       <DeleteConfirmDialog
         open={!!deleting}
         onClose={() => setDeleting(null)}
-        onConfirm={() => deleting && deleteMutation.mutate(deleting.id)}
+        onConfirm={async () => { if (deleting) await deleteMutation.mutateAsync(deleting.id); }}
         loading={deleteMutation.isPending}
       />
     </div>

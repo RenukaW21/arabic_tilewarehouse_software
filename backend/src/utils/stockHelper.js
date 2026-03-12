@@ -159,16 +159,17 @@ const postStockMovement = async (trx, {
  */
 const checkLowStockAlert = async (trx, { tenantId, warehouseId, productId, shadeId, balanceBoxes }) => {
   const products = await trx.query(
-    `SELECT reorder_level_boxes FROM products WHERE id = ? AND tenant_id = ?`,
+    `SELECT name, code, reorder_level_boxes FROM products WHERE id = ? AND tenant_id = ?`,
     [productId, tenantId]
   );
   if (!products.length) return;
 
-  const reorderLevel = products[0].reorder_level_boxes || 0;
+  const product = products[0];
+  const reorderLevel = product.reorder_level_boxes || 0;
 
   if (balanceBoxes <= reorderLevel) {
-    // Upsert low stock alert
-    await trx.query(
+    // 1. Upsert low stock alert
+    const [result] = await trx.query(
       `INSERT INTO low_stock_alerts
          (id, tenant_id, warehouse_id, product_id, shade_id,
           current_stock_boxes, reorder_level_boxes, status, alerted_at)
@@ -179,6 +180,26 @@ const checkLowStockAlert = async (trx, { tenantId, warehouseId, productId, shade
          alerted_at = NOW()`,
       [tenantId, warehouseId, productId, shadeId, balanceBoxes, reorderLevel]
     );
+
+    // 2. Only create a new notification if it was a transition to 'open' status
+    // or if we want to notify on every stock change below level.
+    // To keep it clean, let's notify when it's low.
+    // Since notifications are per-user, we find all admins and managers for this tenant.
+    const users = await trx.query(
+      `SELECT id FROM users WHERE tenant_id = ? AND role IN ('admin', 'warehouse_manager') AND is_active = 1`,
+      [tenantId]
+    );
+
+    const title = 'Low Stock Alert';
+    const message = `Product ${product.code} (${product.name}) is low on stock. Current: ${balanceBoxes} boxes (Reorder level: ${reorderLevel}).`;
+
+    for (const user of users) {
+      await trx.query(
+        `INSERT INTO notifications (id, tenant_id, user_id, type, title, message, is_read, reference_id, created_at)
+         VALUES (UUID(), ?, ?, 'warning', ?, ?, 0, ?, NOW())`,
+        [tenantId, user.id, title, message, productId]
+      );
+    }
   } else {
     // Resolve existing alert if stock is back above reorder level
     await trx.query(

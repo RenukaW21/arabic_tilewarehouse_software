@@ -5,7 +5,8 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Package, User, ShoppingCart, Info, MapPin } from "lucide-react";
+import { ArrowLeft, Package, User, ShoppingCart, Info, MapPin, Maximize2 } from "lucide-react";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
 const BACKEND_URL = API_BASE.replace(/\/api\/v1\/?$/, '') || 'http://localhost:5000';
@@ -24,6 +25,7 @@ export default function ProductDetailsPage() {
     if (isError || !data?.data) return <div className="p-8 text-center text-destructive">Failed to load product.</div>;
 
     const product = data.data as any;
+    const productImg = product.image_url || product.imageUrl || product.image;
 
     return (
         <div className="space-y-6">
@@ -43,13 +45,31 @@ export default function ProductDetailsPage() {
                     </CardHeader>
                     <CardContent className="pt-6">
                         <div className="flex flex-col md:flex-row gap-6">
-                            {(product.imageUrl || product.image_url) && (
+                            {productImg && (
                                 <div className="shrink-0">
-                                    <img
-                                        src={`${BACKEND_URL}${product.imageUrl || product.image_url}`}
-                                        alt={product.name}
-                                        className="w-40 h-40 object-cover rounded-lg border shadow-sm"
-                                    />
+                                    <Dialog>
+                                        <DialogTrigger asChild>
+                                            <div className="relative group cursor-zoom-in">
+                                                <img
+                                                    src={productImg.startsWith('http') ? productImg : `${BACKEND_URL}${productImg}`}
+                                                    alt={product.name}
+                                                    className="w-40 h-40 object-cover rounded-lg border shadow-sm transition-transform duration-300 group-hover:scale-[1.02]"
+                                                />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
+                                                    <Maximize2 className="h-6 w-6 text-white" />
+                                                </div>
+                                            </div>
+                                        </DialogTrigger>
+                                        <DialogContent className="max-w-3xl border-none bg-transparent p-0 shadow-none">
+                                            <div className="flex items-center justify-center p-4">
+                                                <img
+                                                    src={productImg.startsWith('http') ? productImg : `${BACKEND_URL}${productImg}`}
+                                                    alt={product.name}
+                                                    className="max-w-full max-h-[85vh] rounded-lg shadow-2xl object-contain bg-white"
+                                                />
+                                            </div>
+                                        </DialogContent>
+                                    </Dialog>
                                 </div>
                             )}
                             <div className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm flex-1">

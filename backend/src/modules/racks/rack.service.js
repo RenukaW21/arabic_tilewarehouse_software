@@ -10,6 +10,7 @@ const SELECT_COLUMNS = [
   'name',
   'aisle',
   '`row`',
+  '`column`',
   'level',
   'capacity_boxes',
   'qr_code',
@@ -33,12 +34,13 @@ const createRack = async (data) => {
     name,
     aisle,
     \`row\`,
+    \`column\`,
     level,
     capacity_boxes,
     qr_code,
     is_active
   )
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   const pool = getPool();
@@ -50,6 +52,7 @@ const createRack = async (data) => {
     data.name,
     data.aisle ?? null,
     data.row ?? null,
+    data.column ?? null,
     data.level ?? null,
     data.capacity_boxes ?? null,
     data.qr_code ?? null,
@@ -94,7 +97,7 @@ const getAllRacks = async (tenantId, options = {}) => {
   }
 
   const { clause: searchClause, params: searchParams } =
-    buildSearchClause(search, ['name', 'aisle', 'zone']);
+    buildSearchClause(search, ['name', 'aisle', '`row`', '`column`', 'level']);
 
   if (searchClause) {
     conditions.push(searchClause);
@@ -178,6 +181,7 @@ const updateRack = async (id, tenantId, fields) => {
     'name',
     'aisle',
     'row',
+    'column',
     'level',
     'capacity_boxes',
     'qr_code',
@@ -191,7 +195,7 @@ const updateRack = async (id, tenantId, fields) => {
 
     if (fields[key] === undefined) continue;
 
-    const col = key === 'row' ? '`row`' : key;
+    const col = key === 'row' ? '`row`' : (key === 'column' ? '`column`' : key);
 
     setParts.push(`${col} = ?`);
 

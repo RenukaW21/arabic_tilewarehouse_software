@@ -71,7 +71,7 @@ export default function VendorsPage() {
         pan: fd.pan ? String(fd.pan) : null,
         address: fd.address ? String(fd.address) : null,
         payment_terms_days: Number(fd.payment_terms_days) || 30,
-        is_active: fd.is_active ?? true,
+        is_active: Boolean(fd.is_active ?? true),
       };
       if (editing) {
         return vendorApi.update(editing.id, payload);
@@ -161,7 +161,7 @@ export default function VendorsPage() {
       <DeleteConfirmDialog
         open={!!deleting}
         onClose={() => setDeleting(null)}
-        onConfirm={() => deleting && deleteMutation.mutate(deleting.id)}
+        onConfirm={async () => { if (deleting) await deleteMutation.mutateAsync(deleting.id); }}
         loading={deleteMutation.isPending}
       />
     </div>

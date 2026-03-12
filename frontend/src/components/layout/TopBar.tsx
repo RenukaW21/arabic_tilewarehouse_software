@@ -2,6 +2,7 @@ import { Menu, Bell, Search, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
+import { NotificationsBell } from './NotificationsBell';
 
 interface TopBarProps {
   onToggleSidebar: () => void;
@@ -29,10 +30,7 @@ export function TopBar({ onToggleSidebar, title }: TopBarProps) {
           />
         </div> */}
 
-        <Button variant="ghost" size="icon" className="relative text-muted-foreground">
-          <Bell className="h-5 w-5" />
-          <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-destructive rounded-full" />
-        </Button>
+        <NotificationsBell />
 
         <div className="flex items-center gap-2 ml-2 pl-2 border-l border-border">
           <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">

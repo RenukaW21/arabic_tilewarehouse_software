@@ -13,10 +13,11 @@ import { toast } from "sonner";
 
 const fields: FieldDef[] = [
   { key: "warehouse_id", label: "Warehouse", type: "select", required: true, options: [] },
-  { key: "name", label: "Rack Name", type: "text", required: true, placeholder: "Rack A1" },
-  { key: "aisle", label: "Aisle", type: "text", placeholder: "A" },
-  { key: "row", label: "Row", type: "text", placeholder: "1" },
-  { key: "level", label: "Level", type: "text", placeholder: "1" },
+  { key: "aisle", label: "Aisle", type: "text", placeholder: "e.g. 1" },
+  { key: "row", label: "Row", type: "text", placeholder: "e.g. 3" },
+  { key: "column", label: "Column", type: "text", placeholder: "e.g. 2" },
+  { key: "level", label: "Level", type: "text", placeholder: "e.g. 1" },
+  { key: "name", label: "Rack Name (Auto)", type: "text", required: true, readOnly: true, placeholder: "Auto-generated" },
   { key: "capacity_boxes", label: "Capacity (boxes)", type: "number", placeholder: "100" },
   { key: "qr_code", label: "QR Code", type: "text", placeholder: "Optional" },
   { key: "is_active", label: "Status", type: "switch", defaultValue: true },
@@ -30,6 +31,7 @@ export default function RacksPage() {
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
+  const [formValues, setFormValues] = useState<Record<string, any>>({});
 
   const listParams = {
     page,
@@ -64,6 +66,32 @@ export default function RacksPage() {
     setPage(1);
   }, []);
 
+  const handleFormValueChange = (key: string, value: any) => {
+    setFormValues(prev => {
+      const next = { ...prev, [key]: value };
+      
+      // Auto-generate name based on Warehouse Initials - A aisle R row C column L level
+      const whId = next.warehouse_id;
+      const wh = warehouseOptions.find(o => o.value === whId);
+      // Extract the name part (after ' - ') and take the first 3 characters
+      const whName = wh ? wh.label.split(' - ')[1] : '';
+      const whInitial = whName ? whName.substring(0, 3).toUpperCase().replace(/\s/g, '') : '';
+      
+      const parts: string[] = [];
+      if (whInitial) parts.push(whInitial);
+      if (next.aisle) parts.push(`A${next.aisle}`);
+      if (next.row) parts.push(`R${next.row}`);
+      if (next.column) parts.push(`C${next.column}`);
+      if (next.level) parts.push(`L${next.level}`);
+      
+      if (parts.length > 0) {
+        next.name = parts.join('-');
+      }
+
+      return next;
+    });
+  };
+
   const saveMutation = useMutation({
     mutationFn: async (fd: Record<string, unknown>) => {
       const payload: any = {
@@ -71,6 +99,7 @@ export default function RacksPage() {
         name: String(fd.name),
         aisle: fd.aisle ? String(fd.aisle) : null,
         row: fd.row ? String(fd.row) : null,
+        column: fd.column ? String(fd.column) : null,
         level: fd.level ? String(fd.level) : null,
         capacity_boxes:
           fd.capacity_boxes !== undefined && fd.capacity_boxes !== ""
@@ -107,9 +136,10 @@ export default function RacksPage() {
 
   const columns = [
     { key: "name", label: "Rack Name" },
-    { key: "aisle", label: "Aisle", render: (r: Rack) => r.aisle ?? "—" },
-    { key: "row", label: "Row", render: (r: Rack) => r.row ?? "—" },
-    { key: "level", label: "Level", render: (r: Rack) => r.level ?? "—" },
+    { key: "aisle", label: "Aisle", render: (r: any) => r.aisle ?? "—" },
+    { key: "row", label: "Row", render: (r: any) => r.row ?? "—" },
+    { key: "column", label: "Col", render: (r: any) => r.column ?? "—" },
+    { key: "level", label: "Level", render: (r: any) => r.level ?? "—" },
     { key: "capacity_boxes", label: "Capacity", render: (r: any) => r.capacity_boxes ?? "—" },
     { key: "occupied_boxes", label: "Occupied", render: (r: any) => r.occupied_boxes ?? 0 },
     { key: "available_boxes", label: "Available", render: (r: any) => r.available_boxes ?? r.capacity_boxes ?? "—" },
@@ -134,6 +164,7 @@ export default function RacksPage() {
             className="h-8 w-8"
             onClick={() => {
               setEditing(r);
+              setFormValues(r);
               setDialogOpen(true);
             }}
           >
@@ -163,6 +194,7 @@ export default function RacksPage() {
         subtitle="Manage rack locations within warehouses"
         onAdd={() => {
           setEditing(null);
+          setFormValues({});
           setDialogOpen(true);
         }}
         addLabel="Add Rack"
@@ -184,17 +216,20 @@ export default function RacksPage() {
         onClose={() => {
           setDialogOpen(false);
           setEditing(null);
+          setFormValues({});
         }}
         onSubmit={(d) => saveMutation.mutateAsync(d)}
         fields={formFields}
         title={editing ? "Edit Rack" : "New Rack"}
         initialData={editing}
         loading={saveMutation.isPending}
+        onValueChange={handleFormValueChange}
+        values={formValues}
       />
       <DeleteConfirmDialog
         open={!!deleting}
         onClose={() => setDeleting(null)}
-        onConfirm={() => deleting && deleteMutation.mutate(deleting.id)}
+        onConfirm={() => deleting ? deleteMutation.mutateAsync(deleting.id) : Promise.resolve()}
         loading={deleteMutation.isPending}
       />
     </div>

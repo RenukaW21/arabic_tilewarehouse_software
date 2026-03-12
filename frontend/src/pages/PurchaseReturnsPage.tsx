@@ -454,7 +454,7 @@ export default function PurchaseReturnsPage() {
       <DeleteConfirmDialog
         open={!!deleting}
         onClose={() => setDeleting(null)}
-        onConfirm={() => deleting && deleteMutation.mutate(deleting.id)}
+        onConfirm={async () => { if (deleting) await deleteMutation.mutateAsync(deleting.id); }}
         loading={deleteMutation.isPending}
         title="Delete purchase return?"
         description="This will permanently delete this draft return. Only draft returns can be deleted."

@@ -223,8 +223,16 @@ export const alertApi = {
     const res = await axiosInstance.get<ApiPaginatedResponse<LowStockAlert>>('/alerts', { params });
     return res.data;
   },
+  getLowStock: async (): Promise<ApiResponse<LowStockAlert[]>> => {
+    const res = await axiosInstance.get<ApiResponse<LowStockAlert[]>>('/alerts/low-stock');
+    return res.data;
+  },
   getById: async (id: string): Promise<ApiResponse<LowStockAlert>> => {
     const res = await axiosInstance.get<ApiResponse<LowStockAlert>>(`/alerts/${id}`);
+    return res.data;
+  },
+  update: async (id: string, status: string): Promise<ApiResponse<LowStockAlert>> => {
+    const res = await axiosInstance.patch<ApiResponse<LowStockAlert>>(`/alerts/${id}`, { status });
     return res.data;
   },
 };
@@ -237,6 +245,10 @@ export const notificationApi = {
   },
   getById: async (id: string): Promise<ApiResponse<Notification>> => {
     const res = await axiosInstance.get<ApiResponse<Notification>>(`/notifications/${id}`);
+    return res.data;
+  },
+  update: async (id: string, data: Partial<Notification>): Promise<ApiResponse<Notification>> => {
+    const res = await axiosInstance.put<ApiResponse<Notification>>(`/notifications/${id}`, data);
     return res.data;
   },
 };

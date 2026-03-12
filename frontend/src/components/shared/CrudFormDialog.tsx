@@ -21,6 +21,7 @@ export interface FieldDef {
   options?: { value: string; label: string }[];
   placeholder?: string;
   defaultValue?: any;
+  readOnly?: boolean;
 }
 
 export interface AutoNumberConfig {
@@ -31,16 +32,17 @@ export interface AutoNumberConfig {
 interface CrudFormDialogProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: Record<string, any>) => Promise<void>;
+  onSubmit: (data: Record<string, any>) => void | Promise<any>;
   fields: FieldDef[];
   title: string;
   initialData?: Record<string, any> | null;
   loading?: boolean;
   autoNumber?: AutoNumberConfig;
   onValueChange?: (key: string, value: any) => void;
+  values?: Record<string, any>;
 }
 
-export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initialData, loading, autoNumber, onValueChange }: CrudFormDialogProps) {
+export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initialData, loading, autoNumber, onValueChange, values }: CrudFormDialogProps) {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const prevOpen = useRef(open);
@@ -82,6 +84,16 @@ export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initial
     prevOpen.current = open;
     prevInitialData.current = initialData;
   }, [open, initialData, fields, autoNumber]);
+
+  useEffect(() => {
+    if (open && values) {
+      setFormData(prev => {
+        const hasChanged = Object.entries(values).some(([k, v]) => prev[k] !== v);
+        if (!hasChanged) return prev;
+        return { ...prev, ...values };
+      });
+    }
+  }, [values, open]);
 
   const validate = (): boolean => {
     const next: Record<string, string> = {};
@@ -216,8 +228,8 @@ export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initial
                   placeholder={f.placeholder}
                   required={f.required && (f.type === 'file' ? !initialData : true)}
                   step={f.type === 'number' ? 'any' : undefined}
-                  readOnly={isAutoNumberField(f.key)}
-                  className={cn(isAutoNumberField(f.key) && 'bg-muted font-mono', errors[f.key] && 'border-destructive')}
+                  readOnly={f.readOnly || isAutoNumberField(f.key)}
+                  className={cn((f.readOnly || isAutoNumberField(f.key)) && 'bg-muted font-mono', errors[f.key] && 'border-destructive')}
                 />
               )}
               {errors[f.key] && <p className="text-xs text-destructive">{errors[f.key]}</p>}

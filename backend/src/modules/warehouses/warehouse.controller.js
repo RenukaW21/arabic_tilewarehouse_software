@@ -50,7 +50,11 @@ const updateWarehouse = async (req, res, next) => {
     if (err) {
       return res.status(422).json({
         success: false,
-        error: { code: 'VALIDATION_ERROR', message: err.details[0].message },
+        error: { 
+          code: 'VALIDATION_ERROR', 
+          message: err.details[0].message,
+          details: err.details 
+        },
       });
     }
     const updated = await warehouseService.updateWarehouse(req.params.id, req.tenantId, value);

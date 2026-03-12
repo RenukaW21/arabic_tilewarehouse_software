@@ -2,8 +2,11 @@
 
 const express = require('express');
 const controller = require('./controllers');
+const { authenticate } = require('../../middlewares/auth.middleware');
 
 const router = express.Router();
+
+router.use(authenticate);
 
 /**
  * GET LOW STOCK ALERTS
