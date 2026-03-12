@@ -21,7 +21,7 @@ import GRNDetailPage from "@/pages/GRNDetailPage";
 import SalesOrdersPage from "@/pages/SalesOrdersPage";
 import StockPage from "@/pages/StockPage";
 import InventoryStockPage from "@/pages/InventoryStockPage";
-import RackInventoryPage from "@/pages/RackInventoryPage";
+import ProductInventoryPage from "@/pages/ProductInventoryPage";
 import StockTransfersPage from "@/pages/StockTransfersPage";
 import StockAdjustmentsPage from "@/pages/StockAdjustmentsPage";
 import DamageEntriesPage from "@/pages/DamageEntriesPage";
@@ -35,6 +35,7 @@ import PaymentsReceivedPage from "@/pages/PaymentsReceivedPage";
 import PaymentsMadePage from "@/pages/PaymentsMadePage";
 import CreditNotesPage from "@/pages/CreditNotesPage";
 import DebitNotesPage from "@/pages/DebitNotesPage";
+import SettingsPage from "@/pages/SettingsPage";
 import PlaceholderPage from "@/pages/PlaceholderPage";
 import UsersPage from "@/pages/UsersPage";
 import GstConfigurationPage from "@/pages/setup/GstConfigurationPage";
@@ -45,6 +46,7 @@ import NotFound from "@/pages/NotFound";
 import GSTReportPage from "@/pages/GSTReportPage";
 import RevenueReportPage from "@/pages/RevenueReportPage";
 import AgingReportPage from "@/pages/AgingReportPage";
+import WarehouseDetailPage from "@/pages/WarehouseDetailPage";
 
 const queryClient = new QueryClient();
 
@@ -67,7 +69,7 @@ function AppRoutes() {
         <Route path="/purchase/grn" element={<GRNPage />} />
         <Route path="/purchase/grn/:id" element={<GRNDetailPage />} />
         <Route path="/purchase/returns" element={<PurchaseReturnsPage />} />
-        <Route path="/inventory/rack-inventory" element={<RackInventoryPage />} />
+        <Route path="/inventory/rack-inventory" element={<ProductInventoryPage />} />
         <Route path="/inventory/stock" element={<InventoryStockPage />} />
         <Route path="/inventory/ledger" element={<StockLedgerPage />} />
         <Route path="/inventory/transfers" element={<StockTransfersPage />} />
@@ -88,9 +90,10 @@ function AppRoutes() {
         <Route path="/reports/revenue" element={<RevenueReportPage />} />
         <Route path="/reports/aging" element={<AgingReportPage />} />
         <Route path="/alerts" element={<AlertsPage />} />
-        <Route path="/settings" element={<PlaceholderPage title="Settings" />} />
+        <Route path="/settings" element={<SettingsPage />} />
         <Route path="/setup/company" element={<GstConfigurationPage />} />
         <Route path="/setup/warehouses" element={<WarehousesPage />} />
+        <Route path="/setup/warehouses/:id" element={<WarehouseDetailPage />} />
         <Route path="/setup/racks" element={<RacksPage />} />
         <Route path="/setup/users" element={<UsersPage />} />
       </Route>

@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { PaginationMeta } from "@/types/api.types";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
 interface ColumnDef<T = Record<string, unknown>> {
   key: string;
@@ -120,19 +120,10 @@ export function DataTableShell<T extends Record<string, unknown>>({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => onPageChange(1)}
-              disabled={!paginationMeta.hasPrev || isLoading}
-              title="First page"
-            >
-              <ChevronLeft className="h-4 w-4 rotate-180" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
               onClick={() => onPageChange(paginationMeta.page - 1)}
               disabled={!paginationMeta.hasPrev || isLoading}
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-4 w-4 mr-1" />
               Previous
             </Button>
             {(() => {
@@ -150,7 +141,7 @@ export function DataTableShell<T extends Record<string, unknown>>({
                       key={p}
                       variant={p === current ? 'default' : 'outline'}
                       size="sm"
-                      className="min-w-[2rem]"
+                      className="min-w-[2rem] h-8"
                       onClick={() => onPageChange(p)}
                       disabled={isLoading}
                     >
@@ -167,16 +158,7 @@ export function DataTableShell<T extends Record<string, unknown>>({
               disabled={!paginationMeta.hasNext || isLoading}
             >
               Next
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onPageChange(Math.max(1, paginationMeta.totalPages))}
-              disabled={!paginationMeta.hasNext || isLoading}
-              title="Last page"
-            >
-              <ChevronRight className="h-4 w-4 rotate-180" />
+              <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
         </div>

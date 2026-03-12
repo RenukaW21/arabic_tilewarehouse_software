@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { productApi } from "@/api/productApi";
@@ -24,21 +24,48 @@ export default function ProductsPage() {
   const [editing, setEditing] = useState<any>(null);
   const [deleting, setDeleting] = useState<any>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
 
   /* ===============================
      DATA FETCHING
   =============================== */
 
+  const listParams = {
+    page,
+    limit: 10,
+    search: search.trim() || undefined,
+    sortBy: "created_at" as const,
+    sortOrder: "DESC" as const,
+  };
+
   const { data: paged, isLoading } = useQuery({
-    queryKey: ["products"],
-    queryFn: () => productApi.getAll({ page: 1, limit: 100 }),
+    queryKey: ["products", listParams],
+    queryFn: () => productApi.getAll(listParams),
   });
   const products = (paged as any)?.data ?? [];
+  const meta = (paged as any)?.meta ?? null;
 
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
     queryFn: getCategories,
   });
+
+  /* ===============================
+     HANDLERS
+  =============================== */
+
+  const handleSearch = useCallback((val: string) => {
+    setSearch(val);
+    setPage(1);
+  }, []);
+
+  const onSearchChange = (val: string) => {
+    setSearchInput(val);
+    handleSearch(val);
+  };
 
   /* ===============================
      HANDLE PREVIEW
@@ -201,12 +228,22 @@ export default function ProductsPage() {
         addLabel="Add Product"
       />
 
-      <DataTableShell data={products} columns={columns} searchKey="name" isLoading={isLoading} />
+      <DataTableShell
+        data={products}
+        columns={columns}
+        searchKey="name"
+        isLoading={isLoading}
+        serverSide
+        searchValue={searchInput}
+        onSearchChange={onSearchChange}
+        paginationMeta={meta}
+        onPageChange={setPage}
+      />
 
       <CrudFormDialog
         open={dialogOpen}
         onClose={() => { setDialogOpen(false); setEditing(null); }}
-        onSubmit={(d) => saveMutation.mutateAsync(d)}
+        onSubmit={(d) => saveMutation.mutateAsync(d) as any}
         fields={fields}
         title={editing ? "Edit Product" : "New Product"}
         initialData={editing ? { ...editing } : null}
@@ -216,7 +253,7 @@ export default function ProductsPage() {
       <DeleteConfirmDialog
         open={!!deleting}
         onClose={() => setDeleting(null)}
-        onConfirm={() => deleteMutation.mutateAsync(deleting?.id)}
+        onConfirm={() => deleteMutation.mutateAsync(deleting?.id) as any}
         loading={deleteMutation.isPending}
       />
     </div>

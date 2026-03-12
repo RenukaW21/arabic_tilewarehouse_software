@@ -30,25 +30,32 @@ const createWarehouse = async (data) => {
 
 const getAllWarehouses = async (tenantId, options = {}) => {
   const { page, limit, offset, sortBy, sortOrder, search } = parsePagination(options, ALLOWED_SORT_FIELDS);
-  const conditions = ['tenant_id = ?'];
+  const conditions = ['w.tenant_id = ?'];
   const params = [tenantId];
   if (options.is_active !== undefined && options.is_active !== '') {
-    conditions.push('is_active = ?');
+    conditions.push('w.is_active = ?');
     params.push(options.is_active === true || options.is_active === '1' || options.is_active === 'true' ? 1 : 0);
   }
-  const { clause: searchClause, params: searchParams } = buildSearchClause(search, ['name', 'code']);
+  const { clause: searchClause, params: searchParams } = buildSearchClause(search, ['w.name', 'w.code']);
   if (searchClause) {
     conditions.push(searchClause);
     params.push(...searchParams);
   }
-  const orderBy = ALLOWED_SORT_FIELDS.includes(sortBy) ? sortBy : 'created_at';
+  const orderBy = ALLOWED_SORT_FIELDS.includes(sortBy) ? `w.${sortBy}` : 'w.created_at';
   const order = sortOrder === 'ASC' ? 'ASC' : 'DESC';
   const whereSql = conditions.join(' AND ');
-  const baseSql = `SELECT ${SELECT_COLUMNS} FROM warehouses WHERE ${whereSql}`;
-  // LIMIT/OFFSET interpolated (validated integers) — MySQL 8.0.22+ rejects them as bound params
+  
+  const baseSql = `
+    SELECT w.*, COUNT(r.id) as rack_count
+    FROM warehouses w
+    LEFT JOIN racks r ON w.id = r.warehouse_id AND r.is_active = 1
+    WHERE ${whereSql}
+    GROUP BY w.id
+  `;
+
   const [rows, countResult] = await Promise.all([
     query(`${baseSql} ORDER BY ${orderBy} ${order} LIMIT ${limit} OFFSET ${offset}`, params),
-    query(`SELECT COUNT(*) AS total FROM warehouses WHERE ${whereSql}`, params),
+    query(`SELECT COUNT(*) AS total FROM warehouses w WHERE ${whereSql}`, params),
   ]);
   const total = countResult[0]?.total ?? 0;
   return { data: rows, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
@@ -56,7 +63,11 @@ const getAllWarehouses = async (tenantId, options = {}) => {
 
 const getWarehouseById = async (id, tenantId) => {
   const rows = await query(
-    `SELECT ${SELECT_COLUMNS} FROM warehouses WHERE id = ? AND tenant_id = ?`,
+    `SELECT w.*, COUNT(r.id) as rack_count
+     FROM warehouses w
+     LEFT JOIN racks r ON w.id = r.warehouse_id AND r.is_active = 1
+     WHERE w.id = ? AND w.tenant_id = ?
+     GROUP BY w.id`,
     [id, tenantId]
   );
   return rows[0] ?? null;

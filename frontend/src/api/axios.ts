@@ -85,7 +85,7 @@ axiosInstance.interceptors.response.use(
         // Logout fallback
         localStorage.removeItem('token');
         localStorage.removeItem('refreshToken');
-        window.location.href = '/auth';
+        window.location.href = '/';
         break;
 
       case 403:

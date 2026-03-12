@@ -10,6 +10,7 @@ export interface Warehouse {
   state?: string | null;
   pincode?: string | null;
   is_active: boolean;
+  rack_count?: number;
   created_at: string;
 }
 
@@ -20,6 +21,7 @@ export interface CreateWarehouseDto {
   city?: string | null;
   state?: string | null;
   pincode?: string | null;
+  is_active?: boolean;
 }
 
 export interface UpdateWarehouseDto extends Partial<CreateWarehouseDto> {

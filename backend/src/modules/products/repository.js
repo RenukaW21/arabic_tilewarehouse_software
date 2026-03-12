@@ -235,4 +235,35 @@ const findByCode = async (code, tenantId, excludeId = null) => {
   return rows[0] || null;
 };
 
-module.exports = { findAll, findById, create, update, softDelete, findByCode };
+const getProductVendors = async (productId, tenantId) => {
+  const sql = `
+    SELECT DISTINCT v.id, v.name 
+    FROM vendors v
+    JOIN purchase_orders po ON po.vendor_id = v.id
+    JOIN purchase_order_items poi ON poi.purchase_order_id = po.id
+    WHERE poi.product_id = ? AND po.tenant_id = ? AND v.is_active = 1
+  `;
+  return await query(sql, [productId, tenantId]);
+};
+
+const getProductCustomers = async (productId, tenantId) => {
+  const sql = `
+    SELECT DISTINCT c.id, c.name 
+    FROM customers c
+    JOIN sales_orders so ON so.customer_id = c.id
+    JOIN sales_order_items soi ON soi.sales_order_id = so.id
+    WHERE soi.product_id = ? AND so.tenant_id = ? AND c.is_active = 1
+  `;
+  return await query(sql, [productId, tenantId]);
+};
+
+module.exports = { 
+  findAll, 
+  findById, 
+  create, 
+  update, 
+  softDelete, 
+  findByCode,
+  getProductVendors,
+  getProductCustomers
+};

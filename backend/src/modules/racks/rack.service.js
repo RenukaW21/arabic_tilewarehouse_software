@@ -240,37 +240,65 @@ const deleteRack = async (id, tenantId) => {
 
 const assignProductToRack = async (tenantId, data) => {
   const { v4: uuidv4 } = require('uuid');
-  const id = uuidv4();
 
-  // 1. Get rack capacity and current occupancy
+  // 1. Get target rack info
   const rack = await getRackById(data.rack_id, tenantId);
   if (!rack) throw new Error('Rack not found');
 
-  // get current boxes for this specific product-rack mapping (if any)
-  const existingRows = await query(
-    'SELECT boxes_stored FROM product_racks WHERE product_id = ? AND rack_id = ? AND tenant_id = ?',
-    [data.product_id, data.rack_id, tenantId]
-  );
-  const existingBoxesForThisProduct = existingRows[0]?.boxes_stored || 0;
+  const isEditing = !!data.id;
+  const boxesInput = Number(data.boxes_stored);
 
-  // Calculate potential new total: TotalOccupied - OldValueForThisProduct + NewValue
-  const newOccupiedTotal = (Number(rack.occupied_boxes) || 0) - existingBoxesForThisProduct + Number(data.boxes_stored);
+  if (isEditing) {
+    // EDIT MODE: Replacing existing record values
+    const currentEntryRows = await query(
+      'SELECT boxes_stored, rack_id FROM product_racks WHERE id = ? AND tenant_id = ?',
+      [data.id, tenantId]
+    );
+    if (currentEntryRows.length === 0) throw new Error('Assignment entry not found');
+    
+    const oldEntry = currentEntryRows[0];
+    const oldRackId = oldEntry.rack_id;
+    const oldBoxes = Number(oldEntry.boxes_stored) || 0;
 
-  if (rack.capacity_boxes !== null && newOccupiedTotal > rack.capacity_boxes) {
-    const available = rack.capacity_boxes - ((Number(rack.occupied_boxes) || 0) - existingBoxesForThisProduct);
-    throw new Error(`Rack capacity exceeded. Only ${available} boxes available.`);
+    // Calculate diff for the target rack
+    // If same rack: diff = New - Old
+    // If different rack: diff = New (Old rack will lose 'oldBoxes')
+    const diffForTarget = (oldRackId === data.rack_id) ? (boxesInput - oldBoxes) : boxesInput;
+
+    if (rack.capacity_boxes !== null && (Number(rack.occupied_boxes) || 0) + diffForTarget > rack.capacity_boxes) {
+      const avail = rack.capacity_boxes - (Number(rack.occupied_boxes) || 0) + (oldRackId === data.rack_id ? oldBoxes : 0);
+      throw new Error(`Insufficient capacity in target rack. Max available: ${avail} boxes.`);
+    }
+
+    // Update the record
+    await query(
+      'UPDATE product_racks SET product_id = ?, rack_id = ?, boxes_stored = ? WHERE id = ? AND tenant_id = ?',
+      [data.product_id, data.rack_id, boxesInput, data.id, tenantId]
+    );
+
+    // Sync target rack
+    await syncRackOccupancy(data.rack_id, tenantId);
+    // Sync old rack if it changed
+    if (oldRackId !== data.rack_id) {
+      await syncRackOccupancy(oldRackId, tenantId);
+    }
+  } else {
+    // ALLOCATION MODE: Incremental addition
+    if (rack.capacity_boxes !== null && (Number(rack.occupied_boxes) || 0) + boxesInput > rack.capacity_boxes) {
+      const avail = rack.capacity_boxes - (Number(rack.occupied_boxes) || 0);
+      throw new Error(`Rack capacity exceeded. Only ${avail} boxes available.`);
+    }
+
+    const sql = `
+      INSERT INTO product_racks (id, tenant_id, product_id, rack_id, boxes_stored)
+      VALUES (?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE boxes_stored = boxes_stored + VALUES(boxes_stored)
+    `;
+    await query(sql, [uuidv4(), tenantId, data.product_id, data.rack_id, boxesInput]);
+
+    // Sync rack
+    await syncRackOccupancy(data.rack_id, tenantId);
   }
-
-  const sql = `
-    INSERT INTO product_racks (id, tenant_id, product_id, rack_id, boxes_stored)
-    VALUES (?, ?, ?, ?, ?)
-    ON DUPLICATE KEY UPDATE boxes_stored = ?
-  `;
-
-  await query(sql, [id, tenantId, data.product_id, data.rack_id, data.boxes_stored, data.boxes_stored]);
-
-  // 3. Sync the 'racks' table columns
-  await syncRackOccupancy(data.rack_id, tenantId);
 
   return { success: true };
 };

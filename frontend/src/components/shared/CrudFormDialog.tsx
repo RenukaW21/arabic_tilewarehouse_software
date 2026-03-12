@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { fetchNextDocNumber } from '@/hooks/useNextDocNumber';
@@ -37,36 +37,50 @@ interface CrudFormDialogProps {
   initialData?: Record<string, any> | null;
   loading?: boolean;
   autoNumber?: AutoNumberConfig;
+  onValueChange?: (key: string, value: any) => void;
 }
 
-export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initialData, loading, autoNumber }: CrudFormDialogProps) {
+export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initialData, loading, autoNumber, onValueChange }: CrudFormDialogProps) {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const prevOpen = useRef(open);
+  const prevInitialData = useRef(initialData);
 
   useEffect(() => {
+    const becameOpen = open && !prevOpen.current;
+    const initialDataChanged = initialData !== prevInitialData.current;
+    
     if (open) {
-      setErrors({});
-      const defaults: Record<string, any> = {};
-      fields.forEach(f => {
-        let val = initialData?.[f.key] ?? f.defaultValue ?? (f.type === 'switch' ? true : f.type === 'number' ? '' : '');
-        if (f.type === 'date' && val && typeof val === 'string') {
-          val = val.slice(0, 10);
-        }
-        if (f.type === 'select' && !f.required) {
-          defaults[f.key] = initialData?.[f.key] != null ? val : f.defaultValue || 'none';
-        } else {
-          defaults[f.key] = val;
-        }
-      });
-      setFormData(defaults);
+      // Only reset the whole form if it just opened or if initialData literally changed
+      // (This avoids resetting when 'fields' changes due to dynamic options e.g. rack filtering)
+      const shouldReset = becameOpen || initialDataChanged;
 
-      // Auto-generate doc number for new records
-      if (!initialData && autoNumber) {
-        fetchNextDocNumber(autoNumber.docType)
-          .then(num => setFormData(prev => ({ ...prev, [autoNumber.fieldKey]: num })))
-          .catch(() => {/* keep placeholder */ });
+      if (shouldReset) {
+        setErrors({});
+        const defaults: Record<string, any> = {};
+        fields.forEach(f => {
+          let val = initialData?.[f.key] ?? f.defaultValue ?? (f.type === 'switch' ? true : f.type === 'number' ? '' : '');
+          if (f.type === 'date' && val && typeof val === 'string') {
+            val = val.slice(0, 10);
+          }
+          if (f.type === 'select' && !f.required) {
+            defaults[f.key] = initialData?.[f.key] != null ? val : f.defaultValue || 'none';
+          } else {
+            defaults[f.key] = val;
+          }
+        });
+        setFormData(defaults);
+
+        // Auto-generate doc number for new records
+        if (!initialData && autoNumber) {
+          fetchNextDocNumber(autoNumber.docType)
+            .then(num => setFormData(prev => ({ ...prev, [autoNumber.fieldKey]: num })))
+            .catch(() => {/* keep placeholder */ });
+        }
       }
     }
+    prevOpen.current = open;
+    prevInitialData.current = initialData;
   }, [open, initialData, fields, autoNumber]);
 
   const validate = (): boolean => {
@@ -110,6 +124,7 @@ export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initial
   const setValue = (key: string, value: any) => {
     setFormData(prev => ({ ...prev, [key]: value }));
     if (errors[key]) setErrors(prev => ({ ...prev, [key]: '' }));
+    if (onValueChange) onValueChange(key, value);
   };
 
   const isAutoNumberField = (key: string) => !initialData && autoNumber?.fieldKey === key;

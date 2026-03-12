@@ -1,6 +1,6 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { rackInventoryApi, rackApi } from "@/api/warehouseApi";
+import { rackInventoryApi, rackApi, warehouseApi } from "@/api/warehouseApi";
 import { productApi } from "@/api/productApi";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { DataTableShell } from "@/components/shared/DataTableShell";
@@ -10,13 +10,14 @@ import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api";
 
-export default function RackInventoryPage() {
+export default function ProductInventoryPage() {
     const qc = useQueryClient();
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editing, setEditing] = useState<any>(null);
     const [page, setPage] = useState(1);
     const [searchInput, setSearchInput] = useState("");
     const [search, setSearch] = useState("");
+    const [selectedWarehouseId, setSelectedWarehouseId] = useState<string | null>(null);
 
     const listParams = {
         page,
@@ -26,9 +27,23 @@ export default function RackInventoryPage() {
         sortOrder: "DESC" as const,
     };
 
+    // Reset selected warehouse when dialog closes
+    useEffect(() => {
+        if (!dialogOpen) {
+            setSelectedWarehouseId(null);
+        } else if (editing) {
+            setSelectedWarehouseId(editing.warehouse_id);
+        }
+    }, [dialogOpen, editing]);
+
     const { data: productsData } = useQuery({
         queryKey: ["products", { limit: 1000 }],
         queryFn: () => productApi.getAll({ limit: 1000 }),
+    });
+
+    const { data: warehousesData } = useQuery({
+        queryKey: ["warehouses", { limit: 1000 }],
+        queryFn: () => warehouseApi.getAll({ limit: 1000 }),
     });
 
     const { data: racksData } = useQuery({
@@ -42,14 +57,28 @@ export default function RackInventoryPage() {
             label: `${p.code} - ${p.name}`,
         })) ?? [];
 
-    const rackOptions =
-        racksData?.data?.map((r: any) => ({
-            value: r.id,
-            label: `${r.name} [${r.warehouse_name || 'N/A'}] (${r.available_boxes ?? r.capacity_boxes ?? 0} avail)`,
+    const warehouseOptions =
+        warehousesData?.data?.map((w: any) => ({
+            value: w.id,
+            label: `${w.name} (${w.code})`,
         })) ?? [];
 
+    const rackOptions =
+        racksData?.data
+            ?.filter((r: any) => {
+                const isWarehouseMatch = !selectedWarehouseId || r.warehouse_id === selectedWarehouseId;
+                const isNotFull = (r.available_boxes ?? 0) > 0;
+                // If editing, allow the current rack even if full (though it shouldn't be full if we're looking at it, but safer)
+                const isCurrentRack = editing && r.id === editing.rack_id;
+                return isWarehouseMatch && (isNotFull || isCurrentRack);
+            })
+            .map((r: any) => ({
+                value: r.id,
+                label: `${r.name} (${r.available_boxes ?? r.capacity_boxes ?? 0} avail)`,
+            })) ?? [];
+
     const { data, isLoading } = useQuery({
-        queryKey: ["rackInventory", listParams],
+        queryKey: ["productInventory", listParams],
         queryFn: () => rackInventoryApi.getAll(listParams),
     });
 
@@ -65,6 +94,7 @@ export default function RackInventoryPage() {
     const saveMutation = useMutation({
         mutationFn: async (fd: Record<string, unknown>) => {
             const payload = {
+                id: editing?.id,
                 product_id: String(fd.product_id),
                 rack_id: String(fd.rack_id),
                 boxes_stored: Number(fd.boxes_stored),
@@ -72,13 +102,12 @@ export default function RackInventoryPage() {
             return rackApi.assignProduct(payload);
         },
         onSuccess: () => {
-            qc.invalidateQueries({ queryKey: ["rackInventory"] });
-            // Invalidating related cache could be wise if we're showing sum on other pages
+            qc.invalidateQueries({ queryKey: ["productInventory"] });
             qc.invalidateQueries({ queryKey: ["racks"] });
             qc.invalidateQueries({ queryKey: ["products"] });
             setDialogOpen(false);
             setEditing(null);
-            toast.success(editing ? "Rack entry updated" : "Rack allocated successfully");
+            toast.success(editing ? "Product inventory updated" : "Product allocated successfully");
         },
         onError: (e: any) => {
             toast.error(e?.response?.data?.error?.message ?? "Operation failed");
@@ -87,19 +116,14 @@ export default function RackInventoryPage() {
 
     const deleteMutation = useMutation({
         mutationFn: async (row: any) => {
-            // Set to 0 boxes or run a custom endpoint.
-            // Easiest is to send an assignProduct with 0 boxes stored to effectively "delete/clear" it
-            // if our backend repository handles 0 by removing the row (like we do when clearing racks).
-            // Or we can just use a dedicated API. We don't have delete currently on rackInventory route.
-            // So let's delete using a raw call because there's no API defined yet for delete product_rack.
             const res = await api.delete(`/rack-inventory/${row.product_id}/${row.rack_id}`);
             return res.data;
         },
         onSuccess: () => {
-            qc.invalidateQueries({ queryKey: ["rackInventory"] });
+            qc.invalidateQueries({ queryKey: ["productInventory"] });
             qc.invalidateQueries({ queryKey: ["products"] });
             qc.invalidateQueries({ queryKey: ["racks"] });
-            toast.success("Rack assignment removed");
+            toast.success("Product assignment removed");
         },
         onError: (e: any) => {
             toast.error(e?.response?.data?.error?.message ?? "Failed to delete");
@@ -132,7 +156,7 @@ export default function RackInventoryPage() {
                         size="icon"
                         className="h-8 w-8 text-destructive"
                         onClick={() => {
-                            if (confirm('Are you sure you want to remove this rack assignment?')) {
+                            if (confirm('Are you sure you want to remove this product assignment?')) {
                                 deleteMutation.mutate(r);
                             }
                         }}
@@ -147,20 +171,21 @@ export default function RackInventoryPage() {
 
     const formFields: FieldDef[] = [
         { key: "product_id", label: "Product", type: "combobox", required: true, options: productOptions },
-        { key: "rack_id", label: "Rack", type: "select", required: true, options: rackOptions },
+        { key: "warehouse_id", label: "Warehouse", type: "select", required: true, options: warehouseOptions },
+        { key: "rack_id", label: "Rack", type: "select", required: true, options: rackOptions, placeholder: selectedWarehouseId ? "Select Rack..." : "Select Warehouse First" },
         { key: "boxes_stored", label: "Boxes Stored", type: "number", required: true, placeholder: "0" },
     ];
 
     return (
         <div>
             <PageHeader
-                title="Rack Inventory"
+                title="Product Inventory"
                 subtitle="Manage product storage across racks"
                 onAdd={() => {
                     setEditing(null);
                     setDialogOpen(true);
                 }}
-                addLabel="Allocate Rack"
+                addLabel="Allocate Product"
             />
 
             <DataTableShell<any>
@@ -184,9 +209,14 @@ export default function RackInventoryPage() {
                 }}
                 onSubmit={(d) => saveMutation.mutateAsync(d)}
                 fields={formFields}
-                title={editing ? "Update Rack Entry" : "Allocate Rack"}
+                title={editing ? "Update Product Entry" : "Allocate Product"}
                 initialData={editing}
                 loading={saveMutation.isPending}
+                onValueChange={(key, val) => {
+                    if (key === "warehouse_id") {
+                        setSelectedWarehouseId(val);
+                    }
+                }}
             />
         </div>
     );

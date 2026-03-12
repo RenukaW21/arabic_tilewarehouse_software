@@ -15,7 +15,7 @@ router.get('/', async (req, res, next) => {
         let baseSql = `
       SELECT pr.id, pr.product_id, pr.rack_id, pr.boxes_stored, 
              p.name as product_name, p.code as product_code, p.category_id,
-             r.name as rack_name, w.name as warehouse_name
+             r.name as rack_name, r.warehouse_id, w.name as warehouse_name
       FROM product_racks pr
       JOIN products p ON pr.product_id = p.id
       JOIN racks r ON pr.rack_id = r.id

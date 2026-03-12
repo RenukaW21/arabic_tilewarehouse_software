@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { warehouseApi } from "@/api/warehouseApi";
 import type { Warehouse, CreateWarehouseDto } from "@/types/warehouse.types";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -8,7 +9,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { CrudFormDialog, FieldDef } from "@/components/shared/CrudFormDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Eye } from "lucide-react";
 import { toast } from "sonner";
 
 const fields: FieldDef[] = [
@@ -23,6 +24,7 @@ const fields: FieldDef[] = [
 
 export default function WarehousesPage() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Warehouse | null>(null);
   const [deleting, setDeleting] = useState<Warehouse | null>(null);
@@ -64,7 +66,7 @@ export default function WarehousesPage() {
         city: fd.city ? String(fd.city) : null,
         state: fd.state ? String(fd.state) : null,
         pincode: fd.pincode ? String(fd.pincode) : null,
-        is_active: fd.is_active ?? true,
+        is_active: (fd.is_active as boolean) ?? true,
       };
       if (editing) return warehouseApi.update(editing.id, payload);
       return warehouseApi.create(payload);
@@ -96,13 +98,16 @@ export default function WarehousesPage() {
     { key: "code", label: "Code", render: (r: Warehouse) => <span className="font-mono text-sm font-medium">{r.code}</span> },
     { key: "name", label: "Name" },
     { key: "city", label: "City", render: (r: Warehouse) => r.city ?? "—" },
-    { key: "state", label: "State", render: (r: Warehouse) => r.state ?? "—" },
+    { key: "rack_count", label: "Racks", render: (r: Warehouse) => <span className="font-medium">{r.rack_count ?? 0}</span> },
     { key: "is_active", label: "Status", render: (r: Warehouse) => <StatusBadge status={r.is_active ? "active" : "inactive"} /> },
     {
       key: "actions",
       label: "Actions",
       render: (r: Warehouse) => (
         <div className="flex gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => navigate(`/setup/warehouses/${r.id}`)}>
+            <Eye className="h-4 w-4" />
+          </Button>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditing(r); setDialogOpen(true); }}>
             <Pencil className="h-4 w-4" />
           </Button>
@@ -122,7 +127,7 @@ export default function WarehousesPage() {
         onAdd={() => { setEditing(null); setDialogOpen(true); }}
         addLabel="Add Warehouse"
       />
-      <DataTableShell<Warehouse>
+      <DataTableShell<any>
         data={warehouses}
         columns={columns}
         searchKey="name"
@@ -137,18 +142,19 @@ export default function WarehousesPage() {
       <CrudFormDialog
         open={dialogOpen}
         onClose={() => { setDialogOpen(false); setEditing(null); }}
-        onSubmit={(d) => saveMutation.mutateAsync(d)}
+        onSubmit={async (d) => { await saveMutation.mutateAsync(d); }}
         fields={fields}
         title={editing ? "Edit Warehouse" : "New Warehouse"}
-        initialData={editing}
+        initialData={editing as any}
         loading={saveMutation.isPending}
       />
       <DeleteConfirmDialog
         open={!!deleting}
         onClose={() => setDeleting(null)}
-        onConfirm={() => deleting && deleteMutation.mutate(deleting.id)}
+        onConfirm={async () => { if (deleting) await deleteMutation.mutateAsync(deleting.id); }}
         loading={deleteMutation.isPending}
       />
     </div>
   );
 }
+

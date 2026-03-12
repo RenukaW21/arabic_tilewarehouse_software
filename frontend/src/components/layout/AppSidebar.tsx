@@ -63,7 +63,7 @@ const navItems: NavItem[] = [
   {
     label: 'Inventory', icon: Warehouse, allowedRoles: ['super_admin', 'admin', 'warehouse_manager'],
     children: [
-      { label: 'Rack Inventory', path: '/inventory/rack-inventory', icon: Layers },
+      { label: 'Product Inventory', path: '/inventory/rack-inventory', icon: Layers },
       { label: 'Stock', path: '/inventory/stock', icon: Boxes },
       { label: 'Ledger', path: '/inventory/ledger', icon: ScrollText },
       { label: 'Transfers', path: '/inventory/transfers', icon: ArrowLeftRight },
@@ -131,7 +131,7 @@ interface AppSidebarProps {
 
 export function AppSidebar({ collapsed }: AppSidebarProps) {
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const navFiltered = useMemo(
     () => filterNavByRole(navItems, user?.role ?? 'user'),
     [user?.role]
@@ -155,11 +155,10 @@ export function AppSidebar({ collapsed }: AppSidebarProps) {
 
   const navigate = useNavigate();
 
-const handleLogout = () => {
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
-  navigate("/login");
-};
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/", { replace: true });
+  };
 
   return (
     <aside className={cn(
