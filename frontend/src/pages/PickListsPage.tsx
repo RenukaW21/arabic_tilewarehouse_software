@@ -97,8 +97,9 @@ export default function PickListsPage() {
     mutationFn: (id: string) => pickListsApi.complete(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['pick-lists'] });
+      qc.invalidateQueries({ queryKey: ['delivery-challans'] });
       if (detailId) qc.invalidateQueries({ queryKey: ['pick-lists', detailId] });
-      toast.success('Pick list completed');
+      toast.success('Pick list completed; Delivery Challan generated');
     },
     onError: (e: { response?: { data?: { error?: { message?: string } } } }) =>
       toast.error(e?.response?.data?.error?.message ?? 'Complete failed'),

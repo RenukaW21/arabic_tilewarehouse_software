@@ -29,7 +29,7 @@ export interface Invoice {
   customer_id: string;
   customer_name?: string;
   customer_gstin?: string | null;
-  warehouse_id: string;
+  warehouse_id?: string;
   status: InvoiceStatus;
   invoice_date: string;
   due_date?: string | null;
@@ -56,7 +56,7 @@ export interface Invoice {
 
 export interface CreateInvoiceFromSODto {
   sales_order_id: string;
-  invoice_date: string;         // ISO date
+  invoice_date?: string;         // ISO date — optional, backend defaults to CURDATE()
   due_date?: string;
   place_of_supply?: string;
   is_igst?: boolean;

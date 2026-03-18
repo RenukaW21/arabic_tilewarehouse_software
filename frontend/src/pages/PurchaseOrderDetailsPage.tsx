@@ -139,7 +139,13 @@ export default function PurchaseOrderDetailsPage() {
   // ─── Status mutation ───────────────────────────────────────────────────────
   const statusMutation = useMutation({
     mutationFn: (status: POStatus) => purchaseOrderApi.updateStatus(id!, status),
-    onSuccess: () => { invalidate(); setStatusOpen(false); toast.success('PO status updated'); },
+    onSuccess: () => {
+      invalidate();
+      qc.invalidateQueries({ queryKey: ['grns'] });
+      qc.invalidateQueries({ queryKey: ['products'] });
+      setStatusOpen(false);
+      toast.success('PO status updated');
+    },
     onError: (e: { response?: { data?: { error?: { message?: string }; message?: string } } }) =>
       toast.error(e?.response?.data?.error?.message ?? e?.response?.data?.message ?? 'Status update failed'),
   });
@@ -509,11 +515,33 @@ export default function PurchaseOrderDetailsPage() {
                 </SelectContent>
               </Select>
             </div>
+            {/* Auto-GRN info note */}
+            {newStatus === 'received' && (
+              <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+                <p className="font-medium mb-0.5">📦 Auto GRN will be generated</p>
+                <p className="text-xs text-blue-700">
+                  Marking this PO as <strong>Received</strong> will automatically:
+                </p>
+                <ul className="text-xs text-blue-700 list-disc list-inside mt-1 space-y-0.5">
+                  <li>Create a GRN with all ordered items (full quantity)</li>
+                  <li>Mark quality as <strong>Pass</strong> for all items</li>
+                  <li>Post stock movement to <strong>{po.warehouse_name ?? 'the warehouse'}</strong></li>
+                  <li>Activate any newly created products</li>
+                </ul>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setStatusOpen(false)}>Cancel</Button>
-            <Button onClick={() => statusMutation.mutate(newStatus)} disabled={statusMutation.isPending}>
-              {statusMutation.isPending ? 'Saving...' : 'Update Status'}
+            <Button
+              onClick={() => statusMutation.mutate(newStatus)}
+              disabled={statusMutation.isPending}
+              className={newStatus === 'received' ? 'bg-green-600 hover:bg-green-700 text-white' : ''}
+            >
+              {statusMutation.isPending
+                ? (newStatus === 'received' ? 'Generating GRN...' : 'Saving...')
+                : (newStatus === 'received' ? '✓ Mark Received & Auto-GRN' : 'Update Status')
+              }
             </Button>
           </DialogFooter>
         </DialogContent>

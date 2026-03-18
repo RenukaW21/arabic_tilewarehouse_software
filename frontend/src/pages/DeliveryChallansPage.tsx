@@ -105,8 +105,9 @@ export default function DeliveryChallansPage() {
     mutationFn: (id: string) => deliveryChallansApi.dispatch(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['delivery-challans'] });
+      qc.invalidateQueries({ queryKey: ['invoices'] });
       if (detailId) qc.invalidateQueries({ queryKey: ['delivery-challans', detailId] });
-      toast.success('Challan dispatched; stock updated');
+      toast.success('Challan dispatched; Stock updated & Invoice generated');
     },
     onError: (e: { response?: { data?: { error?: { message?: string } } } }) =>
       toast.error(e?.response?.data?.error?.message ?? 'Dispatch failed'),

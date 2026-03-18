@@ -19,6 +19,7 @@ export interface CustomerPayment {
   status?: string;
   created_by?: string | null;
   created_at: string;
+  tile_details?: string;
 }
 
 export interface VendorPayment {
@@ -35,6 +36,7 @@ export interface VendorPayment {
   status?: string;
   created_by?: string | null;
   created_at: string;
+  tile_details?: string;
 }
 
 export const customerPaymentsApi = {

@@ -6,7 +6,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Package, User, ShoppingCart, Info, MapPin, Maximize2 } from "lucide-react";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
 const BACKEND_URL = API_BASE.replace(/\/api\/v1\/?$/, '') || 'http://localhost:5000';
@@ -61,6 +61,9 @@ export default function ProductDetailsPage() {
                                             </div>
                                         </DialogTrigger>
                                         <DialogContent className="max-w-3xl border-none bg-transparent p-0 shadow-none">
+                                            <DialogHeader className="sr-only">
+                                                <DialogTitle>{product.name} Preview</DialogTitle>
+                                            </DialogHeader>
                                             <div className="flex items-center justify-center p-4">
                                                 <img
                                                     src={productImg.startsWith('http') ? productImg : `${BACKEND_URL}${productImg}`}

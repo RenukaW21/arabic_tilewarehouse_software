@@ -403,7 +403,8 @@ function EditItemDialog({
     enabled: open && !!warehouseId,
   });
   const racks = rackData?.data ?? [];
-
+  console.log('Racks for selection:', racks);
+  
   useEffect(() => {
     if (item && open) {
       const rcvd = (item as any).received_boxes ?? (item as any).received_qty_boxes ?? '';
@@ -479,7 +480,7 @@ function EditItemDialog({
               <Input type="number" step="0.01" value={unitPrice} onChange={e => setUnitPrice(e.target.value)} required />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          {/* <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Rack</Label>
               <Select value={rackId || '__none__'} onValueChange={setRackId}>
@@ -498,7 +499,7 @@ function EditItemDialog({
               <Label>Batch Number</Label>
               <Input value={batchNumber} onChange={e => setBatchNumber(e.target.value)} placeholder="e.g. BATCH-01" />
             </div>
-          </div>
+          </div> */}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={updateMutation.isPending}>Cancel</Button>
             <Button type="submit" disabled={updateMutation.isPending}>{updateMutation.isPending ? 'Saving...' : 'Save Changes'}</Button>
@@ -738,8 +739,8 @@ export default function GRNDetailPage() {
                 <th className="px-4 py-2.5">Product</th>
                 <th className="px-4 py-2.5">Shade</th>
                 {grn.purchase_order_id && <th className="px-4 py-2.5 text-right">Ordered</th>}
-                <th className="px-4 py-2.5">Rack</th>
-                <th className="px-4 py-2.5">Batch</th>
+                {/* <th className="px-4 py-2.5">Rack</th>
+                <th className="px-4 py-2.5">Batch</th> */}
                 <th className="px-4 py-2.5 text-right">Rcvd Boxes</th>
                 <th className="px-4 py-2.5 text-right">Rcvd Pcs</th>
                 <th className="px-4 py-2.5 text-right">Damaged</th>

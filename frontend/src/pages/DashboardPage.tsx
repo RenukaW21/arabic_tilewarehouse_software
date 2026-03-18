@@ -24,7 +24,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import type {
   DashboardLowStockItem,
   DashboardRecentSale,
@@ -35,6 +35,7 @@ import type {
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
+
 
 const CHART_COLORS = [
   "hsl(217, 91%, 53%)",
@@ -70,6 +71,7 @@ export default function DashboardPage() {
       );
 
       const data = res.data.data;
+      // console.log(data)
 
       if (!data) return [];
       return Array.isArray(data) ? data : [data];
@@ -100,7 +102,7 @@ export default function DashboardPage() {
     );
   }
 
-  console.log(stockByCategory);
+  // console.log(stockByCategory);
 
   return (
     <div className="space-y-6">
@@ -215,12 +217,18 @@ export default function DashboardPage() {
           kpis?.activePOs !== undefined ||
           summary?.ledgerEntriesLast30Days !== undefined) && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <KPICard
-              title="Low stock items"
-              value={String(kpis?.lowStockItems ?? 0)}
-              icon={<AlertTriangle className="h-5 w-5" />}
-              variant="danger"
-            />
+            <div
+              onClick={() => navigate("/alerts")}
+              className="cursor-pointer"
+            >
+              <KPICard
+                title="Low stock items"
+                value={String(alerts.length)}
+                icon={<AlertTriangle className="h-5 w-5" />}
+                variant="danger"
+              />
+            </div>
+
             <KPICard
               title="Active POs"
               value={String(kpis?.activePOs ?? 0)}
@@ -628,7 +636,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-
         {/* Low Stock */}
         <div className="bg-card rounded-lg border shadow-sm">
           <div className="flex items-center justify-between p-4 border-b">
@@ -665,7 +672,10 @@ export default function DashboardPage() {
 
                   <div className="text-right">
                     <p className="text-xs font-mono font-bold text-destructive">
-                      {alert.current_stock_boxes} <span className="text-[10px] text-muted-foreground">/{alert.reorder_level_boxes}</span>
+                      {alert.current_stock_boxes}{" "}
+                      <span className="text-[10px] text-muted-foreground">
+                        /{alert.reorder_level_boxes}
+                      </span>
                     </p>
                     {/* <p className="text-[10px] text-muted-foreground">
                       / {alert.reorder_level_boxes}

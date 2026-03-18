@@ -7,7 +7,7 @@
 //          when all items are merely non-pending (e.g. all 'fail'/'rejected')
 // ─────────────────────────────────────────────────────────────────────────────
 const repo = require('./repository');
-const { beginTransaction } = require('../../config/db');
+const { beginTransaction, query } = require('../../config/db');
 const { generateDocNumber } = require('../../utils/docNumber');
 const { postStockMovement } = require('../../utils/stockHelper');
 const { AppError } = require('../../middlewares/error.middleware');
@@ -39,12 +39,29 @@ const create = async (tenantId, userId, data) => {
     });
 
     for (const item of data.items || []) {
+      // Fetch purchase_order_item_id using purchaseOrderId + product_id + shade_id
+      let purchase_order_item_id = null;
+      if (data.purchaseOrderId) {
+        const poiRows = await query(
+          `SELECT id FROM purchase_order_items
+           WHERE purchase_order_id = ?
+             AND product_id = ?
+             AND (shade_id <=> ?)
+             AND tenant_id = ?
+           LIMIT 1`,
+          [data.purchaseOrderId, item.product_id, item.shade_id || null, tenantId]
+        );
+        purchase_order_item_id = poiRows.length ? poiRows[0].id : null;
+      }
+
       await repo.createGRNItem(trx, {
         tenantId,
         grnId,
+        purchase_order_item_id,
         product_id: item.product_id,
         shade_id: item.shade_id || null,
         batch_id: item.batch_id || null,
+        batch_number: item.batch_number || null,
         rack_id: item.rack_id || null,
         received_boxes: item.received_boxes ?? 0,
         received_pieces: item.received_pieces ?? 0,

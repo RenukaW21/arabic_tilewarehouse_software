@@ -19,9 +19,9 @@ const createGRNSchema = Joi.object({
   purchaseOrderId: Joi.string().uuid().allow(null, '').optional(),
   vendorId: Joi.string().uuid().required(),
   warehouseId: Joi.string().uuid().required(),
-  receiptDate: Joi.date().iso().optional(),
+  receiptDate: Joi.date().iso().allow(null, '').optional(),
   invoiceNumber: Joi.string().max(100).allow(null, '').optional(),
-  invoiceDate: Joi.date().iso().allow(null).optional(),
+  invoiceDate: Joi.date().iso().allow(null, '').optional(),
   vehicleNumber: Joi.string().max(50).allow(null, '').optional(),
   notes: Joi.string().allow(null, '').optional(),
   items: Joi.array()
@@ -46,9 +46,9 @@ const createGRNSchema = Joi.object({
 
 // ─── UPDATE GRN HEADER ────────────────────────────────────────────────────────
 const updateGRNSchema = Joi.object({
-  receipt_date: Joi.date().iso().optional(),
+  receipt_date: Joi.date().iso().allow(null, '').optional(),
   invoice_number: Joi.string().max(100).allow(null, '').optional(),
-  invoice_date: Joi.date().iso().allow(null).optional(),
+  invoice_date: Joi.date().iso().allow(null, '').optional(),
   vehicle_number: Joi.string().max(50).allow(null, '').optional(),
   notes: Joi.string().allow(null, '').optional(),
   vendor_id: Joi.string().uuid().optional(),

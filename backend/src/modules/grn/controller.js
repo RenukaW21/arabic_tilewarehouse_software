@@ -15,6 +15,7 @@ const {
 const validate = (schema) => (req, res, next) => {
   const { error, value } = schema.validate(req.body, { abortEarly: false, stripUnknown: true });
   if (error) {
+    console.error('GRN Validation Failed:', JSON.stringify(error.details, null, 2), 'Body:', req.body);
     return res.status(422).json({
       success: false,
       error: {

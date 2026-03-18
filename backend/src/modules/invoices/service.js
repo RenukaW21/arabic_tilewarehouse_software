@@ -50,6 +50,14 @@ const getById = async (id, tenantId) => {
  * Calculates CGST/SGST (intrastate) or IGST (interstate) based on state codes.
  */
 const createFromSalesOrder = async (tenantId, userId, salesOrderId) => {
+  const existingInvoice = await query(
+    `SELECT id FROM invoices WHERE sales_order_id = ? AND tenant_id = ? AND status != 'cancelled' LIMIT 1`,
+    [salesOrderId, tenantId]
+  );
+  if (existingInvoice.length > 0) {
+    return getById(existingInvoice[0].id, tenantId);
+  }
+
   const soRows = await query(
     `SELECT so.*, c.gstin AS customer_gstin, c.state_code AS customer_state,
             c.billing_address, c.shipping_address, c.name AS customer_name
@@ -123,8 +131,6 @@ const createFromSalesOrder = async (tenantId, userId, salesOrderId) => {
       );
     }
 
-    // Link invoice to sales order
-    await trx.query(`UPDATE sales_orders SET invoice_id = ?, updated_at = NOW() WHERE id = ? AND tenant_id = ?`, [id, salesOrderId, tenantId]);
 
     await trx.commit();
     return getById(id, tenantId);
@@ -143,7 +149,7 @@ const issueInvoice = async (id, tenantId) => {
   return getById(id, tenantId);
 };
 
-const updatePaymentStatus = async (id, tenantId, paymentStatus) => {
+const updatePaymentStatus = async (id, tenantId, paymentStatus, userId) => {
   const inv = await getById(id, tenantId);
   const allowed = ['pending', 'partial', 'paid'];
   if (!allowed.includes(paymentStatus)) {
@@ -153,6 +159,39 @@ const updatePaymentStatus = async (id, tenantId, paymentStatus) => {
     `UPDATE invoices SET payment_status = ?, updated_at = NOW() WHERE id = ? AND tenant_id = ?`,
     [paymentStatus, id, tenantId]
   );
+
+  // AUTOMATIC PAYMENT RECORD
+  if (paymentStatus === 'paid') {
+    // Check if a payment for this Invoice already exists
+    const existingPayments = await query(
+      'SELECT id FROM customer_payments WHERE invoice_id = ? AND tenant_id = ? AND status != "cancelled"',
+      [id, tenantId]
+    );
+
+    if (existingPayments.length === 0) {
+      const paymentId = uuidv4();
+      const paymentNumber = `REC-AUTO-${inv.invoice_number}`;
+      
+      await query(`
+        INSERT INTO customer_payments (
+          id, tenant_id, payment_number, customer_id, invoice_id, 
+          payment_date, amount, payment_mode, status, notes, created_by
+        ) VALUES (?, ?, ?, ?, ?, CURDATE(), ?, ?, ?, ?, ?)
+      `, [
+        paymentId,
+        tenantId,
+        paymentNumber,
+        inv.customer_id,
+        id,
+        inv.grand_total,
+        'cash',
+        'cleared',
+        'Auto-generated on Invoice Completion',
+        userId || inv.created_by
+      ]);
+    }
+  }
+
   return getById(id, tenantId);
 };
 

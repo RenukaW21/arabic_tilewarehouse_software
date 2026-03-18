@@ -1,13 +1,26 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import { Plus, Trash2, Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export interface LineItem {
   id?: string;
   product_id: string;
+  product_name?: string;
   shade_id?: string | null;
   ordered_boxes: number;
+  ordered_pieces?: number;
   unit_price: number;
   discount_pct: number;
   tax_pct: number;
@@ -48,6 +61,7 @@ function calcLineTotal(item: LineItem): number {
 
 const emptyItem = (): LineItem => ({
   product_id:    '',
+  product_name:  '',
   shade_id:      null,
   ordered_boxes: 1,
   unit_price:    0,
@@ -83,14 +97,21 @@ export function LineItemsEditor({
     onChange(items.filter((_, i) => i !== index));
   };
 
-  const handleProductSelect = (index: number, productId: string) => {
-    const product = products.find((p) => p.id === productId);
-    updateItem(index, {
-      product_id: productId,
-      shade_id:   null,           // reset shade when product changes
-      unit_price: product?.mrp    ?? 0,
-      tax_pct:    product?.gst_rate ?? 18,
-    });
+  const handleProductChange = (index: number, product: Product | string) => {
+    if (typeof product === 'string') {
+      updateItem(index, {
+        product_id: '',
+        product_name: product,
+      });
+    } else {
+      updateItem(index, {
+        product_id: product.id,
+        product_name: product.name,
+        shade_id: null,
+        unit_price: product.mrp ?? 0,
+        tax_pct: product.gst_rate ?? 18,
+      });
+    }
   };
 
   // Summary
@@ -121,9 +142,10 @@ export function LineItemsEditor({
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-muted/40 text-xs text-muted-foreground uppercase">
-                <th className="text-left px-3 py-2 font-medium w-[28%]">Product</th>
-                <th className="text-left px-2 py-2 font-medium w-[18%]">Shade</th>
-                <th className="text-right px-2 py-2 font-medium w-[9%]">Boxes</th>
+                <th className="text-left px-3 py-2 font-medium w-[23%]">Product</th>
+                <th className="text-left px-2 py-2 font-medium w-[15%]">Shade</th>
+                <th className="text-right px-2 py-2 font-medium w-[8%]">Pcs/Box</th>
+                <th className="text-right px-2 py-2 font-medium w-[8%]">Boxes</th>
                 <th className="text-right px-2 py-2 font-medium w-[12%]">Unit Price</th>
                 <th className="text-right px-2 py-2 font-medium w-[8%]">Disc %</th>
                 <th className="text-right px-2 py-2 font-medium w-[8%]">Tax %</th>
@@ -141,22 +163,12 @@ export function LineItemsEditor({
 
                     {/* Product */}
                     <td className="px-2 py-1.5">
-                      <Select
-                        value={item.product_id || '__none__'}
-                        onValueChange={(v) => !readOnly && v !== '__none__' && handleProductSelect(idx, v)}
+                      <ProductCombobox
+                        products={products}
+                        value={item.product_id || item.product_name || ''}
+                        onChange={(p) => handleProductChange(idx, p)}
                         disabled={readOnly}
-                      >
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="Select product..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {products.map((p) => (
-                            <SelectItem key={p.id} value={p.id} className="text-xs">
-                              {p.code} — {p.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      />
                     </td>
 
                     {/* Shade */}
@@ -199,6 +211,22 @@ export function LineItemsEditor({
                           {item.product_id ? 'No shades' : '—'}
                         </span>
                       )}
+                    </td>
+
+                    {/* Pcs per Box */}
+                    <td className="px-1 py-1.5">
+                      <Input
+                        type="number"
+                        min={1}
+                        className="h-8 text-xs text-right w-full"
+                        value={item.ordered_pieces || ''}
+                        placeholder="Pcs"
+                        onChange={(e) =>
+                          !readOnly &&
+                          updateItem(idx, { ordered_pieces: Math.max(1, Number(e.target.value) || 1) })
+                        }
+                        readOnly={readOnly || !item.product_id}
+                      />
                     </td>
 
                     {/* Boxes */}
@@ -302,5 +330,100 @@ export function LineItemsEditor({
         </div>
       </div>
     </div>
+  );
+}
+
+interface ProductComboboxProps {
+  products: Product[];
+  value: string;
+  onChange: (val: Product | string) => void;
+  disabled?: boolean;
+}
+
+function ProductCombobox({ products, value, onChange, disabled }: ProductComboboxProps) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const selectedProduct = products.find(
+    p => p.id === value || p.name === value || p.code === value
+  );
+
+  const displayValue = selectedProduct ? selectedProduct.name : value;
+
+  const onSelectHandler = (val: Product | string) => {
+    onChange(val);
+    setOpen(false);
+    setSearch('');
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className={cn(
+            "h-8 w-full justify-between px-2 text-xs font-normal",
+            !displayValue && "text-muted-foreground"
+          )}
+          disabled={disabled}
+        >
+          <span className="truncate">
+            {displayValue || "Select or type new..."}
+          </span>
+          <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)]" align="start">
+        <Command>
+          <CommandInput
+            placeholder="Search product..."
+            value={search}
+            onValueChange={setSearch}
+            className="h-9 text-xs"
+            autoFocus
+          />
+          <CommandList className="max-h-[200px]">
+            {search && !products.find(p => p.name.toLowerCase() === search.toLowerCase()) && (
+              <CommandGroup>
+                <CommandItem
+                  value={search}
+                  onSelect={() => onSelectHandler(search)}
+                  className="text-xs"
+                >
+                  <Plus className="mr-2 h-3 w-3" />
+                  Add "{search}"
+                </CommandItem>
+              </CommandGroup>
+            )}
+            <CommandEmpty className="py-2 px-2 text-center text-xs text-muted-foreground">
+              No products found.
+            </CommandEmpty>
+            <CommandGroup>
+              {products.map((p) => (
+                <CommandItem
+                  key={p.id}
+                  value={`${p.code} ${p.name}`}
+                  onSelect={() => onSelectHandler(p)}
+                  className="text-xs"
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-3 w-3",
+                      selectedProduct?.id === p.id ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  <div className="flex flex-col">
+                    <span>{p.name}</span>
+                    <span className="text-[10px] text-muted-foreground">{p.code}</span>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }

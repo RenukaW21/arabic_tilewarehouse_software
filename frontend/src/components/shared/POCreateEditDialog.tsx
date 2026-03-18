@@ -44,6 +44,7 @@ interface POCreateEditDialogProps {
 
 const emptyLine = (): LineItem => ({
   product_id:    '',
+  product_name:  '',
   shade_id:      null,
   ordered_boxes: 1,
   unit_price:    0,
@@ -145,6 +146,7 @@ export function POCreateEditDialog({
         initial.items?.length
           ? initial.items.map((i) => ({
               product_id:     i.product_id,
+              product_name:   i.product_name,
               shade_id:       i.shade_id       ?? null,
               ordered_boxes:  Number(i.ordered_boxes)  || 1,
               ordered_pieces: Number(i.ordered_pieces) || 0,
@@ -174,7 +176,7 @@ export function POCreateEditDialog({
   //   tax_amt      = sum of (boxes * price * (1-disc%) * tax_pct/100) per item
   //   grand_total  = sum(line_totals) - additional_discount
   const totals = useMemo(() => {
-    const valid = items.filter((i) => i.product_id && i.ordered_boxes > 0);
+    const valid = items.filter((i) => (i.product_id || i.product_name) && i.ordered_boxes > 0);
 
     const sub_total = valid.reduce(
       (acc, i) => acc + i.ordered_boxes * i.unit_price,
@@ -217,7 +219,7 @@ export function POCreateEditDialog({
       return;
     }
 
-    const validItems = items.filter((i) => i.product_id && i.ordered_boxes > 0);
+    const validItems = items.filter((i) => (i.product_id || i.product_name) && i.ordered_boxes > 0);
     if (!vendor_id || !warehouse_id || !order_date || validItems.length === 0) return;
 
     const payload: CreatePODto = {
@@ -233,7 +235,8 @@ export function POCreateEditDialog({
       // FIX #1 — correct field name: additional_discount (not discount_amount)
       additional_discount: parseFloat(additionalDiscount) || 0,
       items: validItems.map((i) => ({
-        product_id:     i.product_id,
+        product_id:     i.product_id ? i.product_id : undefined,
+        product_name:   i.product_id ? undefined : i.product_name,
         shade_id:       i.shade_id      ?? null,
         ordered_boxes:  i.ordered_boxes,
         ordered_pieces: i.ordered_pieces ?? 0,

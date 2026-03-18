@@ -65,7 +65,7 @@ const updateItemPicked = async (pickListId, itemId, tenantId, pickedBoxes) => {
   }
 };
 
-const complete = async (id, tenantId) => {
+const complete = async (id, tenantId, userId) => {
   const pick = await getById(id, tenantId);
   if (!['pending', 'in_progress'].includes(pick.status)) {
     throw new AppError('Only pending or in-progress pick lists can be completed', 400, 'INVALID_STATUS');
@@ -74,7 +74,20 @@ const complete = async (id, tenantId) => {
   if (!hasPickedItems) {
     throw new AppError('Pick list has no picked items. Enter picked quantities for at least one item before completing.', 400, 'NO_PICKED_ITEMS');
   }
+  
   await repo.update(id, tenantId, { status: 'completed', completed_at: new Date() });
+
+  // AUTOMATIC DELIVERY CHALLAN GENERATION
+  const dcService = require('../delivery-challans/service');
+  try {
+    await dcService.createFromPickList(id, tenantId, userId, {
+      dispatch_date: new Date()
+    });
+  } catch (err) {
+    console.error('Auto DC creation failed:', err.message);
+    // We don't throw here to avoid blocking the pick list completion if DC fails for some reason
+  }
+
   return getById(id, tenantId);
 };
 

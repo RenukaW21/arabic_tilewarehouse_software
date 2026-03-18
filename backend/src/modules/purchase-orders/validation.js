@@ -7,7 +7,8 @@ const PAYMENT_STATUS = ['pending', 'partial', 'paid'];
 
 // ─── ITEM SHAPE (reused in create / update) ───────────────────────────────────
 const poItemShape = {
-  product_id:     Joi.string().uuid().required(),
+  product_id:     Joi.string().uuid().allow(null, '').optional(),
+  product_name:   Joi.string().max(255).allow(null, '').optional(),
   shade_id:       Joi.string().uuid().allow(null, '').optional(),
   ordered_boxes:  Joi.number().min(0).required(),
   ordered_pieces: Joi.number().min(0).allow(null).optional(),

@@ -153,6 +153,7 @@ export default function PurchaseOrdersPage() {
       purchaseOrderApi.updatePaymentStatus(id, status),
     onSuccess: () => {
       invalidatePOs();
+      qc.invalidateQueries({ queryKey: ['vendor-payments'] });
       setPaymentTarget(null);
       toast.success('Payment status updated');
     },
@@ -326,7 +327,7 @@ export default function PurchaseOrdersPage() {
       <POCreateEditDialog
         open={dialogOpen}
         onClose={() => { setDialogOpen(false); setEditing(null); }}
-        onSubmit={(d) => saveMutation.mutateAsync(d)}
+        onSubmit={async (d) => { await saveMutation.mutateAsync(d); }}
         loading={saveMutation.isPending}
         vendors={vendorOptions}
         warehouses={warehouseOptions}

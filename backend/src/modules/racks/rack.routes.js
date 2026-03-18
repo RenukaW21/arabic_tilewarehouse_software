@@ -10,6 +10,7 @@ router.use(authenticate);
 router.post('/', rackController.createRack);
 router.get('/', rackController.getRacks);
 router.post('/assign', rackController.assignProduct);
+router.post('/auto-allocate', rackController.autoAllocate);
 router.get('/product/:productId', rackController.getProductStorage);
 router.get('/:id', rackController.getRackById);
 router.put('/:id', rackController.updateRack);

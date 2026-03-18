@@ -67,6 +67,8 @@ const postStockMovement = async (trx, {
   const prev = summary[0] || { total_boxes: 0, total_pieces: 0, total_sqft: 0, avg_cost_per_box: 0 };
   const balanceBoxes = parseFloat(prev.total_boxes) + boxesIn - boxesOut;
   const balancePieces = parseFloat(prev.total_pieces) + piecesIn - piecesOut;
+  
+  // Convert pieces to boxes for validation if needed, but here we just check if absolute balances are negative
   if (balanceBoxes < 0 || balancePieces < 0) {
     throw new Error(`Insufficient stock: cannot post ${boxesOut} boxes / ${piecesOut} pieces (balance would be ${balanceBoxes} / ${balancePieces})`);
   }
@@ -120,7 +122,7 @@ const postStockMovement = async (trx, {
   );
 
   // 4 — Update NEW inventory table
-  if (boxesIn > 0 || piecesIn > 0) {
+  if (boxesIn > 0 || piecesIn > 0 || boxesOut > 0 || piecesOut > 0) {
     const existingInv = await trx.query(
       `SELECT id, boxes, pieces FROM inventory 
        WHERE tenant_id = ? AND product_id = ? AND (shade_id <=> ?) AND (rack_id <=> ?) AND (batch_id <=> ?) FOR UPDATE`,
@@ -129,10 +131,10 @@ const postStockMovement = async (trx, {
 
     if (existingInv.length > 0) {
       await trx.query(
-        `UPDATE inventory SET boxes = boxes + ?, pieces = pieces + ? WHERE id = ?`,
-        [boxesIn, piecesIn, existingInv[0].id]
+        `UPDATE inventory SET boxes = boxes + ? - ?, pieces = pieces + ? - ? WHERE id = ?`,
+        [boxesIn, boxesOut, piecesIn, piecesOut, existingInv[0].id]
       );
-    } else {
+    } else if (boxesIn > 0 || piecesIn > 0) {
       await trx.query(
         `INSERT INTO inventory (id, tenant_id, product_id, shade_id, rack_id, batch_id, boxes, pieces)
          VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?)`,
@@ -141,11 +143,14 @@ const postStockMovement = async (trx, {
     }
 
     // 5 — Append to NEW stock_movements table
-    await trx.query(
-      `INSERT INTO stock_movements (id, tenant_id, product_id, rack_id, movement_type, quantity, reference_id)
-       VALUES (UUID(), ?, ?, ?, ?, ?, ?)`,
-      [tenantId, productId, rackId, transactionType, boxesIn, referenceId]
-    );
+    const movementQty = (boxesIn - boxesOut) || (piecesIn - piecesOut); // Simplified for now, usually tracking boxes
+    if (movementQty !== 0) {
+        await trx.query(
+          `INSERT INTO stock_movements (id, tenant_id, product_id, rack_id, movement_type, quantity, reference_id)
+           VALUES (UUID(), ?, ?, ?, ?, ?, ?)`,
+          [tenantId, productId, rackId, transactionType, boxesIn - boxesOut, referenceId]
+        );
+    }
   }
 
   // 6 — Check for low stock alert

@@ -51,10 +51,20 @@ export async function deleteVendor(id: string): Promise<void> {
   await api.delete(`${BASE}/${id}`);
 }
 
+export async function importVendorsCsv(file: File): Promise<any> {
+  const form = new FormData();
+  form.append('file', file);
+  const res = await api.post(`${BASE}/import/csv`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return res.data;
+}
+
 export const vendorApi = {
   getAll: getVendors,
   getById: getVendorById,
   create: createVendor,
   update: updateVendor,
   delete: deleteVendor,
+  importCsv: importVendorsCsv,
 };

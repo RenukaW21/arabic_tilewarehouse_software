@@ -131,19 +131,25 @@ const createGRN = async (trx, {
 
 // ─── CREATE GRN ITEM ─────────────────────────────────────────────────────────
 const createGRNItem = async (trx, {
-  tenantId, grnId, product_id, shade_id, batch_id, batch_number, rack_id,
+  tenantId, purchase_order_item_id, grnId,
+  product_id, shade_id, batch_id, batch_number, rack_id,
   received_boxes, received_pieces, damaged_boxes, unit_price,
   quality_status, quality_notes
 }) => {
   const id = uuidv4();
+
   await trx.query(
     `INSERT INTO grn_items
-       (id, tenant_id, grn_id, product_id, shade_id, batch_id, batch_number, rack_id,
-        received_boxes, received_pieces, damaged_boxes, unit_price,
-        quality_status, quality_notes, barcode_printed)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE)`,
+     (id, tenant_id, purchase_order_item_id, grn_id, product_id, shade_id, batch_id, batch_number, rack_id,
+      received_boxes, received_pieces, damaged_boxes, unit_price,
+      quality_status, quality_notes, barcode_printed)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE)`,
     [
-      id, tenantId, grnId, product_id,
+      id,
+      tenantId,
+      purchase_order_item_id || null,   // NULL when no PO is linked
+      grnId,
+      product_id,
       shade_id || null,
       batch_id || null,
       batch_number || null,
@@ -156,6 +162,7 @@ const createGRNItem = async (trx, {
       quality_notes || null,
     ]
   );
+
   return id;
 };
 
@@ -256,6 +263,7 @@ const removeGRNItem = async (tenantId, grnId, itemId) => {
   await query(`DELETE FROM grn_items WHERE id = ? AND grn_id = ? AND tenant_id = ?`, [itemId, grnId, tenantId]);
   await recalcGrandTotal(grnId, tenantId, null);
 };
+
 
 // ─── MARK BARCODE PRINTED ─────────────────────────────────────────────────────
 const markBarcodePrinted = async (tenantId, grnId, itemId) => {

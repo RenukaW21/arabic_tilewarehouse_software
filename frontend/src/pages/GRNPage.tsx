@@ -426,11 +426,13 @@ function CreateGRNDialog({
       }
     }
     await onSubmit({
-      purchase_order_id: po_id || undefined,
-      vendor_id, warehouse_id, receipt_date,
-      invoice_number: invoice_number || undefined,
-      invoice_date: invoice_date || undefined,
-      vehicle_number: vehicle_number || undefined,
+      purchaseOrderId: po_id || undefined,
+      vendorId: vendor_id,
+      warehouseId: warehouse_id,
+      receiptDate: receipt_date,
+      invoiceNumber: invoice_number || undefined,
+      invoiceDate: invoice_date || undefined,
+      vehicleNumber: vehicle_number || undefined,
       notes: notes || undefined,
       items: items.map((it) => ({
         product_id: it.product_id,
@@ -843,13 +845,13 @@ export default function GRNPage() {
   const createMutation = useMutation({
     mutationFn: (fd: Record<string, unknown>) =>
       grnApi.create({
-        purchaseOrderId: fd.purchase_order_id ? String(fd.purchase_order_id) : undefined,
-        vendorId: String(fd.vendor_id),
-        warehouseId: String(fd.warehouse_id),
-        receiptDate: String(fd.receipt_date),
-        invoiceNumber: fd.invoice_number ? String(fd.invoice_number) : undefined,
-        invoiceDate: fd.invoice_date ? String(fd.invoice_date) : undefined,
-        vehicleNumber: fd.vehicle_number ? String(fd.vehicle_number) : undefined,
+        purchaseOrderId: fd.purchaseOrderId ? String(fd.purchaseOrderId) : undefined,
+        vendorId: String(fd.vendorId),
+        warehouseId: String(fd.warehouseId),
+        receiptDate: String(fd.receiptDate),
+        invoiceNumber: fd.invoiceNumber ? String(fd.invoiceNumber) : undefined,
+        invoiceDate: fd.invoiceDate ? String(fd.invoiceDate) : undefined,
+        vehicleNumber: fd.vehicleNumber ? String(fd.vehicleNumber) : undefined,
         notes: fd.notes ? String(fd.notes) : undefined,
         items: fd.items as Parameters<typeof grnApi.create>[0]['items'],
       }),
@@ -860,8 +862,10 @@ export default function GRNPage() {
       const newId = (res as { data?: { id?: string } })?.data?.id;
       if (newId) navigate(`/purchase/grn/${newId}`);
     },
-    onError: (e: { response?: { data?: { error?: { message?: string }; message?: string } } }) =>
-      toast.error(e?.response?.data?.error?.message ?? e?.response?.data?.message ?? 'Create failed'),
+    onError: (e: any) => {
+      console.error('Validation Error Details:', e?.response?.data?.error?.details || e?.response?.data);
+      toast.error(e?.response?.data?.error?.message ?? e?.response?.data?.message ?? 'Create failed');
+    },
   });
 
   const updateMutation = useMutation({

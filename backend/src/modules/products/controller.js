@@ -1,5 +1,6 @@
 'use strict';
 const service = require('./service');
+const { importFromCsv } = require('./csvImport');
 const { success, created, paginated } = require('../../utils/response');
 const { writeAuditLog, extractRequestMeta } = require('../../utils/auditLog');
 
@@ -72,4 +73,19 @@ const remove = async (req, res) => {
   return success(res, {}, 'Product deactivated');
 };
 
-module.exports = { getAll, getById, getShades, create, update, remove };
+const importCsv = async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, error: { code: 'NO_FILE', message: 'No CSV file uploaded' } });
+  }
+
+  const csvText = req.file.buffer.toString('utf-8');
+  const result = await importFromCsv(req.tenantId, csvText);
+
+  return res.status(200).json({
+    success: true,
+    message: `Import complete: ${result.imported} imported, ${result.skipped} skipped`,
+    data: result,
+  });
+};
+
+module.exports = { getAll, getById, getShades, create, update, remove, importCsv };

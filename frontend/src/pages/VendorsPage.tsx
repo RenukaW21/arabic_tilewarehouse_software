@@ -6,9 +6,10 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { DataTableShell } from "@/components/shared/DataTableShell";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { CrudFormDialog, FieldDef } from "@/components/shared/CrudFormDialog";
+import { CsvImportDialog } from "@/components/shared/CsvImportDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, FileUp } from "lucide-react";
 import { toast } from "sonner";
 
 const fields: FieldDef[] = [
@@ -29,6 +30,7 @@ export default function VendorsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Vendor | null>(null);
   const [deleting, setDeleting] = useState<Vendor | null>(null);
+  const [csvImportOpen, setCsvImportOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
@@ -133,7 +135,17 @@ export default function VendorsPage() {
         subtitle="Manage your tile suppliers"
         onAdd={() => { setEditing(null); setDialogOpen(true); }}
         addLabel="Add Vendor"
-      />
+      >
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setCsvImportOpen(true)}
+          className="flex items-center gap-1.5"
+        >
+          <FileUp className="h-4 w-4" />
+          Import CSV
+        </Button>
+      </PageHeader>
 
       <DataTableShell<Vendor>
         data={vendors}
@@ -163,6 +175,20 @@ export default function VendorsPage() {
         onClose={() => setDeleting(null)}
         onConfirm={async () => { if (deleting) await deleteMutation.mutateAsync(deleting.id); }}
         loading={deleteMutation.isPending}
+      />
+
+      <CsvImportDialog
+        open={csvImportOpen}
+        onClose={() => setCsvImportOpen(false)}
+        title="Bulk Import Vendors via CSV"
+        description="Upload a CSV file to import multiple vendors at once."
+        entityName="vendor(s)"
+        queryKeyToInvalidate="vendors"
+        requiredColumns={["name"]}
+        optionalColumns={["code", "contact_person", "phone", "email", "address", "gstin", "pan", "payment_terms_days", "is_active"]}
+        templateHeaders={["name", "code", "contact_person", "phone", "email", "address", "gstin", "pan", "payment_terms_days", "is_active"]}
+        sampleRow={"Acme Corp,VND-001,John Doe,1234567890,john@acme.com,123 Main St,22AAAAA0000A1Z5,ABCDE1234F,30,true"}
+        importMutationFn={(file: File) => vendorApi.importCsv(file)}
       />
     </div>
   );

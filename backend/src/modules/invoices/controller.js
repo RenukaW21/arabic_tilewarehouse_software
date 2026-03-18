@@ -12,7 +12,7 @@ const getById = async (req, res) => {
   return success(res, inv);
 };
 const createFromSO = async (req, res) => {
-  const inv = await service.createFromSalesOrder(req.tenantId, req.user.id, req.body.salesOrderId);
+  const inv = await service.createFromSalesOrder(req.tenantId, req.user.id, req.body.sales_order_id || req.body.salesOrderId);
   const meta = extractRequestMeta(req);
   await writeAuditLog({ tenantId: req.tenantId, userId: req.user.id, action: 'CREATE', tableName: 'invoices', recordId: inv.id, newValues: { salesOrderId: req.body.salesOrderId }, ...meta });
   return created(res, inv, 'Invoice generated');
@@ -24,7 +24,7 @@ const issueInvoice = async (req, res) => {
   return success(res, inv, 'Invoice issued');
 };
 const updatePaymentStatus = async (req, res) => {
-  const inv = await service.updatePaymentStatus(req.params.id, req.tenantId, req.body.payment_status);
+  const inv = await service.updatePaymentStatus(req.params.id, req.tenantId, req.body.payment_status, req.user?.id);
   return success(res, inv, 'Payment status updated');
 };
 const update = async (req, res, next) => {

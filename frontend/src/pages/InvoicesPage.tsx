@@ -18,7 +18,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, FileCheck, Trash2, Pencil } from 'lucide-react';
+import { Loader2, FileCheck, Trash2, Pencil, Download } from 'lucide-react';
+import { generateInvoicePDF } from '@/utils/pdfGenerator';
 import { toast } from 'sonner';
 import { DeleteConfirmDialog } from '@/components/shared/DeleteConfirmDialog';
 
@@ -75,7 +76,7 @@ export default function InvoicesPage() {
   const detail = detailRes?.data ?? null;
 
   const createMutation = useMutation({
-    mutationFn: () => invoiceApi.createFromSO({ salesOrderId }),
+    mutationFn: () => invoiceApi.createFromSO({ sales_order_id: salesOrderId }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['invoices'] });
       setCreateOpen(false);
@@ -133,6 +134,7 @@ export default function InvoicesPage() {
       invoiceApi.updatePaymentStatus(id, payment_status),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['invoices'] });
+      qc.invalidateQueries({ queryKey: ['customer-payments'] });
       if (detailId) qc.invalidateQueries({ queryKey: ['invoices', detailId] });
       setPaymentDialogInvoice(null);
       toast.success('Payment status updated');
@@ -166,6 +168,21 @@ export default function InvoicesPage() {
           >
             Payment
           </Button>
+          {r.status === 'issued' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                const res = await invoiceApi.getById(r.id);
+                if (res?.data) {
+                  generateInvoicePDF(res.data as any);
+                }
+              }}
+              title="Download PDF"
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+          )}
           {r.status === 'draft' && (
             <>
               <Button
@@ -393,7 +410,7 @@ export default function InvoicesPage() {
       <DeleteConfirmDialog
         open={!!deleting}
         onClose={() => setDeleting(null)}
-        onConfirm={() => deleting && deleteMutation.mutateAsync(deleting.id)}
+        onConfirm={async () => { if (deleting) await deleteMutation.mutateAsync(deleting.id); }}
         loading={deleteMutation.isPending}
         title="Delete invoice"
         description="Only draft invoices can be deleted. Are you sure?"

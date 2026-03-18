@@ -25,7 +25,7 @@ const listStock = async (req, res, next) => {
     if (error) return res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: error.details[0].message } });
     const { rows, total } = await service.getAll(req.tenantId, req.query);
     const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 25));
+    const limit = Math.min(1000, Math.max(1, parseInt(req.query.limit) || 25));
     return paginated(res, rows, { page, limit, total }, 'Stock summary fetched');
   } catch (err) {
     next(err);

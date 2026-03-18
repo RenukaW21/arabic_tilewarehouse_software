@@ -91,6 +91,7 @@ export default function PaymentsReceivedPage() {
     { key: 'payment_number', label: 'Payment #', render: (r: CustomerPayment) => <span className="font-mono text-sm font-medium">{r.payment_number}</span> },
     { key: 'customer_id', label: 'Customer', render: (r: CustomerPayment) => getCustomerName(r.customer_id) },
     { key: 'invoice_id', label: 'Invoice', render: (r: CustomerPayment) => getInvoiceNumber(r.invoice_id) },
+    { key: 'tile_details', label: 'Tile Details', render: (r: CustomerPayment) => <span className="text-muted-foreground text-xs truncate max-w-[200px] inline-block" title={r.tile_details || '—'}>{r.tile_details || '—'}</span> },
     { key: 'amount', label: 'Amount', render: (r: CustomerPayment) => `₹${Number(r.amount || 0).toLocaleString()}` },
     { key: 'payment_date', label: 'Date', render: (r: CustomerPayment) => (r.payment_date ? new Date(r.payment_date).toLocaleDateString() : '—') },
     { key: 'payment_mode', label: 'Mode', render: (r: CustomerPayment) => <StatusBadge status={r.payment_mode} /> },

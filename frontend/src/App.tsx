@@ -69,7 +69,7 @@ function AppRoutes() {
         <Route path="/purchase/grn" element={<GRNPage />} />
         <Route path="/purchase/grn/:id" element={<GRNDetailPage />} />
         <Route path="/purchase/returns" element={<PurchaseReturnsPage />} />
-        <Route path="/inventory/rack-inventory" element={<ProductInventoryPage />} />
+        <Route path="/inventory/product-inventory" element={<ProductInventoryPage />} />
         <Route path="/inventory/stock" element={<InventoryStockPage />} />
         <Route path="/inventory/ledger" element={<StockLedgerPage />} />
         <Route path="/inventory/transfers" element={<StockTransfersPage />} />

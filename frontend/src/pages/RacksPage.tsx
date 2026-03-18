@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { CrudFormDialog, FieldDef } from "@/components/shared/CrudFormDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -31,12 +32,14 @@ export default function RacksPage() {
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("all");
   const [formValues, setFormValues] = useState<Record<string, any>>({});
 
   const listParams = {
     page,
     limit: 25,
     search: search.trim() || undefined,
+    warehouse_id: selectedWarehouseId !== "all" ? selectedWarehouseId : undefined,
     sortBy: "created_at" as const,
     sortOrder: "DESC" as const,
   };
@@ -194,11 +197,27 @@ export default function RacksPage() {
         subtitle="Manage rack locations within warehouses"
         onAdd={() => {
           setEditing(null);
-          setFormValues({});
+          setFormValues({ warehouse_id: selectedWarehouseId !== "all" ? selectedWarehouseId : "" });
           setDialogOpen(true);
         }}
         addLabel="Add Rack"
-      />
+      >
+        <div className="flex items-center gap-2">
+          <Select value={selectedWarehouseId} onValueChange={(val) => { setSelectedWarehouseId(val); setPage(1); }}>
+            <SelectTrigger className="w-[200px] h-9">
+              <SelectValue placeholder="All Warehouses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Warehouses</SelectItem>
+              {warehouseOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </PageHeader>
       <DataTableShell<Rack>
         data={racks}
         columns={columns}

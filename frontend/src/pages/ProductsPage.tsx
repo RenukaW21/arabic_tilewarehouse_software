@@ -8,8 +8,9 @@ import { DataTableShell } from "@/components/shared/DataTableShell";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { CrudFormDialog, FieldDef } from "@/components/shared/CrudFormDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { CsvImportDialog } from "@/components/shared/CsvImportDialog";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, Eye } from "lucide-react";
+import { Pencil, Trash2, Eye, FileUp } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
@@ -24,6 +25,7 @@ export default function ProductsPage() {
   const [editing, setEditing] = useState<any>(null);
   const [deleting, setDeleting] = useState<any>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [csvImportOpen, setCsvImportOpen] = useState(false);
   
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -226,7 +228,17 @@ export default function ProductsPage() {
         subtitle="Manage tile Products"
         onAdd={() => { setEditing(null); setDialogOpen(true); setPreviewUrl(null); }}
         addLabel="Add Product"
-      />
+      >
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setCsvImportOpen(true)}
+          className="flex items-center gap-1.5"
+        >
+          <FileUp className="h-4 w-4" />
+          Import CSV
+        </Button>
+      </PageHeader>
 
       <DataTableShell
         data={products}
@@ -255,6 +267,11 @@ export default function ProductsPage() {
         onClose={() => setDeleting(null)}
         onConfirm={() => deleteMutation.mutateAsync(deleting?.id) as any}
         loading={deleteMutation.isPending}
+      />
+
+      <CsvImportDialog
+        open={csvImportOpen}
+        onClose={() => setCsvImportOpen(false)}
       />
     </div>
   );

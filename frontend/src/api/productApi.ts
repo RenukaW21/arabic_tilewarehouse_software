@@ -32,4 +32,13 @@ export const productApi = {
     const res = await axiosInstance.delete<ApiResponse<null>>(`/products/${id}`);
     return res.data;
   },
+
+  importCsv: async (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    const res = await axiosInstance.post('/products/import/csv', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data;
+  },
 };

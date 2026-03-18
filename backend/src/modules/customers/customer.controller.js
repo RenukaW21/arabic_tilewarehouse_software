@@ -2,6 +2,7 @@
 
 const { v4: uuidv4 } = require('uuid');
 const customerService = require('./customer.service');
+const { importFromCsv } = require('./csvImport');
 const { createCustomerSchema, updateCustomerSchema } = require('./customer.validation');
 const { success, created, paginated } = require('../../utils/response');
 const { AppError } = require('../../middlewares/error.middleware');
@@ -81,10 +82,26 @@ const deleteCustomer = async (req, res, next) => {
   }
 };
 
+const importCsv = async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, error: { code: 'NO_FILE', message: 'No CSV file uploaded' } });
+  }
+
+  const csvText = req.file.buffer.toString('utf-8');
+  const result = await importFromCsv(req.tenantId, csvText);
+
+  return res.status(200).json({
+    success: true,
+    message: `Import complete: ${result.imported} imported, ${result.skipped} skipped`,
+    data: result,
+  });
+};
+
 module.exports = {
   createCustomer,
   getCustomers,
   getCustomerById,
   updateCustomer,
   deleteCustomer,
+  importCsv,
 };

@@ -3,6 +3,7 @@
 const { v4: uuidv4 } = require('uuid');
 const rackService = require('./rack.service');
 const { createRackSchema, updateRackSchema } = require('./rack.validation');
+const { autoAllocate: autoRackAllocate } = require('../automation/auto-rack.service');
 const { success, created, paginated } = require('../../utils/response');
 const { AppError } = require('../../middlewares/error.middleware');
 
@@ -139,6 +140,16 @@ const getProductStorage = async (req, res, next) => {
   }
 };
 
+const autoAllocate = async (req, res, next) => {
+  try {
+    const { product_id, warehouse_id, boxes_needed, allow_split } = req.body;
+    const result = await autoRackAllocate(req.tenantId, product_id, warehouse_id, boxes_needed, allow_split);
+    return success(res, result, 'Auto-allocation successful');
+  } catch (e) {
+    next(e);
+  }
+};
+
 module.exports = {
   createRack,
   getRacks,
@@ -146,5 +157,6 @@ module.exports = {
   updateRack,
   deleteRack,
   assignProduct,
-  getProductStorage
+  getProductStorage,
+  autoAllocate
 };

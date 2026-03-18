@@ -70,7 +70,7 @@ const getAllRacks = async (tenantId, options = {}) => {
   const { page, limit, offset, sortBy, sortOrder, search } =
     parsePagination(options, ALLOWED_SORT_FIELDS);
 
-  const conditions = ['tenant_id = ?'];
+  const conditions = ['r.tenant_id = ?'];
   const params = [tenantId];
 
   const filterMap = {};
@@ -85,7 +85,7 @@ const getAllRacks = async (tenantId, options = {}) => {
   }
 
   if (options.warehouse_id) {
-    filterMap.warehouse_id = options.warehouse_id;
+    filterMap['r.warehouse_id'] = options.warehouse_id;
   }
 
   const { clauses: filterClauses, params: filterParams } =
@@ -97,7 +97,7 @@ const getAllRacks = async (tenantId, options = {}) => {
   }
 
   const { clause: searchClause, params: searchParams } =
-    buildSearchClause(search, ['name', 'aisle', '`row`', '`column`', 'level']);
+    buildSearchClause(search, ['r.name', 'r.aisle', 'r.`row`', 'r.`column`', 'r.level']);
 
   if (searchClause) {
     conditions.push(searchClause);
@@ -120,13 +120,13 @@ const getAllRacks = async (tenantId, options = {}) => {
     LEFT JOIN warehouses w ON r.warehouse_id = w.id
     LEFT JOIN product_racks pr ON r.id = pr.rack_id
     LEFT JOIN products p ON pr.product_id = p.id
-    WHERE r.${whereSql}
+    WHERE ${whereSql}
     GROUP BY r.id
   `;
 
   const [rows, countResult] = await Promise.all([
     query(`${baseSql} ORDER BY r.${orderBy} ${order} LIMIT ${limit} OFFSET ${offset}`, params),
-    query(`SELECT COUNT(DISTINCT id) AS total FROM racks WHERE ${whereSql}`, params),
+    query(`SELECT COUNT(DISTINCT r.id) AS total FROM racks r WHERE ${whereSql}`, params),
   ]);
 
   const total = countResult[0]?.total ?? 0;
@@ -252,6 +252,34 @@ const assignProductToRack = async (tenantId, data) => {
   const isEditing = !!data.id;
   const boxesInput = Number(data.boxes_stored);
 
+  // ── 2. Validate against PRODUCT AVAILABLE STOCK ──────────────────────────
+  // Total stock across all warehouses for this product (from stock_summary)
+  const stockRows = await query(
+    `SELECT COALESCE(SUM(total_boxes), 0) AS total_stock
+     FROM stock_summary
+     WHERE tenant_id = ? AND product_id = ?`,
+    [tenantId, data.product_id]
+  );
+  const totalStock = parseFloat(stockRows[0]?.total_stock) || 0;
+
+  // Total already assigned to racks (excluding current entry if editing)
+  const assignedRows = await query(
+    `SELECT COALESCE(SUM(boxes_stored), 0) AS already_stored
+     FROM product_racks
+     WHERE tenant_id = ? AND product_id = ? ${isEditing ? 'AND id != ?' : ''}`,
+    isEditing ? [tenantId, data.product_id, data.id] : [tenantId, data.product_id]
+  );
+  const alreadyStored = parseFloat(assignedRows[0]?.already_stored) || 0;
+
+  const availableToStore = totalStock - alreadyStored;
+
+  if (boxesInput > availableToStore) {
+    throw new Error(
+      `Cannot store more than available stock. ` +
+      `Available: ${availableToStore} boxes (Total stock: ${totalStock}, Already stored in other racks: ${alreadyStored}).`
+    );
+  }
+
   if (isEditing) {
     // EDIT MODE: Replacing existing record values
     const currentEntryRows = await query(
@@ -265,8 +293,6 @@ const assignProductToRack = async (tenantId, data) => {
     const oldBoxes = Number(oldEntry.boxes_stored) || 0;
 
     // Calculate diff for the target rack
-    // If same rack: diff = New - Old
-    // If different rack: diff = New (Old rack will lose 'oldBoxes')
     const diffForTarget = (oldRackId === data.rack_id) ? (boxesInput - oldBoxes) : boxesInput;
 
     if (rack.capacity_boxes !== null && (Number(rack.occupied_boxes) || 0) + diffForTarget > rack.capacity_boxes) {
@@ -296,7 +322,7 @@ const assignProductToRack = async (tenantId, data) => {
     const sql = `
       INSERT INTO product_racks (id, tenant_id, product_id, rack_id, boxes_stored)
       VALUES (?, ?, ?, ?, ?)
-      ON DUPLICATE KEY UPDATE boxes_stored = boxes_stored + VALUES(boxes_stored)
+      ON DUPLICATE KEY UPDATE boxes_stored = VALUES(boxes_stored)
     `;
     await query(sql, [uuidv4(), tenantId, data.product_id, data.rack_id, boxesInput]);
 

@@ -264,6 +264,7 @@ module.exports = {
   update, 
   softDelete, 
   findByCode,
+  findShades,
   getProductVendors,
   getProductCustomers
 };

@@ -83,7 +83,7 @@ const update = async (req, res, next) => {
 // FIX #2
 const updateStatus = async (req, res, next) => {
   try {
-    const po = await service.updateStatus(req.params.id, req.tenantId, req.body.status);
+    const po = await service.updateStatus(req.params.id, req.tenantId, req.body.status, req.user?.id);
     return success(res, po, 'Purchase order status updated');
   } catch (err) {
     next(err);
@@ -129,7 +129,8 @@ const updatePaymentStatus = async (req, res, next) => {
     const po = await service.updatePaymentStatus(
       req.params.id,
       req.tenantId,
-      req.body.payment_status
+      req.body.payment_status,
+      req.user?.id
     );
     return success(res, po, 'Payment status updated');
   } catch (err) {

@@ -63,6 +63,10 @@ export const rackApi = {
     const res = await api.post('/racks/assign', data);
     return res.data;
   },
+  autoAllocate: async (data: { product_id: string; warehouse_id: string; boxes_needed: number; allow_split?: boolean }): Promise<any> => {
+    const res = await api.post('/racks/auto-allocate', data);
+    return res.data;
+  },
   getProductStorage: async (productId: string): Promise<any> => {
     const res = await api.get(`/racks/product/${productId}`);
     return res.data;

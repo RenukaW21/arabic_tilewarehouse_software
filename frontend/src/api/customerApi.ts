@@ -46,10 +46,20 @@ export async function deleteCustomer(id: string): Promise<void> {
   await axiosInstance.delete(`${BASE}/${id}`);
 }
 
+export async function importCustomersCsv(file: File): Promise<any> {
+  const form = new FormData();
+  form.append('file', file);
+  const res = await axiosInstance.post(`${BASE}/import/csv`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return res.data;
+}
+
 export const customerApi = {
   getAll: getCustomers,
   getById: getCustomerById,
   create: createCustomer,
   update: updateCustomer,
   delete: deleteCustomer,
+  importCsv: importCustomersCsv,
 };

@@ -24,6 +24,11 @@ router.get('/', async (req, res, next) => {
     `;
         const params = [req.tenantId];
 
+        if (req.query.warehouse_id) {
+            baseSql += ` AND r.warehouse_id = ?`;
+            params.push(req.query.warehouse_id);
+        }
+
         if (search) {
             baseSql += ` AND (p.name LIKE ? OR p.code LIKE ? OR r.name LIKE ?)`;
             const searchStr = `%${search}%`;

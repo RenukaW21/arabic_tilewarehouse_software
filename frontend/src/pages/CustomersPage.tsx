@@ -6,9 +6,10 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { DataTableShell } from "@/components/shared/DataTableShell";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { CrudFormDialog, FieldDef } from "@/components/shared/CrudFormDialog";
+import { CsvImportDialog } from "@/components/shared/CsvImportDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, FileUp } from "lucide-react";
 import { toast } from "sonner";
 
 const fields: FieldDef[] = [
@@ -31,6 +32,7 @@ export default function CustomersPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
   const [deleting, setDeleting] = useState<Customer | null>(null);
+  const [csvImportOpen, setCsvImportOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
@@ -132,7 +134,17 @@ export default function CustomersPage() {
         subtitle="Manage your customers"
         onAdd={() => { setEditing(null); setDialogOpen(true); }}
         addLabel="Add Customer"
-      />
+      >
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setCsvImportOpen(true)}
+          className="flex items-center gap-1.5"
+        >
+          <FileUp className="h-4 w-4" />
+          Import CSV
+        </Button>
+      </PageHeader>
       <DataTableShell<Customer>
         data={customers}
         columns={columns}
@@ -159,6 +171,20 @@ export default function CustomersPage() {
         onClose={() => setDeleting(null)}
         onConfirm={async () => { if (deleting) await deleteMutation.mutateAsync(deleting.id); }}
         loading={deleteMutation.isPending}
+      />
+      
+      <CsvImportDialog
+        open={csvImportOpen}
+        onClose={() => setCsvImportOpen(false)}
+        title="Bulk Import Customers via CSV"
+        description="Upload a CSV file to import multiple customers at once."
+        entityName="customer(s)"
+        queryKeyToInvalidate="customers"
+        requiredColumns={["name"]}
+        optionalColumns={["code", "contact_person", "phone", "email", "billing_address", "shipping_address", "gstin", "state_code", "credit_limit", "payment_terms_days", "is_active"]}
+        templateHeaders={["name", "code", "contact_person", "phone", "email", "billing_address", "shipping_address", "gstin", "state_code", "credit_limit", "payment_terms_days", "is_active"]}
+        sampleRow={"Acme Corp,CUST-001,John Doe,1234567890,john@acme.com,123 Billing St,456 Shipping Ave,22AAAAA0000A1Z5,22,50000,30,true"}
+        importMutationFn={(file: File) => customerApi.importCsv(file)}
       />
     </div>
   );

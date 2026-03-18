@@ -398,7 +398,7 @@ CREATE TABLE grn (
   tenant_id         VARCHAR(36)  NOT NULL,
   grn_number        VARCHAR(50)  NOT NULL,
 
-  purchase_order_id VARCHAR(36)  NOT NULL,
+  purchase_order_id VARCHAR(36)  NULL DEFAULT NULL,
   vendor_id         VARCHAR(36)  NOT NULL,
   warehouse_id      VARCHAR(36)  NOT NULL,
 
@@ -432,7 +432,8 @@ CREATE TABLE grn (
       FOREIGN KEY (tenant_id) REFERENCES tenants(id),
 
   CONSTRAINT fk_grn_po
-      FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(id),
+      FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(id)
+      ON DELETE SET NULL,
 
   CONSTRAINT fk_grn_vendor
       FOREIGN KEY (vendor_id) REFERENCES vendors(id),
@@ -450,12 +451,13 @@ CREATE TABLE grn_items (
 
   grn_id VARCHAR(36) NOT NULL,
 
-  purchase_order_item_id VARCHAR(36) NOT NULL,
+  purchase_order_item_id VARCHAR(36) NULL DEFAULT NULL,
 
   product_id VARCHAR(36) NOT NULL,
   shade_id VARCHAR(36) NULL,
 
   batch_id VARCHAR(36) NULL,
+  batch_number VARCHAR(100) NULL DEFAULT NULL,
   rack_id VARCHAR(36) NULL,
 
   received_boxes DECIMAL(10,2) NOT NULL,
@@ -488,7 +490,8 @@ CREATE TABLE grn_items (
 
   CONSTRAINT fk_grn_item_poi
       FOREIGN KEY (purchase_order_item_id)
-      REFERENCES purchase_order_items(id),
+      REFERENCES purchase_order_items(id)
+      ON DELETE SET NULL,
 
   CONSTRAINT fk_grn_item_product
       FOREIGN KEY (product_id)

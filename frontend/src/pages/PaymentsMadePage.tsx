@@ -91,6 +91,7 @@ export default function PaymentsMadePage() {
     { key: 'payment_number', label: 'Payment #', render: (r: VendorPayment) => <span className="font-mono text-sm font-medium">{r.payment_number}</span> },
     { key: 'vendor_id', label: 'Vendor', render: (r: VendorPayment) => getVendorName(r.vendor_id) },
     { key: 'purchase_order_id', label: 'PO #', render: (r: VendorPayment) => getPONumber(r.purchase_order_id) },
+    { key: 'tile_details', label: 'Tile Details', render: (r: VendorPayment) => <span className="text-muted-foreground text-xs truncate max-w-[200px] inline-block" title={r.tile_details || '—'}>{r.tile_details || '—'}</span> },
     { key: 'amount', label: 'Amount', render: (r: VendorPayment) => `₹${Number(r.amount || 0).toLocaleString()}` },
     { key: 'payment_date', label: 'Date', render: (r: VendorPayment) => (r.payment_date ? new Date(r.payment_date).toLocaleDateString() : '—') },
     { key: 'payment_mode', label: 'Mode', render: (r: VendorPayment) => <StatusBadge status={r.payment_mode} /> },

@@ -42,6 +42,8 @@ const salesReturnsRoutes = require('./modules/sales-returns/routes');
 const usersRoutes = require('./modules/users/routes');
 const gstConfigRoutes = require('./modules/gst-config/routes');
 const rackInventoryRoutes = require('./modules/rack-inventory/routes');
+const vendorPaymentsRoutes = require('./modules/vendor-payments/routes');
+const customerPaymentsRoutes = require('./modules/customer-payments/routes');
 
 // Inline route handlers for CRUD modules (same pattern as products)
 const buildCrudRouter = (tableName, allowedSortFields = ['created_at']) => {
@@ -201,8 +203,8 @@ app.use(`${API}/batches`, buildCrudRouter('batches', ['batch_number', 'created_a
 app.use(`${API}/purchase-returns`, purchaseReturnRoutes);
 app.use(`${API}/credit-notes`, buildCrudRouter('credit_notes', ['cn_date', 'created_at']));
 app.use(`${API}/debit-notes`, buildCrudRouter('debit_notes', ['dn_date', 'created_at']));
-app.use(`${API}/customer-payments`, buildCrudRouter('customer_payments', ['payment_date', 'created_at']));
-app.use(`${API}/vendor-payments`, buildCrudRouter('vendor_payments', ['payment_date', 'created_at']));
+app.use(`${API}/customer-payments`, customerPaymentsRoutes);
+app.use(`${API}/vendor-payments`, vendorPaymentsRoutes);
 app.use(`${API}/alerts`, buildCrudRouter('low_stock_alerts', ['alerted_at']));
 app.use(`${API}/notifications`, buildCrudRouter('notifications', ['created_at']));
 app.use(`${API}/audit-logs`, buildCrudRouter('audit_logs', ['created_at']));

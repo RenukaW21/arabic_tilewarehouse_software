@@ -49,7 +49,7 @@ const updateItemPicked = async (req, res, next) => {
 
 const complete = async (req, res, next) => {
   try {
-    const data = await service.complete(req.params.id, req.tenantId);
+    const data = await service.complete(req.params.id, req.tenantId, req.user?.id);
     return success(res, data, 'Pick list completed');
   } catch (err) {
     next(err);

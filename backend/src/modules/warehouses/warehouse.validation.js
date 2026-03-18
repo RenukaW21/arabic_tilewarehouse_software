@@ -19,7 +19,7 @@ const updateWarehouseSchema = Joi.object({
   city: Joi.string().max(100).allow(null, '').optional(),
   state: Joi.string().max(100).allow(null, '').optional(),
   pincode: Joi.string().max(20).allow(null, '').optional(),
-  is_active: Joi.boolean().optional(),
+  is_active: Joi.boolean().truthy(1, '1', 'true').falsy(0, '0', 'false').optional(),
 }).min(1).unknown(true);
 
 const listQuerySchema = Joi.object({
