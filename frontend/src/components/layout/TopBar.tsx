@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
 import { NotificationsBell } from './NotificationsBell';
+import { LanguageSwitcher } from './LanguageSwitcher';
 
 interface TopBarProps {
   onToggleSidebar: () => void;
@@ -30,6 +31,7 @@ export function TopBar({ onToggleSidebar, title }: TopBarProps) {
           />
         </div> */}
 
+        <LanguageSwitcher />
         <NotificationsBell />
 
         <div className="flex items-center gap-2 ml-2 pl-2 border-l border-border">

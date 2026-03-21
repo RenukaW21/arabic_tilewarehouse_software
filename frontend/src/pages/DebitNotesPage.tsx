@@ -12,8 +12,10 @@ import { DeleteConfirmDialog } from '@/components/shared/DeleteConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 export default function DebitNotesPage() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { user } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -39,13 +41,13 @@ export default function DebitNotesPage() {
   const items: DebitNote[] = notesRes?.data ?? [];
 
   const fields: FieldDef[] = [
-    { key: 'dn_number', label: 'Debit Note #', type: 'text', required: true, placeholder: 'DN-2025-0001' },
-    { key: 'vendor_id', label: 'Vendor', type: 'select', required: true, options: vendors.map((v) => ({ value: v.id, label: v.name })) },
-    { key: 'purchase_return_id', label: 'Purchase Return (optional)', type: 'select', options: purchaseReturns.map((p) => ({ value: p.id, label: p.return_number })) },
-    { key: 'amount', label: 'Amount (₹)', type: 'number', required: true, defaultValue: 0 },
-    { key: 'dn_date', label: 'Issue Date', type: 'date' },
-    { key: 'status', label: 'Status', type: 'select', required: true, options: [{ value: 'draft', label: 'Draft' }, { value: 'issued', label: 'Issued' }, { value: 'acknowledged', label: 'Acknowledged' }, { value: 'settled', label: 'Settled' }], defaultValue: 'draft' },
-    { key: 'notes', label: 'Notes', type: 'textarea' },
+    { key: 'dn_number', label: t('debitNotes.dnNumber'), type: 'text', required: true, placeholder: 'DN-2025-0001' },
+    { key: 'vendor_id', label: t('debitNotes.vendor'), type: 'select', required: true, options: vendors.map((v) => ({ value: v.id, label: v.name })) },
+    { key: 'purchase_return_id', label: t('debitNotes.purchaseReturnOptional'), type: 'select', options: purchaseReturns.map((p) => ({ value: p.id, label: p.return_number })) },
+    { key: 'amount', label: t('debitNotes.amount'), type: 'number', required: true, defaultValue: 0 },
+    { key: 'dn_date', label: t('debitNotes.issueDate'), type: 'date' },
+    { key: 'status', label: t('debitNotes.status'), type: 'select', required: true, options: [{ value: 'draft', label: t('debitNotes.statusDraft') }, { value: 'issued', label: t('debitNotes.statusIssued') }, { value: 'acknowledged', label: t('debitNotes.statusAcknowledged') }, { value: 'settled', label: t('debitNotes.statusSettled') }], defaultValue: 'draft' },
+    { key: 'notes', label: t('common.notes', 'ملاحظات'), type: 'textarea' },
   ];
 
   const saveMutation = useMutation({
@@ -67,10 +69,10 @@ export default function DebitNotesPage() {
       qc.invalidateQueries({ queryKey: ['debit_notes'] });
       setDialogOpen(false);
       setEditing(null);
-      toast.success(editing ? 'Debit note updated!' : 'Debit note created!');
+      toast.success(editing ? t('debitNotes.updated') : t('debitNotes.created'));
     },
     onError: (e: any) =>
-      toast.error(e?.response?.data?.error?.message ?? e.message ?? 'Operation failed'),
+      toast.error(e?.response?.data?.error?.message ?? e.message ?? t('common.operationFailed', 'فشلت العملية')),
   });
 
   const deleteMutation = useMutation({
@@ -78,10 +80,10 @@ export default function DebitNotesPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['debit_notes'] });
       setDeleting(null);
-      toast.success('Debit note deleted!');
+      toast.success(t('debitNotes.deleted'));
     },
     onError: (e: any) =>
-      toast.error(e?.response?.data?.error?.message ?? e.message ?? 'Delete failed'),
+      toast.error(e?.response?.data?.error?.message ?? e.message ?? t('common.deleteFailed', 'فشل الحذف')),
   });
 
   const getVendorName = (vendorId: string) => vendors.find((v) => v.id === vendorId)?.name ?? '—';
@@ -89,14 +91,14 @@ export default function DebitNotesPage() {
     prId ? purchaseReturns.find((p) => p.id === prId)?.return_number ?? '—' : '—';
 
   const columns = [
-    { key: 'dn_number', label: 'DN #', render: (r: DebitNote) => <span className="font-mono text-sm font-medium">{r.dn_number}</span> },
-    { key: 'vendor', label: 'Vendor', render: (r: DebitNote) => getVendorName(r.vendor_id) },
-    { key: 'pr', label: 'Return #', render: (r: DebitNote) => getPRNumber(r.purchase_return_id) },
-    { key: 'amount', label: 'Amount', render: (r: DebitNote) => `₹${Number(r.amount || 0).toLocaleString()}` },
-    { key: 'dn_date', label: 'Date', render: (r: DebitNote) => (r.dn_date ? new Date(r.dn_date).toLocaleDateString() : '—') },
-    { key: 'status', label: 'Status', render: (r: DebitNote) => <StatusBadge status={r.status} /> },
+    { key: 'dn_number', label: t('debitNotes.dnNumber'), render: (r: DebitNote) => <span className="font-mono text-sm font-medium">{r.dn_number}</span> },
+    { key: 'vendor', label: t('debitNotes.vendor'), render: (r: DebitNote) => getVendorName(r.vendor_id) },
+    { key: 'pr', label: t('debitNotes.returnHash'), render: (r: DebitNote) => getPRNumber(r.purchase_return_id) },
+    { key: 'amount', label: t('debitNotes.amount'), render: (r: DebitNote) => `₹${Number(r.amount || 0).toLocaleString()}` },
+    { key: 'dn_date', label: t('debitNotes.date'), render: (r: DebitNote) => (r.dn_date ? new Date(r.dn_date).toLocaleDateString() : '—') },
+    { key: 'status', label: t('debitNotes.status'), render: (r: DebitNote) => <StatusBadge status={r.status} /> },
     {
-      key: 'actions', label: 'Actions', render: (r: DebitNote) => (
+      key: 'actions', label: t('debitNotes.actions'), render: (r: DebitNote) => (
         <div className="flex gap-1">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditing(r); setDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
           <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleting(r)}><Trash2 className="h-4 w-4" /></Button>
@@ -107,14 +109,14 @@ export default function DebitNotesPage() {
 
   return (
     <div>
-      <PageHeader title="Debit Notes" subtitle="Manage debit notes for vendors" onAdd={() => { setEditing(null); setDialogOpen(true); }} addLabel="New Debit Note" />
-      {isLoading ? <p className="text-muted-foreground">Loading...</p> : <DataTableShell data={items as any[]} columns={columns as any[]} searchKey="dn_number" searchPlaceholder="Search DN#..." />}
+      <PageHeader title={t('debitNotes.title')} subtitle={t('debitNotes.subtitle')} onAdd={() => { setEditing(null); setDialogOpen(true); }} addLabel={t('debitNotes.newDebitNote')} />
+      {isLoading ? <p className="text-muted-foreground">{t('common.loading', 'جار التحميل...')}</p> : <DataTableShell data={items as any[]} columns={columns as any[]} searchKey="dn_number" searchPlaceholder={t('debitNotes.searchPlaceholder')} />}
       <CrudFormDialog
         open={dialogOpen}
         onClose={() => { setDialogOpen(false); setEditing(null); }}
         onSubmit={(d) => saveMutation.mutateAsync(d).then(() => { })}
         fields={fields}
-        title={editing ? 'Edit Debit Note' : 'New Debit Note'}
+        title={editing ? t('debitNotes.editDebitNote') : t('debitNotes.newDebitNote')}
         initialData={editing ? { ...editing, purchase_return_id: editing.purchase_return_id ?? 'none' } : undefined}
         loading={saveMutation.isPending}
       />

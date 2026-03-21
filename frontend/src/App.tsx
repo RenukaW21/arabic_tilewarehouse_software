@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -52,7 +53,13 @@ const queryClient = new QueryClient();
 
 function AppRoutes() {
   const { user, loading } = useAuth();
-  if (loading) return <div className="flex items-center justify-center h-screen text-muted-foreground">Loading...</div>;
+  const { t } = useTranslation();
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-screen text-muted-foreground">
+      {t('app.loading')}
+    </div>
+  );
   if (!user) return <AuthPage />;
 
   return (

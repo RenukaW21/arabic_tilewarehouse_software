@@ -11,13 +11,14 @@ import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { CsvImportDialog } from "@/components/shared/CsvImportDialog";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, Eye, FileUp } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
 const BACKEND_URL = API_BASE.replace(/\/api\/v1\/?$/, '') || 'http://localhost:5000';
 
 export default function ProductsPage() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const navigate = useNavigate();
 
@@ -30,10 +31,6 @@ export default function ProductsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
-
-  /* ===============================
-     DATA FETCHING
-  =============================== */
 
   const listParams = {
     page,
@@ -55,10 +52,6 @@ export default function ProductsPage() {
     queryFn: getCategories,
   });
 
-  /* ===============================
-     HANDLERS
-  =============================== */
-
   const handleSearch = useCallback((val: string) => {
     setSearch(val);
     setPage(1);
@@ -69,9 +62,6 @@ export default function ProductsPage() {
     handleSearch(val);
   };
 
-  /* ===============================
-     HANDLE PREVIEW
-  =============================== */
   useEffect(() => {
     const editImg = editing?.imageUrl || editing?.image_url;
     if (editImg) {
@@ -81,42 +71,34 @@ export default function ProductsPage() {
     }
   }, [editing]);
 
-  /* ===============================
-     FIELDS
-  =============================== */
   const fields: FieldDef[] = [
     {
       key: "category_id",
-      label: "Category",
+      label: t('products.category'),
       type: "select",
       required: true,
       options: categories.map((c: any) => ({ label: c.name, value: c.id })),
     },
-    { key: "name", label: "Product Name", type: "text", required: true },
-    { key: "code", label: "Product Code", type: "text", required: true },
-    { key: "size_label", label: "Size Label", type: "text", required: true },
-    { key: "size_length_mm", label: "Length (mm)", type: "number", required: true },
-    { key: "size_width_mm", label: "Width (mm)", type: "number", required: true },
-    { key: "pieces_per_box", label: "Pieces/Box", type: "number", required: true },
-    { key: "sqft_per_box", label: "Sqft/Box", type: "number", required: true },
-    { key: "brand", label: "Brand", type: "text" },
-    { key: "gst_rate", label: "GST Rate (%)", type: "number", defaultValue: 18 },
-    { key: "mrp", label: "MRP (₹)", type: "number" },
-    { key: "reorder_level_boxes", label: "Reorder Level", type: "number", defaultValue: 0 },
-
-    { key: "description", label: "Description", type: "textarea" },
-    { key: "is_active", label: "Status", type: "switch", defaultValue: true },
-    { key: "image", label: "Tile Image", type: "file" }
+    { key: "name", label: t('products.productName'), type: "text", required: true },
+    { key: "code", label: t('products.productCode'), type: "text", required: true },
+    { key: "size_label", label: t('products.sizeLabel'), type: "text", required: true },
+    { key: "size_length_mm", label: t('products.lengthMm'), type: "number", required: true },
+    { key: "size_width_mm", label: t('products.widthMm'), type: "number", required: true },
+    { key: "pieces_per_box", label: t('products.piecesPerBox'), type: "number", required: true },
+    { key: "sqft_per_box", label: t('products.sqftPerBox'), type: "number", required: true },
+    { key: "brand", label: t('products.brand'), type: "text" },
+    { key: "gst_rate", label: t('products.gstRate'), type: "number", defaultValue: 18 },
+    { key: "mrp", label: t('products.mrp'), type: "number" },
+    { key: "reorder_level_boxes", label: t('products.reorderLevel'), type: "number", defaultValue: 0 },
+    { key: "description", label: t('common.description'), type: "textarea" },
+    { key: "is_active", label: t('products.status'), type: "switch", defaultValue: true },
+    { key: "image", label: t('products.tileImage'), type: "file" }
   ];
 
-  /* ===============================
-     SAVE MUTATION
-  =============================== */
   const saveMutation = useMutation({
     mutationFn: async (formData: Record<string, unknown>) => {
       const data = new FormData();
 
-      // Map frontend snake_case keys to backend camelCase DTO keys
       const keyMap: Record<string, string> = {
         category_id: "categoryId",
         size_label: "sizeLabel",
@@ -129,29 +111,21 @@ export default function ProductsPage() {
         is_active: "isActive",
       };
 
-      // Keys that are internal/DB fields from the product row — never send these to backend
       const skipKeys = new Set([
         'id', 'tenant_id', 'created_at', 'updated_at',
-        'image_url', 'imageUrl',   // old url — backend keeps it if no new file
+        'image_url', 'imageUrl',
         'category_name', 'rack_names', 'rack_id',
         'total_boxes_stored', 'warehouse_names',
         'vendors', 'customers',
       ]);
 
       Object.entries(formData).forEach(([key, value]) => {
-        // Skip internal/DB-only keys
         if (skipKeys.has(key)) return;
-
-        // Image: only append if it's an actual File selected by the user
         if (key === 'image') {
           if (value instanceof File) data.append('image', value);
-          return; // skip if it's a string path or null
+          return;
         }
-
-        // Skip truly empty values (undefined, null), but ALLOW empty strings ''
-        // so that optional fields can be explicitly cleared by the user.
         if (value === undefined || value === null) return;
-
         const backendKey = keyMap[key] ?? key;
         data.append(backendKey, String(value));
       });
@@ -163,7 +137,7 @@ export default function ProductsPage() {
       qc.invalidateQueries({ queryKey: ["products"] });
       setDialogOpen(false);
       setEditing(null);
-      toast.success(editing ? "Product updated" : "Product created");
+      toast.success(editing ? t('products.productUpdated') : t('products.productCreated'));
     },
   });
 
@@ -172,14 +146,14 @@ export default function ProductsPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["products"] });
       setDeleting(null);
-      toast.success("Product deleted");
+      toast.success(t('products.productDeleted'));
     },
   });
 
   const columns = [
     {
       key: "imageUrl",
-      label: "Preview",
+      label: t('common.preview'),
       render: (r: any) => {
         const img = r.imageUrl || r.image_url;
         return img ? (
@@ -187,30 +161,30 @@ export default function ProductsPage() {
         ) : "—";
       },
     },
-    { key: "code", label: "Code" },
-    { key: "name", label: "Name" },
+    { key: "code", label: t('common.code') },
+    { key: "name", label: t('common.name') },
     {
       key: "storage",
-      label: "Storage",
+      label: t('common.storage'),
       render: (r: any) => (
         <div className="text-xs">
           {r.total_boxes_stored > 0 ? (
-            <div className="text-muted-foreground">{r.total_boxes_stored} boxes stored</div>
+            <div className="text-muted-foreground">{r.total_boxes_stored} {t('common.boxesStored')}</div>
           ) : (
-            <div className="text-muted-foreground">Unassigned</div>
+            <div className="text-muted-foreground">{t('common.unassigned')}</div>
           )}
         </div>
       ),
     },
-    { key: "size_label", label: "Size" },
+    { key: "size_label", label: t('common.size') },
     {
       key: "is_active",
-      label: "Status",
+      label: t('common.status'),
       render: (r: any) => <StatusBadge status={r.is_active ? "active" : "inactive"} />,
     },
     {
       key: "actions",
-      label: "Actions",
+      label: t('common.actions'),
       render: (r: any) => (
         <div className="flex gap-1">
           <Button variant="ghost" size="icon" onClick={() => navigate(`/master/products/${r.id}`)}><Eye className="h-4 w-4" /></Button>
@@ -224,10 +198,10 @@ export default function ProductsPage() {
   return (
     <div>
       <PageHeader
-        title="Products"
-        subtitle="Manage tile Products"
+        title={t('products.title')}
+        subtitle={t('products.subtitle')}
         onAdd={() => { setEditing(null); setDialogOpen(true); setPreviewUrl(null); }}
-        addLabel="Add Product"
+        addLabel={t('products.addProduct')}
       >
         <Button
           variant="outline"
@@ -236,7 +210,7 @@ export default function ProductsPage() {
           className="flex items-center gap-1.5"
         >
           <FileUp className="h-4 w-4" />
-          Import CSV
+          {t('common.importCsv')}
         </Button>
       </PageHeader>
 
@@ -257,7 +231,7 @@ export default function ProductsPage() {
         onClose={() => { setDialogOpen(false); setEditing(null); }}
         onSubmit={(d) => saveMutation.mutateAsync(d) as any}
         fields={fields}
-        title={editing ? "Edit Product" : "New Product"}
+        title={editing ? t('products.editProduct') : t('products.newProduct')}
         initialData={editing ? { ...editing } : null}
         loading={saveMutation.isPending}
       />

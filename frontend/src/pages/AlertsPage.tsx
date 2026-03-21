@@ -6,11 +6,12 @@ import { DataTableShell } from '@/components/shared/DataTableShell';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 export default function AlertsPage() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
 
-  // 🔹 Fetch alerts
   const { data: alerts = [], isLoading } = useQuery({
     queryKey: ['low_stock_alerts'],
     queryFn: async () => {
@@ -19,22 +20,21 @@ export default function AlertsPage() {
     },
   });
 
-  // 🔹 Update alert status
   const ackMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       await alertApi.update(id, status);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['low_stock_alerts'] });
-      toast.success('Alert updated');
+      toast.success(t('alertsPage.alertUpdated'));
     },
-    onError: () => toast.error('Failed to update alert'),
+    onError: () => toast.error(t('alertsPage.failedToUpdateAlert')),
   });
 
   const columns = [
     {
       key: 'product',
-      label: 'Product',
+      label: t('alertsPage.product'),
       render: (r: Alert) => (
         <div>
           <span className="font-medium">{r.product_name}</span>
@@ -46,33 +46,33 @@ export default function AlertsPage() {
     },
     {
       key: 'warehouse',
-      label: 'Warehouse',
-      render: (r: Alert) => r.warehouse_name ?? 'Main Warehouse',
+      label: t('alertsPage.warehouse'),
+      render: (r: Alert) => r.warehouse_name ?? t('alertsPage.mainWarehouse'),
     },
     {
       key: 'current_stock_boxes',
-      label: 'Current Stock',
+      label: t('alertsPage.currentStock'),
       render: (r: Alert) => (
         <span className="text-red-600 font-semibold">
-          {Number(r.current_stock_boxes)} boxes
+          {Number(r.current_stock_boxes)} {t('common.boxes')}
         </span>
       ),
     },
     {
       key: 'reorder_level_boxes',
-      label: 'Reorder Level',
-      render: (r: Alert) => `${r.reorder_level_boxes} boxes`,
+      label: t('alertsPage.reorderLevel'),
+      render: (r: Alert) => `${r.reorder_level_boxes} ${t('common.boxes')}`,
     },
     {
       key: 'status',
-      label: 'Status',
+      label: t('alertsPage.status'),
       render: (r: Alert) => (
         <StatusBadge status={r.status ?? 'open'} />
       ),
     },
     {
       key: 'actions',
-      label: 'Actions',
+      label: t('alertsPage.actions'),
       render: (r: Alert) => (
         <div className="flex gap-2">
           {r.status === 'open' && r.id && (
@@ -83,7 +83,7 @@ export default function AlertsPage() {
                 ackMutation.mutate({ id: r.id, status: 'acknowledged' })
               }
             >
-              Acknowledge
+              {t('alertsPage.acknowledge')}
             </Button>
           )}
 
@@ -95,7 +95,7 @@ export default function AlertsPage() {
                 ackMutation.mutate({ id: r.id, status: 'resolved' })
               }
             >
-              Resolve
+              {t('alertsPage.resolve')}
             </Button>
           )}
         </div>
@@ -106,18 +106,18 @@ export default function AlertsPage() {
   return (
     <div>
       <PageHeader
-        title="Low Stock Alerts"
-        subtitle="Monitor warehouse stock levels"
+        title={t('alertsPage.title')}
+        subtitle={t('alertsPage.subtitle')}
       />
 
       {isLoading ? (
-        <p className="text-muted-foreground">Loading alerts...</p>
+        <p className="text-muted-foreground">{t('alertsPage.loadingAlerts')}</p>
       ) : (
         <DataTableShell
           data={alerts}
           columns={columns}
           searchKey="product_name"
-          searchPlaceholder="Search product..."
+          searchPlaceholder={t('alertsPage.searchProduct')}
         />
       )}
     </div>

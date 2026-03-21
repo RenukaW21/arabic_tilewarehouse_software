@@ -11,8 +11,10 @@ import { DeleteConfirmDialog } from '@/components/shared/DeleteConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Pencil, Trash2, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 export default function StockAdjustmentsPage() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<StockAdjustment | null>(null);
@@ -57,12 +59,12 @@ export default function StockAdjustmentsPage() {
   const productOptions = products.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }));
 
   const fields: FieldDef[] = [
-    { key: 'warehouse_id', label: 'Warehouse', type: 'select', required: true, options: warehouseOptions },
-    { key: 'product_id', label: 'Product', type: 'select', required: true, options: productOptions },
-    { key: 'adjustment_type', label: 'Type', type: 'select', required: true, options: [{ value: 'add', label: 'Add' }, { value: 'deduct', label: 'Deduct' }], defaultValue: 'add' },
-    { key: 'boxes', label: 'Boxes', type: 'number', defaultValue: 0, required: true },
-    { key: 'pieces', label: 'Pieces', type: 'number', defaultValue: 0 },
-    { key: 'reason', label: 'Reason', type: 'text', required: true },
+    { key: 'warehouse_id', label: t('stockAdjustmentsPage.warehouse'), type: 'select', required: true, options: warehouseOptions },
+    { key: 'product_id', label: t('stockAdjustmentsPage.product'), type: 'select', required: true, options: productOptions },
+    { key: 'adjustment_type', label: t('stockAdjustmentsPage.type'), type: 'select', required: true, options: [{ value: 'add', label: t('stockAdjustmentsPage.typeAdd') }, { value: 'deduct', label: t('stockAdjustmentsPage.typeDeduct') }], defaultValue: 'add' },
+    { key: 'boxes', label: t('stockAdjustmentsPage.boxes'), type: 'number', defaultValue: 0, required: true },
+    { key: 'pieces', label: t('common.pieces', 'قطع'), type: 'number', defaultValue: 0 },
+    { key: 'reason', label: t('stockAdjustmentsPage.reason'), type: 'text', required: true },
   ];
 
   const saveMutation = useMutation({
@@ -82,10 +84,10 @@ export default function StockAdjustmentsPage() {
       qc.invalidateQueries({ queryKey: ['stock-adjustments'] });
       setDialogOpen(false);
       setEditing(null);
-      toast.success(editing ? 'Updated' : 'Adjustment created. Approve to apply to stock.');
+      toast.success(editing ? t('stockAdjustmentsPage.updated') : t('stockAdjustmentsPage.created'));
     },
     onError: (e: { response?: { data?: { error?: { message?: string } } } }) => {
-      toast.error(e?.response?.data?.error?.message ?? 'Operation failed');
+      toast.error(e?.response?.data?.error?.message ?? t('common.operationFailed', 'فشلت العملية'));
     },
   });
 
@@ -93,10 +95,10 @@ export default function StockAdjustmentsPage() {
     mutationFn: (id: string) => stockAdjustmentsApi.approve(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['stock-adjustments'] });
-      toast.success('Adjustment approved. Stock updated.');
+      toast.success(t('stockAdjustmentsPage.approved'));
     },
     onError: (e: { response?: { data?: { error?: { message?: string } } } }) => {
-      toast.error(e?.response?.data?.error?.message ?? 'Approve failed');
+      toast.error(e?.response?.data?.error?.message ?? t('common.approveFailed', 'فشل الاعتماد'));
     },
   });
 
@@ -105,30 +107,30 @@ export default function StockAdjustmentsPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['stock-adjustments'] });
       setDeleting(null);
-      toast.success('Deleted');
+      toast.success(t('stockAdjustmentsPage.deleted'));
     },
     onError: (e: { response?: { data?: { error?: { message?: string } } } }) => {
-      toast.error(e?.response?.data?.error?.message ?? 'Delete failed');
+      toast.error(e?.response?.data?.error?.message ?? t('common.deleteFailed', 'فشل الحذف'));
     },
   });
 
   const columns = [
-    { key: 'product', label: 'Product', render: (r: StockAdjustment) => `${r.product_code ?? ''} — ${r.product_name ?? r.product_id}` },
-    { key: 'warehouse_name', label: 'Warehouse', render: (r: StockAdjustment) => r.warehouse_name ?? '—' },
-    { key: 'adjustment_type', label: 'Type', render: (r: StockAdjustment) => <StatusBadge status={r.adjustment_type === 'add' ? 'active' : 'cancelled'} /> },
-    { key: 'boxes', label: 'Boxes', render: (r: StockAdjustment) => r.boxes },
-    { key: 'reason', label: 'Reason', render: (r: StockAdjustment) => r.reason },
-    { key: 'status', label: 'Status', render: (r: StockAdjustment) => <StatusBadge status={r.status} /> },
+    { key: 'product', label: t('stockAdjustmentsPage.product'), render: (r: StockAdjustment) => `${r.product_code ?? ''} — ${r.product_name ?? r.product_id}` },
+    { key: 'warehouse_name', label: t('stockAdjustmentsPage.warehouse'), render: (r: StockAdjustment) => r.warehouse_name ?? '—' },
+    { key: 'adjustment_type', label: t('stockAdjustmentsPage.type'), render: (r: StockAdjustment) => <StatusBadge status={r.adjustment_type === 'add' ? 'active' : 'cancelled'} /> },
+    { key: 'boxes', label: t('stockAdjustmentsPage.boxes'), render: (r: StockAdjustment) => r.boxes },
+    { key: 'reason', label: t('stockAdjustmentsPage.reason'), render: (r: StockAdjustment) => r.reason },
+    { key: 'status', label: t('stockAdjustmentsPage.status'), render: (r: StockAdjustment) => <StatusBadge status={r.status} /> },
     {
       key: 'actions',
-      label: 'Actions',
+      label: t('stockAdjustmentsPage.actions'),
       render: (r: StockAdjustment) => (
         <div className="flex gap-1">
           {r.status === 'pending' && (
             <>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditing(r); setDialogOpen(true); }} title="Edit"><Pencil className="h-4 w-4" /></Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600" onClick={() => approveMutation.mutate(r.id)} disabled={approveMutation.isPending} title="Approve"><CheckCircle className="h-4 w-4" /></Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleting(r)} title="Delete"><Trash2 className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditing(r); setDialogOpen(true); }} title={t('common.edit', 'تعديل')}><Pencil className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600" onClick={() => approveMutation.mutate(r.id)} disabled={approveMutation.isPending} title={t('common.approve', 'اعتماد')}><CheckCircle className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleting(r)} title={t('common.delete', 'حذف')}><Trash2 className="h-4 w-4" /></Button>
             </>
           )}
         </div>
@@ -138,12 +140,12 @@ export default function StockAdjustmentsPage() {
 
   return (
     <div>
-      <PageHeader title="Stock Adjustments" subtitle="Create adjustments and approve to update stock." onAdd={() => { setEditing(null); setDialogOpen(true); }} addLabel="New Adjustment" />
+      <PageHeader title={t('stockAdjustmentsPage.title')} subtitle={t('stockAdjustmentsPage.subtitle')} onAdd={() => { setEditing(null); setDialogOpen(true); }} addLabel={t('stockAdjustmentsPage.newAdjustment')} />
       <DataTableShell<StockAdjustment>
         data={rows}
         columns={columns}
         searchKey="reason"
-        searchPlaceholder="Search..."
+        searchPlaceholder={t('stockAdjustmentsPage.searchPlaceholder')}
         serverSide
         searchValue={searchInput}
         onSearchChange={handleSearchChange}
@@ -151,7 +153,7 @@ export default function StockAdjustmentsPage() {
         onPageChange={setPage}
         isLoading={isLoading}
       />
-      <CrudFormDialog open={dialogOpen} onClose={() => { setDialogOpen(false); setEditing(null); }} onSubmit={(d) => saveMutation.mutateAsync(d)} fields={fields} title={editing ? 'Edit Adjustment' : 'New Adjustment'} initialData={editing} loading={saveMutation.isPending} />
+      <CrudFormDialog open={dialogOpen} onClose={() => { setDialogOpen(false); setEditing(null); }} onSubmit={(d) => saveMutation.mutateAsync(d)} fields={fields} title={editing ? t('stockAdjustmentsPage.editAdjustment') : t('stockAdjustmentsPage.newAdjustment')} initialData={editing} loading={saveMutation.isPending} />
       <DeleteConfirmDialog open={!!deleting} onClose={() => setDeleting(null)} onConfirm={() => deleting && deleteMutation.mutateAsync(deleting.id)} loading={deleteMutation.isPending} />
     </div>
   );

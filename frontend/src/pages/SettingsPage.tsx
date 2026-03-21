@@ -6,12 +6,14 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Warehouse, Settings as SettingsIcon, Package, Bell, MapPin, Layers } from 'lucide-react';
+import { Warehouse, Settings as SettingsIcon, Package, Bell, MapPin } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { warehouseApi } from '@/api/warehouseApi';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 export default function SettingsPage() {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
 
   const { data: warehousesRes } = useQuery({
@@ -24,50 +26,50 @@ export default function SettingsPage() {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      toast.success('Settings updated successfully');
+      toast.success(t('settings.settingsUpdated'));
     }, 1000);
   };
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Settings"
-        subtitle="Manage your application and warehouse configurations"
+        title={t('settings.title')}
+        subtitle={t('settings.subtitle')}
       />
 
       <Tabs defaultValue="warehouse" className="w-full">
         <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:w-[600px]">
           <TabsTrigger value="general" className="gap-2">
-            <SettingsIcon className="h-4 w-4" /> General
+            <SettingsIcon className="h-4 w-4" /> {t('settings.general')}
           </TabsTrigger>
           <TabsTrigger value="warehouse" className="gap-2">
-            <Warehouse className="h-4 w-4" /> Warehouse
+            <Warehouse className="h-4 w-4" /> {t('settings.warehouse')}
           </TabsTrigger>
           <TabsTrigger value="inventory" className="gap-2">
-            <Package className="h-4 w-4" /> Inventory
+            <Package className="h-4 w-4" /> {t('settings.inventory')}
           </TabsTrigger>
           <TabsTrigger value="notifications" className="gap-2">
-            <Bell className="h-4 w-4" /> Alerts
+            <Bell className="h-4 w-4" /> {t('settings.alerts')}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>General Settings</CardTitle>
-              <CardDescription>Configure basic application details</CardDescription>
+              <CardTitle>{t('settings.generalSettings')}</CardTitle>
+              <CardDescription>{t('settings.generalSettingsDesc')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-2">
-                <Label>System Display Name</Label>
+                <Label>{t('settings.systemDisplayName')}</Label>
                 <Input placeholder="Tiles WMS" defaultValue="Tiles WMS" />
               </div>
               <div className="grid gap-2">
-                <Label>Admin Email</Label>
+                <Label>{t('settings.adminEmail')}</Label>
                 <Input placeholder="admin@example.com" type="email" />
               </div>
               <Button onClick={handleSave} disabled={loading}>
-                {loading ? 'Saving...' : 'Save Changes'}
+                {loading ? t('common.saving') : t('common.saveChanges')}
               </Button>
             </CardContent>
           </Card>
@@ -76,28 +78,28 @@ export default function SettingsPage() {
         <TabsContent value="warehouse" className="mt-6 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Warehouse Defaults</CardTitle>
-              <CardDescription>Default settings for warehouse operations</CardDescription>
+              <CardTitle>{t('settings.warehouseDefaults')}</CardTitle>
+              <CardDescription>{t('settings.warehouseDefaultsDesc')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center justify-between space-x-2">
                 <div className="space-y-0.5">
-                  <Label>Auto-Allocation</Label>
-                  <p className="text-xs text-muted-foreground">Automatically suggest racks based on proximity and availability</p>
+                  <Label>{t('settings.autoAllocation')}</Label>
+                  <p className="text-xs text-muted-foreground">{t('settings.autoAllocationDesc')}</p>
                 </div>
                 <Switch defaultChecked />
               </div>
               <div className="flex items-center justify-between space-x-2">
                 <div className="space-y-0.5">
-                  <Label>Strict Capacity Check</Label>
-                  <p className="text-xs text-muted-foreground">Prevent overstocking racks beyond their defined capacity</p>
+                  <Label>{t('settings.strictCapacityCheck')}</Label>
+                  <p className="text-xs text-muted-foreground">{t('settings.strictCapacityCheckDesc')}</p>
                 </div>
                 <Switch defaultChecked />
               </div>
               <div className="flex items-center justify-between space-x-2">
                 <div className="space-y-0.5">
-                  <Label>Multi-Warehouse Search</Label>
-                  <p className="text-xs text-muted-foreground">Search for stock across all warehouses when assigning orders</p>
+                  <Label>{t('settings.multiWarehouseSearch')}</Label>
+                  <p className="text-xs text-muted-foreground">{t('settings.multiWarehouseSearchDesc')}</p>
                 </div>
                 <Switch defaultChecked />
               </div>
@@ -106,8 +108,8 @@ export default function SettingsPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Warehouse List Quick View</CardTitle>
-              <CardDescription>Overview of your active warehouses</CardDescription>
+              <CardTitle>{t('settings.warehouseListQuickView')}</CardTitle>
+              <CardDescription>{t('settings.warehouseListQuickViewDesc')}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -125,7 +127,7 @@ export default function SettingsPage() {
                     <div className="flex items-center gap-4">
                       <div className="text-right hidden sm:block">
                         <p className="text-xs font-semibold">{wh.rack_count || 0}</p>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-tighter">Racks</p>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-tighter">{t('settings.racks')}</p>
                       </div>
                       <div className="h-2 w-px bg-border hidden sm:block" />
                       <Switch defaultChecked={wh.is_active} />
@@ -140,27 +142,27 @@ export default function SettingsPage() {
         <TabsContent value="inventory" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Inventory Rules</CardTitle>
-              <CardDescription>Configure how products and stock are managed</CardDescription>
+              <CardTitle>{t('settings.inventoryRules')}</CardTitle>
+              <CardDescription>{t('settings.inventoryRulesDesc')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-2">
-                <Label>Default GST Rate (%)</Label>
+                <Label>{t('settings.defaultGstRate')}</Label>
                 <Input type="number" defaultValue="18" />
               </div>
               <div className="grid gap-2">
-                <Label>Low Stock Warning Threshold (Boxes)</Label>
+                <Label>{t('settings.lowStockWarningThreshold')}</Label>
                 <Input type="number" defaultValue="10" />
               </div>
               <div className="flex items-center justify-between space-x-2">
                 <div className="space-y-0.5">
-                  <Label>Enable Expiry Tracking</Label>
-                  <p className="text-xs text-muted-foreground">Track manufacturing and expiry dates for batches</p>
+                  <Label>{t('settings.enableExpiryTracking')}</Label>
+                  <p className="text-xs text-muted-foreground">{t('settings.enableExpiryTrackingDesc')}</p>
                 </div>
                 <Switch />
               </div>
               <Button onClick={handleSave} disabled={loading}>
-                {loading ? 'Saving...' : 'Save Changes'}
+                {loading ? t('common.saving') : t('common.saveChanges')}
               </Button>
             </CardContent>
           </Card>
@@ -169,33 +171,33 @@ export default function SettingsPage() {
         <TabsContent value="notifications" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Alert Settings</CardTitle>
-              <CardDescription>Choose how you want to be notified of critical events</CardDescription>
+              <CardTitle>{t('settings.alertSettings')}</CardTitle>
+              <CardDescription>{t('settings.alertSettingsDesc')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center justify-between space-x-2">
                 <div className="space-y-0.5">
-                  <Label>Low Stock Alerts</Label>
-                  <p className="text-xs text-muted-foreground">Get notified when stock levels fall below threshold</p>
+                  <Label>{t('settings.lowStockAlerts')}</Label>
+                  <p className="text-xs text-muted-foreground">{t('settings.lowStockAlertsDesc')}</p>
                 </div>
                 <Switch defaultChecked />
               </div>
               <div className="flex items-center justify-between space-x-2">
                 <div className="space-y-0.5">
-                  <Label>Capacity Warnings</Label>
-                  <p className="text-xs text-muted-foreground">Alert when a warehouse or rack is above 90% capacity</p>
+                  <Label>{t('settings.capacityWarnings')}</Label>
+                  <p className="text-xs text-muted-foreground">{t('settings.capacityWarningsDesc')}</p>
                 </div>
                 <Switch defaultChecked />
               </div>
               <div className="flex items-center justify-between space-x-2">
                 <div className="space-y-0.5">
-                  <Label>Movement Alerts</Label>
-                  <p className="text-xs text-muted-foreground">Notify on significant stock movements or transfers</p>
+                  <Label>{t('settings.movementAlerts')}</Label>
+                  <p className="text-xs text-muted-foreground">{t('settings.movementAlertsDesc')}</p>
                 </div>
                 <Switch />
               </div>
               <Button onClick={handleSave} disabled={loading}>
-                {loading ? 'Saving...' : 'Save Changes'}
+                {loading ? t('common.saving') : t('common.saveChanges')}
               </Button>
             </CardContent>
           </Card>

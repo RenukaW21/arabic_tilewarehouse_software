@@ -14,6 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const gstConfigSchema = z.object({
   gstin: z.string().min(1, 'GSTIN is required'),
@@ -75,6 +76,7 @@ function toCreateDto(values: GstConfigFormValues): CreateGstConfigDto {
 }
 
 export default function GstConfigurationPage() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [deleteTarget, setDeleteTarget] = useState<GstConfiguration | null>(null);
 
@@ -105,24 +107,24 @@ export default function GstConfigurationPage() {
     mutationFn: (payload: CreateGstConfigDto) => gstApi.create(payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['gst-config'] });
-      toast.success('GST configuration created');
+      toast.success(t('gstConfig.created'));
     },
     onError: (e: { response?: { data?: { error?: { message?: string }; status?: number } } }) => {
       const msg = e?.response?.data?.error?.message;
       const status = e?.response?.data?.status ?? e?.response?.status;
       if (status === 404) {
-        toast.error('Not found');
+        toast.error(t('gstConfig.notFound'));
         return;
       }
       if (status === 500) {
-        toast.error('Server error. Please try again.');
+        toast.error(t('gstConfig.serverError'));
         return;
       }
       if (e?.response?.data?.error?.message) {
         toast.error(msg);
         return;
       }
-      toast.error('Failed to create GST configuration');
+      toast.error(t('gstConfig.failedToCreate'));
     },
   });
 
@@ -130,20 +132,20 @@ export default function GstConfigurationPage() {
     mutationFn: ({ id, payload }: { id: string; payload: CreateGstConfigDto }) => gstApi.update(id, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['gst-config'] });
-      toast.success('GST configuration updated');
+      toast.success(t('gstConfig.updated'));
     },
     onError: (e: { response?: { data?: { error?: { message?: string } }; status?: number } }) => {
       const msg = e?.response?.data?.error?.message;
       const status = e?.response?.status;
       if (status === 404) {
-        toast.error('Configuration not found');
+        toast.error(t('gstConfig.configNotFound'));
         return;
       }
       if (status === 500) {
-        toast.error('Server error. Please try again.');
+        toast.error(t('gstConfig.serverError'));
         return;
       }
-      toast.error(msg ?? 'Failed to update GST configuration');
+      toast.error(msg ?? t('gstConfig.failedToUpdate'));
     },
   });
 
@@ -153,19 +155,19 @@ export default function GstConfigurationPage() {
       qc.invalidateQueries({ queryKey: ['gst-config'] });
       setDeleteTarget(null);
       form.reset(formDefaultValues(null));
-      toast.success('GST configuration deleted');
+      toast.success(t('gstConfig.deleted'));
     },
     onError: (e: { response?: { data?: { error?: { message?: string } }; status?: number } }) => {
       const status = e?.response?.status;
       if (status === 404) {
-        toast.error('Configuration not found');
+        toast.error(t('gstConfig.configNotFound'));
         return;
       }
       if (status === 500) {
-        toast.error('Server error. Please try again.');
+        toast.error(t('gstConfig.serverError'));
         return;
       }
-      toast.error(e?.response?.data?.error?.message ?? 'Failed to delete');
+      toast.error(e?.response?.data?.error?.message ?? t('gstConfig.failedToDelete'));
     },
   });
 
@@ -193,13 +195,13 @@ export default function GstConfigurationPage() {
     const status = (configErrorObj as { response?: { status?: number } })?.response?.status;
     return (
       <div>
-        <PageHeader title="GST Configuration" subtitle="Setup company GST details" />
+        <PageHeader title={t('gstConfig.title')} subtitle={t('gstConfig.setupSubtitle')} />
         <div className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {status === 404
-            ? 'No GST configuration found.'
+            ? t('gstConfig.noConfigFound')
             : status === 500
-              ? 'Server error. Please try again later.'
-              : (configErrorObj as Error)?.message ?? 'Failed to load GST configuration'}
+              ? t('gstConfig.serverErrorLong')
+              : (configErrorObj as Error)?.message ?? t('gstConfig.failedToLoad')}
         </div>
       </div>
     );
@@ -208,17 +210,17 @@ export default function GstConfigurationPage() {
   return (
     <div>
       <PageHeader
-        title="GST Configuration"
-        subtitle={isCreateMode ? 'Add your company GST details (one config per tenant)' : 'Edit GST configuration'}
+        title={t('gstConfig.title')}
+        subtitle={isCreateMode ? t('gstConfig.subtitleCreate') : t('gstConfig.subtitleEdit')}
       />
 
       <Card className="max-w-2xl">
         <CardHeader>
-          <CardTitle>{isCreateMode ? 'Create GST Configuration' : 'Edit GST Configuration'}</CardTitle>
+          <CardTitle>{isCreateMode ? t('gstConfig.cardTitleCreate') : t('gstConfig.cardTitleEdit')}</CardTitle>
           <CardDescription>
             {isCreateMode
-              ? 'Only one GST configuration is allowed per tenant. Fill the form and save.'
-              : 'Update the fields below and click Update. You can delete this configuration (hard delete).'}
+              ? t('gstConfig.cardDescCreate')
+              : t('gstConfig.cardDescEdit')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -230,9 +232,9 @@ export default function GstConfigurationPage() {
                   name="gstin"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>GSTIN *</FormLabel>
+                      <FormLabel>{t('gstConfig.gstin')} *</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g. 09AABCT1332L1ZM" {...field} />
+                        <Input placeholder={t('gstConfig.placeholderGstin')} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -243,9 +245,9 @@ export default function GstConfigurationPage() {
                   name="legal_name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Legal Name *</FormLabel>
+                      <FormLabel>{t('gstConfig.legalName')} *</FormLabel>
                       <FormControl>
-                        <Input placeholder="Legal entity name" {...field} />
+                        <Input placeholder={t('gstConfig.placeholderLegalName')} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -258,9 +260,9 @@ export default function GstConfigurationPage() {
                 name="trade_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Trade Name</FormLabel>
+                    <FormLabel>{t('gstConfig.tradeName')}</FormLabel>
                     <FormControl>
-                      <Input placeholder="Trade / brand name" {...field} />
+                      <Input placeholder={t('gstConfig.placeholderTradeName')} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -273,9 +275,9 @@ export default function GstConfigurationPage() {
                   name="state_code"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>State Code *</FormLabel>
+                      <FormLabel>{t('gstConfig.stateCode')} *</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g. 09" maxLength={2} {...field} />
+                        <Input placeholder={t('gstConfig.placeholderStateCode')} maxLength={2} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -286,9 +288,9 @@ export default function GstConfigurationPage() {
                   name="state_name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>State Name *</FormLabel>
+                      <FormLabel>{t('gstConfig.stateName')} *</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g. Uttar Pradesh" {...field} />
+                        <Input placeholder={t('gstConfig.placeholderStateName')} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -301,9 +303,9 @@ export default function GstConfigurationPage() {
                 name="pan"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>PAN</FormLabel>
+                    <FormLabel>{t('gstConfig.pan')}</FormLabel>
                     <FormControl>
-                      <Input placeholder="PAN number" {...field} />
+                      <Input placeholder={t('gstConfig.placeholderPan')} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -316,7 +318,7 @@ export default function GstConfigurationPage() {
                   name="default_gst_rate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Default GST Rate (%)</FormLabel>
+                      <FormLabel>{t('gstConfig.defaultGstRate')}</FormLabel>
                       <FormControl>
                         <Input type="number" min={0} max={100} step={0.01} {...field} />
                       </FormControl>
@@ -329,9 +331,9 @@ export default function GstConfigurationPage() {
                   name="fiscal_year_start"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Fiscal Year Start</FormLabel>
+                      <FormLabel>{t('gstConfig.fiscalYearStart')}</FormLabel>
                       <FormControl>
-                        <Input placeholder="04-01" {...field} />
+                        <Input placeholder={t('gstConfig.placeholderFiscalYear')} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -344,9 +346,9 @@ export default function GstConfigurationPage() {
                 name="invoice_prefix"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Invoice Prefix</FormLabel>
+                    <FormLabel>{t('gstConfig.invoicePrefix')}</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. INV" {...field} />
+                      <Input placeholder={t('gstConfig.placeholderInvoicePrefix')} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -359,8 +361,8 @@ export default function GstConfigurationPage() {
                 render={({ field }) => (
                   <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                     <div className="space-y-0.5">
-                      <FormLabel className="text-base">Composition Scheme</FormLabel>
-                      <p className="text-sm text-muted-foreground">Enable if registered under GST composition scheme</p>
+                      <FormLabel className="text-base">{t('gstConfig.compositionScheme')}</FormLabel>
+                      <p className="text-sm text-muted-foreground">{t('gstConfig.compositionSchemeDesc')}</p>
                     </div>
                     <FormControl>
                       <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -373,13 +375,13 @@ export default function GstConfigurationPage() {
                 {isCreateMode ? (
                   <Button type="submit" disabled={isMutating}>
                     {isMutating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    Save
+                    {t('common.save')}
                   </Button>
                 ) : (
                   <>
                     <Button type="submit" disabled={isMutating}>
                       {isMutating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                      Update
+                      {t('common.update')}
                     </Button>
                     <Button
                       type="button"
@@ -387,7 +389,7 @@ export default function GstConfigurationPage() {
                       onClick={() => config && setDeleteTarget(config)}
                       disabled={isMutating}
                     >
-                      Delete
+                      {t('common.delete')}
                     </Button>
                   </>
                 )}
@@ -401,8 +403,8 @@ export default function GstConfigurationPage() {
         open={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => (deleteTarget ? deleteMutation.mutateAsync(deleteTarget.id) : Promise.resolve())}
-        title="Delete GST Configuration"
-        description="This will permanently delete the GST configuration. This action cannot be undone."
+        title={t('gstConfig.deleteTitle')}
+        description={t('gstConfig.deleteDesc')}
         loading={deleteMutation.isPending}
       />
     </div>

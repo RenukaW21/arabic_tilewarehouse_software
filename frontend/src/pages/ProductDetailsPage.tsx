@@ -141,9 +141,14 @@ export default function ProductDetailsPage() {
                         {product.vendors && product.vendors.length > 0 ? (
                             <ul className="space-y-2">
                                 {product.vendors.map((v: any) => (
-                                    <li key={v.id} className="flex items-center gap-2 text-sm bg-muted/30 p-2 rounded border border-border/50">
-                                        <User className="h-4 w-4 text-muted-foreground" />
-                                        <span className="font-medium">{v.name}</span>
+                                    <li key={v.id} className="flex items-center justify-between text-sm bg-muted/30 p-2 rounded border border-border/50">
+                                        <div className="flex items-center gap-2">
+                                            <User className="h-4 w-4 text-muted-foreground" />
+                                            <span className="font-medium">{v.name}</span>
+                                        </div>
+                                        <span className="text-muted-foreground text-xs font-medium">
+                                            {v.total_boxes || 0} boxes purchased
+                                        </span>
                                     </li>
                                 ))}
                             </ul>
@@ -166,9 +171,14 @@ export default function ProductDetailsPage() {
                         {product.customers && product.customers.length > 0 ? (
                             <ul className="space-y-2">
                                 {product.customers.map((c: any) => (
-                                    <li key={c.id} className="flex items-center gap-2 text-sm bg-muted/30 p-2 rounded border border-border/50">
-                                        <User className="h-4 w-4 text-muted-foreground" />
-                                        <span className="font-medium">{c.name}</span>
+                                    <li key={c.id} className="flex items-center justify-between text-sm bg-muted/30 p-2 rounded border border-border/50">
+                                        <div className="flex items-center gap-2">
+                                            <User className="h-4 w-4 text-muted-foreground" />
+                                            <span className="font-medium">{c.name}</span>
+                                        </div>
+                                        <span className="text-muted-foreground text-xs font-medium">
+                                            {c.total_boxes || 0} boxes sold
+                                        </span>
                                     </li>
                                 ))}
                             </ul>

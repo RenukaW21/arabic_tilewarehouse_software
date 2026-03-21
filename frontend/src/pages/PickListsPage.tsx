@@ -19,8 +19,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, CheckCircle, UserPlus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { DeleteConfirmDialog } from '@/components/shared/DeleteConfirmDialog';
+import { useTranslation } from 'react-i18next';
 
 export default function PickListsPage() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');
@@ -166,11 +168,11 @@ export default function PickListsPage() {
           onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
           className="h-9 rounded-md border px-3 text-sm"
         >
-          <option value="">All statuses</option>
-          <option value="pending">Pending</option>
-          <option value="in_progress">In Progress</option>
-          <option value="completed">Completed</option>
-          <option value="cancelled">Cancelled</option>
+          <option value="">{t('common.allStatuses')}</option>
+          <option value="pending">{t('common.pending')}</option>
+          <option value="in_progress">{t('common.inProgress', 'In Progress')}</option>
+          <option value="completed">{t('common.completed', 'Completed')}</option>
+          <option value="cancelled">{t('common.cancelled')}</option>
         </select>
       </div>
       <DataTableShell<PickList>

@@ -7,6 +7,18 @@ const { postStockMovement } = require('../../utils/stockHelper');
 const { v4: uuidv4 } = require('uuid');
 const { AppError } = require('../../middlewares/error.middleware');
 
+const getAvailableStock = async (trx, tenantId, warehouseId, productId, shadeId, batchId) => {
+  const rows = await trx.query(
+    `SELECT COALESCE(SUM(total_boxes), 0) AS total_boxes
+     FROM stock_summary
+     WHERE tenant_id = ? AND warehouse_id = ? AND product_id = ?
+       AND (shade_id <=> ?) AND (batch_id <=> ?)`,
+    [tenantId, warehouseId, productId, shadeId || null, batchId || null]
+  );
+
+  return parseFloat(rows[0]?.total_boxes) || 0;
+};
+
 const getAll = async (tenantId, queryParams) => repo.findAll(tenantId, queryParams);
 
 const getById = async (id, tenantId) => {
@@ -154,6 +166,27 @@ const dispatch = async (id, tenantId, userId) => {
   const trx = await beginTransaction();
 
   try{
+    for (const item of dc.items) {
+      const boxesOut = parseFloat(item.dispatched_boxes) || 0;
+      if (boxesOut <= 0) continue;
+
+      const available = await getAvailableStock(
+        trx,
+        tenantId,
+        warehouseId,
+        item.product_id,
+        item.shade_id,
+        item.batch_id
+      );
+
+      if (boxesOut > available) {
+        throw new AppError(
+          `Insufficient stock: available ${available} boxes for product ${item.product_code || item.product_id}`,
+          400,
+          'INSUFFICIENT_STOCK'
+        );
+      }
+    }
 
     for(const item of dc.items){
 
@@ -177,14 +210,6 @@ const dispatch = async (id, tenantId, userId) => {
          FOR UPDATE`,
         [tenantId, warehouseId, item.product_id, item.shade_id || null, item.batch_id || null]
       );
-
-      // Verify total available
-      const totalAvailable = stockRows.reduce((s, r) => s + parseFloat(r.total_boxes || 0), 0);
-      if (totalAvailable < boxesOut) {
-        throw new Error(
-          `Insufficient stock for product ${item.product_id}: need ${boxesOut} boxes, only ${totalAvailable} available`
-        );
-      }
 
       // Drain racks in order
       let remaining = boxesOut;
@@ -213,25 +238,19 @@ const dispatch = async (id, tenantId, userId) => {
           createdBy: userId,
         });
 
-        // SYNC RACK OCCUPANCY (FIX #2: Update racks quantity)
-        if (stockRow.rack_id) {
-          const rackService = require('../racks/rack.service');
-          await rackService.syncRackOccupancy(stockRow.rack_id, tenantId);
-          
-          // Check if rack is now empty for this product and delete from product_racks if so
-          // This ensures "racks never become empty" issue is resolved in UI
-          await trx.query(
-            `DELETE FROM product_racks 
-             WHERE tenant_id = ? AND rack_id = ? AND product_id = ? AND boxes_stored <= 0`,
-            [tenantId, stockRow.rack_id, item.product_id]
-          );
-        }
-
         remaining -= deductFromThisRack;
+      }
+
+      if (remaining > 0) {
+        throw new AppError(
+          `Insufficient stock while dispatching product ${item.product_code || item.product_id}`,
+          400,
+          'INSUFFICIENT_STOCK'
+        );
       }
     }
 
-    await repo.setDispatched(id, tenantId);
+    await repo.setDispatched(trx, id, tenantId);
 
     // BUG-3 FIX: Update sales_order status to 'dispatched'
     await trx.query(

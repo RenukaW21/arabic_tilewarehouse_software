@@ -35,7 +35,7 @@ import type {
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
-
+import { useTranslation } from "react-i18next";
 
 const CHART_COLORS = [
   "hsl(217, 91%, 53%)",
@@ -62,17 +62,13 @@ function formatDate(dateStr: string): string {
 }
 
 export default function DashboardPage() {
-  // 🔔 Low stock alerts (same API as Alerts page)
+  const { t } = useTranslation();
+
   const { data: alerts = [] } = useQuery({
     queryKey: ["dashboard_low_stock_alerts"],
     queryFn: async () => {
-      const res = await api.get(
-        `/alerts/low-stock`,
-      );
-
+      const res = await api.get(`/alerts/low-stock`);
       const data = res.data.data;
-      // console.log(data)
-
       if (!data) return [];
       return Array.isArray(data) ? data : [data];
     },
@@ -84,11 +80,9 @@ export default function DashboardPage() {
   const summary = data?.summary;
   const kpis = data?.kpis;
   const recentSales: DashboardRecentSale[] = data?.recentSales ?? [];
-  const recentPurchases: DashboardRecentPurchase[] =
-    data?.recentPurchases ?? [];
+  const recentPurchases: DashboardRecentPurchase[] = data?.recentPurchases ?? [];
   const recentGRNs: DashboardRecentGRN[] = data?.recentGRNs ?? [];
-  const recentTransfers: DashboardRecentTransfer[] =
-    data?.recentTransfers ?? [];
+  const recentTransfers: DashboardRecentTransfer[] = data?.recentTransfers ?? [];
   const lowStock: DashboardLowStockItem[] = data?.lowStock ?? [];
   const stockByCategory = data?.stockByCategory ?? [];
 
@@ -96,17 +90,15 @@ export default function DashboardPage() {
     return (
       <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-6 text-center">
         <p className="text-sm font-medium text-destructive">
-          {error instanceof Error ? error.message : "Failed to load dashboard"}
+          {error instanceof Error ? error.message : t('dashboard.failedToLoadDashboard')}
         </p>
       </div>
     );
   }
 
-  // console.log(stockByCategory);
-
   return (
     <div className="space-y-6">
-      {/* KPI row — loading skeletons or real data */}
+      {/* KPI row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4">
         {isLoading ? (
           Array.from({ length: 8 }).map((_, i) => (
@@ -114,94 +106,70 @@ export default function DashboardPage() {
           ))
         ) : (
           <>
-            <div
-              onClick={() => navigate("/setup/warehouses")}
-              className="cursor-pointer"
-            >
+            <div onClick={() => navigate("/setup/warehouses")} className="cursor-pointer">
               <KPICard
-                title="Warehouses"
+                title={t('dashboard.warehouses')}
                 value={String(summary?.totalWarehouses ?? 0)}
                 icon={<Layers className="h-5 w-5" />}
                 variant="default"
               />
             </div>
 
-            <div
-              onClick={() => navigate("/master/products")}
-              className="cursor-pointer"
-            >
+            <div onClick={() => navigate("/master/products")} className="cursor-pointer">
               <KPICard
-                title="Products"
+                title={t('dashboard.products')}
                 value={String(summary?.totalProducts ?? 0)}
                 icon={<Package className="h-5 w-5" />}
                 variant="primary"
               />
             </div>
 
-            <div
-              onClick={() => navigate("/master/vendors")}
-              className="cursor-pointer"
-            >
+            <div onClick={() => navigate("/master/vendors")} className="cursor-pointer">
               <KPICard
-                title="Vendors"
+                title={t('dashboard.vendors')}
                 value={String(summary?.totalVendors ?? 0)}
                 icon={<Truck className="h-5 w-5" />}
                 variant="default"
               />
             </div>
-            <div
-              onClick={() => navigate("/master/customers")}
-              className="cursor-pointer"
-            >
+            <div onClick={() => navigate("/master/customers")} className="cursor-pointer">
               <KPICard
-                title="Customers"
+                title={t('dashboard.customers')}
                 value={String(summary?.totalCustomers ?? 0)}
                 icon={<Users className="h-5 w-5" />}
                 variant="default"
               />
             </div>
-            <div
-              onClick={() => navigate("/purchase/orders")}
-              className="cursor-pointer"
-            >
+            <div onClick={() => navigate("/purchase/orders")} className="cursor-pointer">
               <KPICard
-                title="Pending POs"
+                title={t('dashboard.pendingPOs')}
                 value={String(summary?.pendingPurchaseOrders ?? 0)}
                 icon={<ShoppingCart className="h-5 w-5" />}
                 variant="warning"
               />
             </div>
 
-            <div
-              onClick={() => navigate("/inventory/stock")}
-              className="cursor-pointer"
-            >
+            <div onClick={() => navigate("/inventory/stock")} className="cursor-pointer">
               <KPICard
-                title="Total Stock (boxes)"
+                title={t('dashboard.totalStock')}
                 value={String(summary?.totalStock ?? 0)}
                 icon={<Layers className="h-5 w-5" />}
                 variant="default"
               />
             </div>
 
-            <div
-              onClick={() => navigate("/sales/orders")}
-              className="cursor-pointer"
-            >
+            <div onClick={() => navigate("/sales/orders")} className="cursor-pointer">
               <KPICard
-                title="Sales (this month)"
+                title={t('dashboard.salesThisMonth')}
                 value={formatCurrency(summary?.monthlySales ?? 0)}
                 icon={<TrendingUp className="h-5 w-5" />}
                 variant="success"
               />
             </div>
 
-            <div
-              onClick={() => navigate("/purchase/orders")}
-              className="cursor-pointer"
-            >
+            <div onClick={() => navigate("/purchase/orders")} className="cursor-pointer">
               <KPICard
-                title="Purchases (this month)"
+                title={t('dashboard.purchasesThisMonth')}
                 value={formatCurrency(summary?.monthlyPurchases ?? 0)}
                 icon={<ShoppingCart className="h-5 w-5" />}
                 variant="warning"
@@ -211,18 +179,15 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Secondary KPIs: low stock, active POs, ledger activity */}
+      {/* Secondary KPIs */}
       {!isLoading &&
         (kpis?.lowStockItems !== undefined ||
           kpis?.activePOs !== undefined ||
           summary?.ledgerEntriesLast30Days !== undefined) && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div
-              onClick={() => navigate("/alerts")}
-              className="cursor-pointer"
-            >
+            <div onClick={() => navigate("/alerts")} className="cursor-pointer">
               <KPICard
-                title="Low stock items"
+                title={t('dashboard.lowStockItems')}
                 value={String(alerts.length)}
                 icon={<AlertTriangle className="h-5 w-5" />}
                 variant="danger"
@@ -230,13 +195,13 @@ export default function DashboardPage() {
             </div>
 
             <KPICard
-              title="Active POs"
+              title={t('dashboard.activePOs')}
               value={String(kpis?.activePOs ?? 0)}
               icon={<ShoppingCart className="h-5 w-5" />}
               variant="warning"
             />
             <KPICard
-              title="Ledger entries (30d)"
+              title={t('dashboard.ledgerEntries30d')}
               value={String(summary?.ledgerEntriesLast30Days ?? 0)}
               icon={<Layers className="h-5 w-5" />}
               variant="default"
@@ -249,7 +214,7 @@ export default function DashboardPage() {
         {/* Stock by category */}
         <div className="bg-card rounded-lg border p-4 shadow-sm">
           <h3 className="font-display font-semibold text-foreground mb-4">
-            Stock by Category
+            {t('dashboard.stockByCategory')}
           </h3>
           {isLoading ? (
             <Skeleton className="h-[200px] w-full rounded-md" />
@@ -258,7 +223,6 @@ export default function DashboardPage() {
               <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
                   <Pie
-                    // data={stockByCategory.filter((d) => d.boxes > 0)}
                     data={stockByCategory
                       .map((d) => ({
                         ...d,
@@ -310,7 +274,7 @@ export default function DashboardPage() {
                       </span>
                     </div>
                     <span className="font-medium text-foreground">
-                      {item.boxes} boxes
+                      {item.boxes} {t('common.boxes')}
                     </span>
                   </div>
                 ))}
@@ -318,7 +282,7 @@ export default function DashboardPage() {
             </>
           ) : (
             <p className="text-sm text-muted-foreground text-center py-8">
-              No stock data yet
+              {t('dashboard.noStockData')}
             </p>
           )}
         </div>
@@ -327,13 +291,13 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 bg-card rounded-lg border shadow-sm">
           <div className="flex items-center justify-between p-4 border-b">
             <h3 className="font-display font-semibold text-foreground">
-              Recent Sales
+              {t('dashboard.recentSales')}
             </h3>
             <Link
               to="/sales/orders"
               className="text-xs text-secondary hover:underline flex items-center gap-0.5"
             >
-              View All <ArrowUpRight className="h-3 w-3" />
+              {t('common.viewAll')} <ArrowUpRight className="h-3 w-3" />
             </Link>
           </div>
           <div className="overflow-x-auto">
@@ -347,17 +311,11 @@ export default function DashboardPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-xs text-muted-foreground uppercase bg-muted/30">
-                    <th className="text-left px-4 py-2.5 font-medium">Order</th>
-                    <th className="text-left px-4 py-2.5 font-medium">
-                      Customer
-                    </th>
-                    <th className="text-left px-4 py-2.5 font-medium">Date</th>
-                    <th className="text-left px-4 py-2.5 font-medium">
-                      Status
-                    </th>
-                    <th className="text-right px-4 py-2.5 font-medium">
-                      Total
-                    </th>
+                    <th className="text-left px-4 py-2.5 font-medium">{t('dashboard.order')}</th>
+                    <th className="text-left px-4 py-2.5 font-medium">{t('dashboard.customer')}</th>
+                    <th className="text-left px-4 py-2.5 font-medium">{t('common.date')}</th>
+                    <th className="text-left px-4 py-2.5 font-medium">{t('common.status')}</th>
+                    <th className="text-right px-4 py-2.5 font-medium">{t('common.total')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -367,7 +325,7 @@ export default function DashboardPage() {
                         colSpan={5}
                         className="text-center text-muted-foreground py-6 text-sm"
                       >
-                        No sales orders yet
+                        {t('dashboard.noSalesOrders')}
                       </td>
                     </tr>
                   ) : (
@@ -406,13 +364,13 @@ export default function DashboardPage() {
         <div className="bg-card rounded-lg border shadow-sm">
           <div className="flex items-center justify-between p-4 border-b">
             <h3 className="font-display font-semibold text-foreground">
-              Recent GRNs
+              {t('dashboard.recentGRNs')}
             </h3>
             <Link
               to="/purchase/grn"
               className="text-xs text-secondary hover:underline flex items-center gap-0.5"
             >
-              View All <ArrowUpRight className="h-3 w-3" />
+              {t('common.viewAll')} <ArrowUpRight className="h-3 w-3" />
             </Link>
           </div>
           <div className="overflow-x-auto">
@@ -426,17 +384,11 @@ export default function DashboardPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-xs text-muted-foreground uppercase bg-muted/30">
-                    <th className="text-left px-4 py-2.5 font-medium">GRN</th>
-                    <th className="text-left px-4 py-2.5 font-medium">
-                      Vendor
-                    </th>
-                    <th className="text-left px-4 py-2.5 font-medium">
-                      Warehouse
-                    </th>
-                    <th className="text-left px-4 py-2.5 font-medium">Date</th>
-                    <th className="text-left px-4 py-2.5 font-medium">
-                      Status
-                    </th>
+                    <th className="text-left px-4 py-2.5 font-medium">{t('dashboard.grn')}</th>
+                    <th className="text-left px-4 py-2.5 font-medium">{t('dashboard.vendor')}</th>
+                    <th className="text-left px-4 py-2.5 font-medium">{t('dashboard.warehouse')}</th>
+                    <th className="text-left px-4 py-2.5 font-medium">{t('common.date')}</th>
+                    <th className="text-left px-4 py-2.5 font-medium">{t('common.status')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -446,7 +398,7 @@ export default function DashboardPage() {
                         colSpan={5}
                         className="text-center text-muted-foreground py-6 text-sm"
                       >
-                        No GRNs yet
+                        {t('dashboard.noGRNs')}
                       </td>
                     </tr>
                   ) : (
@@ -481,13 +433,13 @@ export default function DashboardPage() {
         <div className="bg-card rounded-lg border shadow-sm">
           <div className="flex items-center justify-between p-4 border-b">
             <h3 className="font-display font-semibold text-foreground">
-              Recent Transfers
+              {t('dashboard.recentTransfers')}
             </h3>
             <Link
               to="/inventory/transfers"
               className="text-xs text-secondary hover:underline flex items-center gap-0.5"
             >
-              View All <ArrowUpRight className="h-3 w-3" />
+              {t('common.viewAll')} <ArrowUpRight className="h-3 w-3" />
             </Link>
           </div>
           <div className="overflow-x-auto">
@@ -501,16 +453,10 @@ export default function DashboardPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-xs text-muted-foreground uppercase bg-muted/30">
-                    <th className="text-left px-4 py-2.5 font-medium">
-                      Transfer
-                    </th>
-                    <th className="text-left px-4 py-2.5 font-medium">
-                      From → To
-                    </th>
-                    <th className="text-left px-4 py-2.5 font-medium">Date</th>
-                    <th className="text-left px-4 py-2.5 font-medium">
-                      Status
-                    </th>
+                    <th className="text-left px-4 py-2.5 font-medium">{t('dashboard.transfer')}</th>
+                    <th className="text-left px-4 py-2.5 font-medium">{t('dashboard.fromTo')}</th>
+                    <th className="text-left px-4 py-2.5 font-medium">{t('common.date')}</th>
+                    <th className="text-left px-4 py-2.5 font-medium">{t('common.status')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -520,27 +466,27 @@ export default function DashboardPage() {
                         colSpan={4}
                         className="text-center text-muted-foreground py-6 text-sm"
                       >
-                        No transfers yet
+                        {t('dashboard.noTransfers')}
                       </td>
                     </tr>
                   ) : (
-                    recentTransfers.map((t) => (
+                    recentTransfers.map((t_) => (
                       <tr
-                        key={t.id}
+                        key={t_.id}
                         className="border-t border-border hover:bg-muted/20 transition-colors"
                       >
                         <td className="px-4 py-2.5 font-mono text-xs font-medium text-foreground">
-                          {t.transfer_number}
+                          {t_.transfer_number}
                         </td>
                         <td className="px-4 py-2.5 text-foreground">
-                          {t.from_warehouse_name ?? "—"} →{" "}
-                          {t.to_warehouse_name ?? "—"}
+                          {t_.from_warehouse_name ?? "—"} →{" "}
+                          {t_.to_warehouse_name ?? "—"}
                         </td>
                         <td className="px-4 py-2.5 text-muted-foreground">
-                          {formatDate(t.transfer_date)}
+                          {formatDate(t_.transfer_date)}
                         </td>
                         <td className="px-4 py-2.5">
-                          <StatusBadge status={t.status} />
+                          <StatusBadge status={t_.status} />
                         </td>
                       </tr>
                     ))
@@ -558,13 +504,13 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 bg-card rounded-lg border shadow-sm">
           <div className="flex items-center justify-between p-4 border-b">
             <h3 className="font-display font-semibold text-foreground">
-              Recent Purchases
+              {t('dashboard.recentPurchases')}
             </h3>
             <Link
               to="/purchase/orders"
               className="text-xs text-secondary hover:underline flex items-center gap-0.5"
             >
-              View All <ArrowUpRight className="h-3 w-3" />
+              {t('common.viewAll')} <ArrowUpRight className="h-3 w-3" />
             </Link>
           </div>
           <div className="overflow-x-auto">
@@ -578,17 +524,11 @@ export default function DashboardPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-xs text-muted-foreground uppercase bg-muted/30">
-                    <th className="text-left px-4 py-2.5 font-medium">PO</th>
-                    <th className="text-left px-4 py-2.5 font-medium">
-                      Vendor
-                    </th>
-                    <th className="text-left px-4 py-2.5 font-medium">Date</th>
-                    <th className="text-left px-4 py-2.5 font-medium">
-                      Status
-                    </th>
-                    <th className="text-right px-4 py-2.5 font-medium">
-                      Total
-                    </th>
+                    <th className="text-left px-4 py-2.5 font-medium">{t('dashboard.po')}</th>
+                    <th className="text-left px-4 py-2.5 font-medium">{t('dashboard.vendor')}</th>
+                    <th className="text-left px-4 py-2.5 font-medium">{t('common.date')}</th>
+                    <th className="text-left px-4 py-2.5 font-medium">{t('common.status')}</th>
+                    <th className="text-right px-4 py-2.5 font-medium">{t('common.total')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -598,7 +538,7 @@ export default function DashboardPage() {
                         colSpan={5}
                         className="text-center text-muted-foreground py-6 text-sm"
                       >
-                        No purchase orders yet
+                        {t('dashboard.noPurchaseOrders')}
                       </td>
                     </tr>
                   ) : (
@@ -640,20 +580,20 @@ export default function DashboardPage() {
         <div className="bg-card rounded-lg border shadow-sm">
           <div className="flex items-center justify-between p-4 border-b">
             <h3 className="font-display font-semibold text-foreground flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-destructive" /> Low Stock
+              <AlertTriangle className="h-4 w-4 text-destructive" /> {t('dashboard.lowStock')}
             </h3>
             <Link
               to="/alerts"
               className="text-xs text-secondary hover:underline"
             >
-              View All
+              {t('common.viewAll')}
             </Link>
           </div>
 
           <div className="p-2 space-y-1">
             {alerts.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
-                No alerts
+                {t('dashboard.noAlerts')}
               </p>
             ) : (
               alerts.slice(0, 5).map((alert: any) => (
@@ -677,9 +617,6 @@ export default function DashboardPage() {
                         /{alert.reorder_level_boxes}
                       </span>
                     </p>
-                    {/* <p className="text-[10px] text-muted-foreground">
-                      / {alert.reorder_level_boxes}
-                    </p> */}
                   </div>
                 </div>
               ))

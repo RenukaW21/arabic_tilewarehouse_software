@@ -22,6 +22,7 @@ import { AlertTriangle } from 'lucide-react';
 import { LineItemsEditor, type LineItem, type Shade } from '@/components/shared/LineItemsEditor';
 import { shadeApi } from '@/api/warehouseApi';
 import type { PurchaseOrder, CreatePODto } from '@/types/misc.types';
+import { toast } from 'sonner';
 
 interface Product {
   id: string;
@@ -222,6 +223,17 @@ export function POCreateEditDialog({
     const validItems = items.filter((i) => (i.product_id || i.product_name) && i.ordered_boxes > 0);
     if (!vendor_id || !warehouse_id || !order_date || validItems.length === 0) return;
 
+    for (const item of validItems) {
+      if (!item.ordered_boxes || item.ordered_boxes <= 0) {
+        toast.error('Boxes must be greater than 0 for all items');
+        return;
+      }
+      if (!item.unit_price || item.unit_price <= 0) {
+        toast.error('Unit Price must be greater than 0 for all items');
+        return;
+      }
+    }
+
     const payload: CreatePODto = {
       vendor_id,
       warehouse_id,
@@ -392,6 +404,7 @@ export function POCreateEditDialog({
             products={products}
             shades={shades}
             readOnly={limitedEdit}
+            lockUnitPrice={true}
           />
 
           {/* ── Live totals summary ── */}

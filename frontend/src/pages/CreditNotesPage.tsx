@@ -13,8 +13,10 @@ import { DeleteConfirmDialog } from '@/components/shared/DeleteConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 export default function CreditNotesPage() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { user } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -45,14 +47,14 @@ export default function CreditNotesPage() {
   const items: CreditNote[] = notesRes?.data ?? [];
 
   const fields: FieldDef[] = [
-    { key: 'cn_number', label: 'Credit Note #', type: 'text', required: true, placeholder: 'CN-2025-0001' },
-    { key: 'customer_id', label: 'Customer', type: 'select', required: true, options: customers.map((c) => ({ value: c.id, label: c.name })) },
-    { key: 'invoice_id', label: 'Invoice (optional)', type: 'select', options: invoices.map((i) => ({ value: i.id, label: i.invoice_number })) },
-    { key: 'sales_return_id', label: 'Sales Return (optional)', type: 'select', options: salesReturns.map((s) => ({ value: s.id, label: s.return_number })) },
-    { key: 'amount', label: 'Amount (₹)', type: 'number', required: true, defaultValue: 0 },
-    { key: 'cn_date', label: 'Issue Date', type: 'date' },
-    { key: 'status', label: 'Status', type: 'select', required: true, options: [{ value: 'draft', label: 'Draft' }, { value: 'issued', label: 'Issued' }, { value: 'adjusted', label: 'Adjusted' }, { value: 'cancelled', label: 'Cancelled' }], defaultValue: 'draft' },
-    { key: 'notes', label: 'Notes', type: 'textarea' },
+    { key: 'cn_number', label: t('creditNotes.cnNumber'), type: 'text', required: true, placeholder: 'CN-2025-0001' },
+    { key: 'customer_id', label: t('creditNotes.customer'), type: 'select', required: true, options: customers.map((c) => ({ value: c.id, label: c.name })) },
+    { key: 'invoice_id', label: t('creditNotes.invoiceOptional'), type: 'select', options: invoices.map((i) => ({ value: i.id, label: i.invoice_number })) },
+    { key: 'sales_return_id', label: t('creditNotes.salesReturnOptional'), type: 'select', options: salesReturns.map((s) => ({ value: s.id, label: s.return_number })) },
+    { key: 'amount', label: t('creditNotes.amount'), type: 'number', required: true, defaultValue: 0 },
+    { key: 'cn_date', label: t('creditNotes.issueDate'), type: 'date' },
+    { key: 'status', label: t('creditNotes.status'), type: 'select', required: true, options: [{ value: 'draft', label: t('creditNotes.statusDraft') }, { value: 'issued', label: t('creditNotes.statusIssued') }, { value: 'adjusted', label: t('creditNotes.statusAdjusted') }, { value: 'cancelled', label: t('creditNotes.statusCancelled') }], defaultValue: 'draft' },
+    { key: 'notes', label: t('common.notes', 'ملاحظات'), type: 'textarea' },
   ];
 
   const saveMutation = useMutation({
@@ -75,10 +77,10 @@ export default function CreditNotesPage() {
       qc.invalidateQueries({ queryKey: ['credit_notes'] });
       setDialogOpen(false);
       setEditing(null);
-      toast.success(editing ? 'Credit note updated!' : 'Credit note created!');
+      toast.success(editing ? t('creditNotes.updated') : t('creditNotes.created'));
     },
     onError: (e: any) =>
-      toast.error(e?.response?.data?.error?.message ?? e.message ?? 'Operation failed'),
+      toast.error(e?.response?.data?.error?.message ?? e.message ?? t('common.operationFailed', 'فشلت العملية')),
   });
 
   const deleteMutation = useMutation({
@@ -86,10 +88,10 @@ export default function CreditNotesPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['credit_notes'] });
       setDeleting(null);
-      toast.success('Credit note deleted!');
+      toast.success(t('creditNotes.deleted'));
     },
     onError: (e: any) =>
-      toast.error(e?.response?.data?.error?.message ?? e.message ?? 'Delete failed'),
+      toast.error(e?.response?.data?.error?.message ?? e.message ?? t('common.deleteFailed', 'فشل الحذف')),
   });
 
   const getCustomerName = (customerId: string) => customers.find((c) => c.id === customerId)?.name ?? '—';
@@ -97,14 +99,14 @@ export default function CreditNotesPage() {
     invoiceId ? invoices.find((i) => i.id === invoiceId)?.invoice_number ?? '—' : '—';
 
   const columns = [
-    { key: 'cn_number', label: 'CN #', render: (r: CreditNote) => <span className="font-mono text-sm font-medium">{r.cn_number}</span> },
-    { key: 'customer', label: 'Customer', render: (r: CreditNote) => getCustomerName(r.customer_id) },
-    { key: 'invoice', label: 'Invoice', render: (r: CreditNote) => getInvoiceNumber(r.invoice_id) },
-    { key: 'amount', label: 'Amount', render: (r: CreditNote) => `₹${Number(r.amount || 0).toLocaleString()}` },
-    { key: 'cn_date', label: 'Date', render: (r: CreditNote) => (r.cn_date ? new Date(r.cn_date).toLocaleDateString() : '—') },
-    { key: 'status', label: 'Status', render: (r: CreditNote) => <StatusBadge status={r.status} /> },
+    { key: 'cn_number', label: t('creditNotes.cnNumber'), render: (r: CreditNote) => <span className="font-mono text-sm font-medium">{r.cn_number}</span> },
+    { key: 'customer', label: t('creditNotes.customer'), render: (r: CreditNote) => getCustomerName(r.customer_id) },
+    { key: 'invoice', label: t('creditNotes.invoice'), render: (r: CreditNote) => getInvoiceNumber(r.invoice_id) },
+    { key: 'amount', label: t('creditNotes.amount'), render: (r: CreditNote) => `₹${Number(r.amount || 0).toLocaleString()}` },
+    { key: 'cn_date', label: t('creditNotes.date'), render: (r: CreditNote) => (r.cn_date ? new Date(r.cn_date).toLocaleDateString() : '—') },
+    { key: 'status', label: t('creditNotes.status'), render: (r: CreditNote) => <StatusBadge status={r.status} /> },
     {
-      key: 'actions', label: 'Actions', render: (r: CreditNote) => (
+      key: 'actions', label: t('creditNotes.actions'), render: (r: CreditNote) => (
         <div className="flex gap-1">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditing(r); setDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
           <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleting(r)}><Trash2 className="h-4 w-4" /></Button>
@@ -115,14 +117,14 @@ export default function CreditNotesPage() {
 
   return (
     <div>
-      <PageHeader title="Credit Notes" subtitle="Manage credit notes for customers" onAdd={() => { setEditing(null); setDialogOpen(true); }} addLabel="New Credit Note" />
-      {isLoading ? <p className="text-muted-foreground">Loading...</p> : <DataTableShell data={items as any[]} columns={columns as any[]} searchKey="cn_number" searchPlaceholder="Search CN#..." />}
+      <PageHeader title={t('creditNotes.title')} subtitle={t('creditNotes.subtitle')} onAdd={() => { setEditing(null); setDialogOpen(true); }} addLabel={t('creditNotes.newCreditNote')} />
+      {isLoading ? <p className="text-muted-foreground">{t('common.loading', 'جار التحميل...')}</p> : <DataTableShell data={items as any[]} columns={columns as any[]} searchKey="cn_number" searchPlaceholder={t('creditNotes.searchPlaceholder')} />}
       <CrudFormDialog
         open={dialogOpen}
         onClose={() => { setDialogOpen(false); setEditing(null); }}
         onSubmit={(d) => saveMutation.mutateAsync(d).then(() => { })}
         fields={fields}
-        title={editing ? 'Edit Credit Note' : 'New Credit Note'}
+        title={editing ? t('creditNotes.editCreditNote') : t('creditNotes.newCreditNote')}
         initialData={editing ? { ...editing, invoice_id: editing.invoice_id ?? 'none', sales_return_id: editing.sales_return_id ?? 'none' } : undefined}
         loading={saveMutation.isPending}
       />

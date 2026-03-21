@@ -111,8 +111,8 @@ const createItem = async (trx, data) => {
   );
 };
 
-const setDispatched = async (id, tenantId) => {
-  await query(
+const setDispatched = async (executor, id, tenantId) => {
+  await executor.query(
     `UPDATE delivery_challans SET status = 'dispatched', created_at = created_at WHERE id = ? AND tenant_id = ?`,
     [id, tenantId]
   );

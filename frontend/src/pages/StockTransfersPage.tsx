@@ -21,15 +21,17 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Pencil, Trash2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 const statusOptions = [
-  { value: 'draft', label: 'Draft' },
-  { value: 'in_transit', label: 'In Transit' },
-  { value: 'received', label: 'Received' },
-  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'draft', label: 'draft' },
+  { value: 'in_transit', label: 'in_transit' },
+  { value: 'received', label: 'received' },
+  { value: 'cancelled', label: 'cancelled' },
 ];
 
 export default function StockTransfersPage() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<StockTransfer | null>(null);
@@ -133,7 +135,7 @@ export default function StockTransfersPage() {
       );
       setDialogOpen(true);
     } catch (e) {
-      toast.error('Failed to load transfer');
+      toast.error(t('stockTransfers.failedToLoad'));
     }
   };
 
@@ -174,7 +176,7 @@ export default function StockTransfersPage() {
       qc.invalidateQueries({ queryKey: ['stock-transfers'] });
       setDialogOpen(false);
       setEditing(null);
-      toast.success(editing ? 'Transfer updated' : 'Transfer created');
+      toast.success(editing ? t('stockTransfers.transferUpdated') : t('stockTransfers.transferCreated'));
     },
     onError: (e: { response?: { data?: { error?: { message?: string }; message?: string } } }) => {
       const msg =
@@ -188,7 +190,7 @@ export default function StockTransfersPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['stock-transfers'] });
       setDeleting(null);
-      toast.success('Transfer deleted');
+      toast.success(t('stockTransfers.transferDeleted'));
     },
     onError: (e: { response?: { data?: { error?: { message?: string }; message?: string } } }) => {
       const msg =
@@ -202,28 +204,28 @@ export default function StockTransfersPage() {
   const columns = [
     {
       key: 'transfer_number',
-      label: 'Transfer #',
+      label: t('stockTransfers.transferNumber'),
       render: (r: StockTransfer) => (
         <span className="font-mono text-sm font-medium">{r.transfer_number}</span>
       ),
     },
-    { key: 'from', label: 'From', render: (r: StockTransfer) => getWarehouseName(r.from_warehouse_id) },
-    { key: 'to', label: 'To', render: (r: StockTransfer) => getWarehouseName(r.to_warehouse_id) },
-    { key: 'status', label: 'Status', render: (r: StockTransfer) => <StatusBadge status={r.status} /> },
+    { key: 'from', label: t('stockTransfers.from'), render: (r: StockTransfer) => getWarehouseName(r.from_warehouse_id) },
+    { key: 'to', label: t('stockTransfers.to'), render: (r: StockTransfer) => getWarehouseName(r.to_warehouse_id) },
+    { key: 'status', label: t('common.status'), render: (r: StockTransfer) => <StatusBadge status={r.status} /> },
     {
       key: 'transfer_date',
-      label: 'Date',
+      label: t('common.date'),
       render: (r: StockTransfer) =>
         r.transfer_date ? new Date(r.transfer_date).toLocaleDateString('en-IN') : '—',
     },
     {
       key: 'items_count',
-      label: 'Items',
+      label: t('stockTransfers.items'),
       render: (r: StockTransfer) => (r.items_count != null && r.items_count > 0 ? r.items_count : (r.items?.length ?? '—')),
     },
     {
       key: 'actions',
-      label: 'Actions',
+      label: t('common.actions'),
       render: (r: StockTransfer) => (
         <div className="flex gap-1">
           <Button
@@ -250,17 +252,17 @@ export default function StockTransfersPage() {
   return (
     <div>
       <PageHeader
-        title="Stock Transfers"
-        subtitle="Transfer stock between warehouses"
+        title={t('stockTransfers.title')}
+        subtitle={t('stockTransfers.subtitle')}
         onAdd={openCreate}
-        addLabel="New Transfer"
+        addLabel={t('stockTransfers.newTransfer')}
       />
 
       <DataTableShell<StockTransfer>
         data={transfers}
         columns={columns}
         searchKey="transfer_number"
-        searchPlaceholder="Search by transfer number..."
+        searchPlaceholder={t('stockTransfers.searchPlaceholder')}
         serverSide
         searchValue={searchInput}
         onSearchChange={handleSearchChange}
@@ -272,20 +274,20 @@ export default function StockTransfersPage() {
       <Dialog open={dialogOpen} onOpenChange={(open) => !open && (setDialogOpen(false), setEditing(null))}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editing ? 'Edit Transfer' : 'New Transfer'}</DialogTitle>
+            <DialogTitle>{editing ? t('stockTransfers.editTransfer') : t('stockTransfers.newTransfer')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Transfer #</Label>
+                <Label>{t('stockTransfers.transferNumber')}</Label>
                 <Input
                   value={formHeader.transfer_number}
                   onChange={(e) => setFormHeader((h) => ({ ...h, transfer_number: e.target.value }))}
-                  placeholder="ST-2024-0001"
+                  placeholder={t('stockTransfers.placeholderTransferNumber')}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Transfer Date</Label>
+                <Label>{t('stockTransfers.transferDate')}</Label>
                 <Input
                   type="date"
                   value={formHeader.transfer_date}
@@ -295,12 +297,12 @@ export default function StockTransfersPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>From Warehouse</Label>
+                <Label>{t('stockTransfers.fromWarehouse')}</Label>
                 <Select
                   value={formHeader.from_warehouse_id}
                   onValueChange={(v) => setFormHeader((h) => ({ ...h, from_warehouse_id: v }))}
                 >
-                  <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t('common.select')} /></SelectTrigger>
                   <SelectContent>
                     {warehouseOptions.map((o) => (
                       <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
@@ -309,12 +311,12 @@ export default function StockTransfersPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>To Warehouse</Label>
+                <Label>{t('stockTransfers.toWarehouse')}</Label>
                 <Select
                   value={formHeader.to_warehouse_id}
                   onValueChange={(v) => setFormHeader((h) => ({ ...h, to_warehouse_id: v }))}
                 >
-                  <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t('common.select')} /></SelectTrigger>
                   <SelectContent>
                     {warehouseOptions.map((o) => (
                       <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
@@ -325,7 +327,7 @@ export default function StockTransfersPage() {
             </div>
             {!editing && (
               <div className="space-y-2">
-                <Label>Status</Label>
+                <Label>{t('common.status')}</Label>
                 <Select
                   value={formHeader.status}
                   onValueChange={(v) => setFormHeader((h) => ({ ...h, status: v as 'draft' }))}
@@ -333,41 +335,43 @@ export default function StockTransfersPage() {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {statusOptions.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.value === 'in_transit' ? t('common.inTransit') : t(`common.${o.value}`)}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
             )}
             <div className="space-y-2">
-              <Label>Vehicle Number (optional)</Label>
+              <Label>{t('stockTransfers.vehicleNumber')}</Label>
               <Input
                 value={formHeader.vehicle_number}
                 onChange={(e) => setFormHeader((h) => ({ ...h, vehicle_number: e.target.value }))}
-                placeholder="Vehicle number"
+                placeholder={t('stockTransfers.placeholderVehicleNumber')}
               />
             </div>
             <div className="space-y-2">
-              <Label>Notes (optional)</Label>
+              <Label>{t('stockTransfers.notesOptional')}</Label>
               <Input
                 value={formHeader.notes}
                 onChange={(e) => setFormHeader((h) => ({ ...h, notes: e.target.value }))}
-                placeholder="Notes"
+                placeholder={t('stockTransfers.placeholderNotes')}
               />
             </div>
             <div>
               <div className="flex justify-between items-center mb-2">
-                <Label>Transfer Items</Label>
+                <Label>{t('stockTransfers.transferItems')}</Label>
                 <Button type="button" variant="outline" size="sm" onClick={addItem}>
-                  <Plus className="h-4 w-4 mr-1" /> Add line
+                  <Plus className="h-4 w-4 mr-1" /> {t('common.addLine')}
                 </Button>
               </div>
               <div className="rounded-md border overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="px-4 py-2 text-left font-medium">Product</th>
-                      <th className="px-4 py-2 text-right font-medium w-28">Boxes</th>
+                      <th className="px-4 py-2 text-left font-medium">{t('common.product')}</th>
+                      <th className="px-4 py-2 text-right font-medium w-28">{t('stockTransfers.boxes')}</th>
                       <th className="w-12" />
                     </tr>
                   </thead>
@@ -379,7 +383,7 @@ export default function StockTransfersPage() {
                             value={row.product_id}
                             onValueChange={(v) => updateItem(idx, { product_id: v })}
                           >
-                            <SelectTrigger className="h-9"><SelectValue placeholder="Product" /></SelectTrigger>
+                            <SelectTrigger className="h-9"><SelectValue placeholder={t('common.product')} /></SelectTrigger>
                             <SelectContent>
                               {productOptions.map((o) => (
                                 <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
@@ -410,18 +414,12 @@ export default function StockTransfersPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => (setDialogOpen(false), setEditing(null))}>Cancel</Button>
+            <Button variant="outline" onClick={() => (setDialogOpen(false), setEditing(null))}>{t('common.cancel')}</Button>
             <Button
               onClick={() => saveMutation.mutate()}
-              disabled={
-                !formHeader.transfer_number ||
-                !formHeader.from_warehouse_id ||
-                !formHeader.to_warehouse_id ||
-                !formHeader.transfer_date ||
-                saveMutation.isPending
-              }
+              disabled={!formHeader.transfer_number || !formHeader.from_warehouse_id || !formHeader.to_warehouse_id || !formHeader.transfer_date || saveMutation.isPending}
             >
-              {saveMutation.isPending ? 'Saving...' : editing ? 'Update' : 'Create'}
+              {saveMutation.isPending ? t('common.saving') : editing ? t('common.update') : t('common.create')}
             </Button>
           </DialogFooter>
         </DialogContent>

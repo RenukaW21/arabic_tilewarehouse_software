@@ -26,9 +26,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, PackageCheck, Plus, Trash2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { DeleteConfirmDialog } from '@/components/shared/DeleteConfirmDialog';
+import { useTranslation } from 'react-i18next';
 
 export default function SalesReturnsPage() {
   const qc = useQueryClient();
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -195,19 +197,19 @@ export default function SalesReturnsPage() {
   };
 
   const columns = [
-    { key: 'return_number', label: 'Return #', render: (r: SalesReturn) => <span className="font-mono text-sm font-medium">{r.return_number}</span> },
-    { key: 'customer_name', label: 'Customer', render: (r: SalesReturn) => r.customer_name ?? '—' },
-    { key: 'warehouse_name', label: 'Warehouse', render: (r: SalesReturn) => r.warehouse_name ?? '—' },
-    { key: 'status', label: 'Status', render: (r: SalesReturn) => <StatusBadge status={r.status} /> },
-    { key: 'return_date', label: 'Date', render: (r: SalesReturn) => (r.return_date ? new Date(r.return_date).toLocaleDateString() : '—') },
-    { key: 'return_reason', label: 'Reason', render: (r: SalesReturn) => r.return_reason ?? '—' },
-    { key: 'total_boxes', label: 'Boxes', render: (r: SalesReturn) => r.total_boxes ?? 0 },
+    { key: 'return_number', label: t('salesReturns.returnNumber'), render: (r: SalesReturn) => <span className="font-mono text-sm font-medium">{r.return_number}</span> },
+    { key: 'customer_name', label: t('salesReturns.customer'), render: (r: SalesReturn) => r.customer_name ?? '—' },
+    { key: 'warehouse_name', label: t('salesReturns.warehouse'), render: (r: SalesReturn) => r.warehouse_name ?? '—' },
+    { key: 'status', label: t('common.status'), render: (r: SalesReturn) => <StatusBadge status={r.status} /> },
+    { key: 'return_date', label: t('salesReturns.returnDate'), render: (r: SalesReturn) => (r.return_date ? new Date(r.return_date).toLocaleDateString() : '—') },
+    { key: 'return_reason', label: t('salesReturns.reason'), render: (r: SalesReturn) => r.return_reason ?? '—' },
+    { key: 'total_boxes', label: t('salesReturns.boxes'), render: (r: SalesReturn) => r.total_boxes ?? 0 },
     {
       key: 'actions',
-      label: 'Actions',
+      label: t('common.actions'),
       render: (r: SalesReturn) => (
         <div className="flex gap-1">
-          <Button variant="outline" size="sm" onClick={() => setDetailId(r.id)}>View</Button>
+          <Button variant="outline" size="sm" onClick={() => setDetailId(r.id)}>{t('common.view')}</Button>
           {r.status === 'draft' && (
             <>
               <Button
@@ -223,7 +225,7 @@ export default function SalesReturnsPage() {
                 }}
                 title="Edit"
               >
-                <Pencil className="h-4 w-4 mr-1" /> Edit
+                <Pencil className="h-4 w-4 mr-1" /> {t('common.edit')}
               </Button>
               <Button
                 variant="default"
@@ -231,7 +233,7 @@ export default function SalesReturnsPage() {
                 onClick={() => receiveMutation.mutate(r.id)}
                 disabled={receiveMutation.isPending}
               >
-                <PackageCheck className="h-4 w-4 mr-1" /> Receive
+                <PackageCheck className="h-4 w-4 mr-1" /> {t('salesReturns.receive')}
               </Button>
               <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleting(r)} title="Delete">
                 <Trash2 className="h-4 w-4" />
@@ -246,10 +248,10 @@ export default function SalesReturnsPage() {
   return (
     <div>
       <PageHeader
-        title="Sales Returns"
-        subtitle="Create returns; receive to update stock and create credit note"
+        title={t('salesReturns.title')}
+        subtitle={t('salesReturns.createSubtitle')}
         onAdd={() => setCreateOpen(true)}
-        addLabel="New Return"
+        addLabel={t('salesReturns.newReturn')}
       />
       <div className="mb-4 flex flex-wrap gap-2">
         <select
@@ -257,12 +259,12 @@ export default function SalesReturnsPage() {
           onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
           className="h-9 rounded-md border px-3 text-sm"
         >
-          <option value="">All statuses</option>
-          <option value="draft">Draft</option>
-          <option value="received">Received</option>
-          <option value="inspected">Inspected</option>
-          <option value="completed">Completed</option>
-          <option value="cancelled">Cancelled</option>
+          <option value="">{t('common.allStatuses')}</option>
+          <option value="draft">{t('common.draft')}</option>
+          <option value="received">{t('common.received')}</option>
+          <option value="inspected">{t('salesReturns.inspected')}</option>
+          <option value="completed">{t('salesReturns.completed')}</option>
+          <option value="cancelled">{t('common.cancelled')}</option>
         </select>
       </div>
       <DataTableShell<SalesReturn>
@@ -280,14 +282,14 @@ export default function SalesReturnsPage() {
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>New sales return</DialogTitle>
+            <DialogTitle>{t('salesReturns.newReturn')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Customer <span className="text-destructive">*</span></Label>
+                <Label>{t('salesReturns.customer')} <span className="text-destructive">*</span></Label>
                 <Select value={formCustomerId} onValueChange={setFormCustomerId}>
-                  <SelectTrigger><SelectValue placeholder="Select customer" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t('salesReturns.selectCustomer')} /></SelectTrigger>
                   <SelectContent>
                     {customers.map((c) => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
@@ -296,9 +298,9 @@ export default function SalesReturnsPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Warehouse <span className="text-destructive">*</span></Label>
+                <Label>{t('salesReturns.warehouse')} <span className="text-destructive">*</span></Label>
                 <Select value={formWarehouseId} onValueChange={setFormWarehouseId}>
-                  <SelectTrigger><SelectValue placeholder="Select warehouse" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t('salesReturns.selectWarehouse')} /></SelectTrigger>
                   <SelectContent>
                     {warehouses.map((w) => (
                       <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
@@ -308,25 +310,25 @@ export default function SalesReturnsPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Return reason <span className="text-destructive">*</span></Label>
-              <Input value={formReturnReason} onChange={(e) => setFormReturnReason(e.target.value)} placeholder="Reason" />
+              <Label>{t('salesReturns.returnReason')} <span className="text-destructive">*</span></Label>
+              <Input value={formReturnReason} onChange={(e) => setFormReturnReason(e.target.value)} placeholder={t('salesReturns.placeholderReason')} />
             </div>
             <div className="space-y-2">
-              <Label>Notes</Label>
-              <Textarea value={formNotes} onChange={(e) => setFormNotes(e.target.value)} placeholder="Optional" />
+              <Label>{t('salesReturns.notes')}</Label>
+              <Textarea value={formNotes} onChange={(e) => setFormNotes(e.target.value)} placeholder={t('salesReturns.placeholderOptional')} />
             </div>
             <div>
               <div className="flex justify-between items-center mb-2">
-                <Label>Items</Label>
-                <Button type="button" variant="outline" size="sm" onClick={addLine}><Plus className="h-4 w-4 mr-1" /> Add line</Button>
+                <Label>{t('salesReturns.items')}</Label>
+                <Button type="button" variant="outline" size="sm" onClick={addLine}><Plus className="h-4 w-4 mr-1" /> {t('common.addLine')}</Button>
               </div>
               <div className="rounded-md border">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="px-4 py-2 text-left font-medium">Product</th>
-                      <th className="px-4 py-2 text-right font-medium w-28">Boxes</th>
-                      <th className="px-4 py-2 text-right font-medium w-28">Unit price</th>
+                      <th className="px-4 py-2 text-left font-medium">{t('common.product')}</th>
+                      <th className="px-4 py-2 text-right font-medium w-28">{t('salesReturns.boxes')}</th>
+                      <th className="px-4 py-2 text-right font-medium w-28">{t('salesReturns.unitPrice')}</th>
                       <th className="w-12" />
                     </tr>
                   </thead>
@@ -338,7 +340,7 @@ export default function SalesReturnsPage() {
                             value={row.product_id}
                             onValueChange={(v) => updateLine(idx, { product_id: v })}
                           >
-                            <SelectTrigger className="h-8"><SelectValue placeholder="Product" /></SelectTrigger>
+                            <SelectTrigger className="h-8"><SelectValue placeholder={t('common.product')} /></SelectTrigger>
                             <SelectContent>
                               {products.map((p) => (
                                 <SelectItem key={p.id} value={p.id}>{p.code} — {p.name}</SelectItem>
@@ -379,7 +381,7 @@ export default function SalesReturnsPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>{t('common.cancel')}</Button>
             <Button
               onClick={() => createMutation.mutate()}
               disabled={
@@ -391,7 +393,7 @@ export default function SalesReturnsPage() {
               }
             >
               {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Create
+              {t('common.create')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -448,7 +450,7 @@ export default function SalesReturnsPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Return date</Label>
+              <Label>{t('salesReturns.returnDate')}</Label>
               <Input
                 type="date"
                 value={editForm.return_date}
@@ -456,28 +458,28 @@ export default function SalesReturnsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Return reason</Label>
+              <Label>{t('salesReturns.returnReason')}</Label>
               <Input
                 value={editForm.return_reason}
                 onChange={(e) => setEditForm((f) => ({ ...f, return_reason: e.target.value }))}
-                placeholder="Reason"
+                placeholder={t('salesReturns.placeholderReason')}
               />
             </div>
             <div className="space-y-2">
-              <Label>Notes</Label>
+              <Label>{t('salesReturns.notes')}</Label>
               <Textarea
                 value={editForm.notes}
                 onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
-                placeholder="Notes"
+                placeholder={t('stockTransfers.placeholderNotes')}
                 rows={2}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingReturn(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setEditingReturn(null)}>{t('common.cancel')}</Button>
             <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending}>
               {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Update
+              {t('common.update')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { Pencil, Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 const roleLabels: Record<string, string> = {
   super_admin: "Super Admin",
@@ -46,6 +47,7 @@ interface WarehouseOption {
 }
 
 export default function UsersPage() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
@@ -100,7 +102,7 @@ export default function UsersPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["users"] });
       setCreateOpen(false);
-      toast.success("User created");
+      toast.success(t('users.userCreated'));
     },
     onError: (e: { response?: { data?: { error?: { message?: string } } } }) =>
       toast.error(e?.response?.data?.error?.message ?? "Create failed"),
@@ -112,7 +114,7 @@ export default function UsersPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["users"] });
       setEditing(null);
-      toast.success("User updated");
+      toast.success(t('users.userUpdated'));
     },
     onError: (e: { response?: { data?: { error?: { message?: string } } } }) =>
       toast.error(e?.response?.data?.error?.message ?? "Update failed"),
@@ -123,33 +125,33 @@ export default function UsersPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["users"] });
       setDeactivateTarget(null);
-      toast.success("User deactivated");
+      toast.success(t('users.userDeleted'));
     },
     onError: (e: { response?: { data?: { error?: { message?: string } } } }) =>
       toast.error(e?.response?.data?.error?.message ?? "Deactivate failed"),
   });
 
   const columns = [
-    { key: "name", label: "Name", render: (r: User) => r.name },
-    { key: "email", label: "Email", render: (r: User) => r.email },
+    { key: "name", label: t('common.name'), render: (r: User) => r.name },
+    { key: "email", label: t('users.email'), render: (r: User) => r.email },
     {
       key: "role",
-      label: "Role",
+      label: t('users.role'),
       render: (r: User) => roleLabels[r.role] ?? r.role,
     },
     {
       key: "warehouse",
-      label: "Warehouse",
+      label: t('warehouses.title'),
       render: (r: User) => (
         <span className="text-sm">
           {getWarehouseLabel((r as User & { warehouse_id?: string }).warehouse_id)}
         </span>
       ),
     },
-    { key: "phone", label: "Phone", render: (r: User) => r.phone ?? "—" },
+    { key: "phone", label: t('customers.phone'), render: (r: User) => r.phone ?? "—" },
     {
       key: "is_active",
-      label: "Status",
+      label: t('common.status'),
       render: (r: User) => (
         <StatusBadge
           status={
@@ -160,7 +162,7 @@ export default function UsersPage() {
     },
     {
       key: "actions",
-      label: "Actions",
+      label: t('common.actions'),
       render: (r: User) => (
         <div className="flex gap-1">
           <Button
@@ -189,10 +191,10 @@ export default function UsersPage() {
   return (
     <div>
       <PageHeader
-        title="Users"
-        subtitle="Manage tenant users. Only admins can create or edit."
+        title={t('users.title')}
+        subtitle={t('users.subtitle')}
         onAdd={() => setCreateOpen(true)}
-        addLabel="Add User"
+        addLabel={t('users.addUser')}
       />
 
       <div className="mb-4 flex flex-wrap gap-2">
@@ -204,7 +206,7 @@ export default function UsersPage() {
           }}
           className="h-9 rounded-md border px-3 text-sm"
         >
-          <option value="">All roles</option>
+          <option value="">{t('common.allRoles')}</option>
           {ROLES.map((r) => (
             <option key={r} value={r}>
               {roleLabels[r]}
@@ -219,9 +221,9 @@ export default function UsersPage() {
           }}
           className="h-9 rounded-md border px-3 text-sm"
         >
-          <option value="">All statuses</option>
-          <option value="true">Active</option>
-          <option value="false">Inactive</option>
+          <option value="">{t('common.allStatuses')}</option>
+          <option value="true">{t('common.active')}</option>
+          <option value="false">{t('common.inactive')}</option>
         </select>
       </div>
 
@@ -248,7 +250,7 @@ export default function UsersPage() {
 
       {users.length === 0 && !isLoading && !isError && (
         <div className="rounded-md border border-dashed px-4 py-8 text-center text-muted-foreground">
-          No users found. Add a user to get started.
+          {t('users.noUsersFound')}
         </div>
       )}
 
@@ -280,26 +282,15 @@ export default function UsersPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Deactivate user</DialogTitle>
+            <DialogTitle>{t('users.deactivateTitle')}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Deactivate <strong>{deactivateTarget?.name}</strong>? They will no
-            longer be able to sign in. You can reactivate by editing the user
-            later.
+            {t('users.deactivateDesc').replace('{{name}}', deactivateTarget?.name ?? '')}
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeactivateTarget(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() =>
-                deactivateTarget &&
-                deactivateMutation.mutate(deactivateTarget.id)
-              }
-              disabled={deactivateMutation.isPending}
-            >
-              {deactivateMutation.isPending ? "Deactivating..." : "Deactivate"}
+            <Button variant="outline" onClick={() => setDeactivateTarget(null)}>{t('common.cancel')}</Button>
+            <Button variant="destructive" onClick={() => deactivateTarget && deactivateMutation.mutate(deactivateTarget.id)} disabled={deactivateMutation.isPending}>
+              {deactivateMutation.isPending ? t('users.deactivating') : t('users.deactivate')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -323,6 +314,7 @@ function CreateUserDialog({
   loading: boolean;
   warehouseOptions: WarehouseOption[];
 }) {
+  const { t } = useTranslation();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -357,45 +349,45 @@ function CreateUserDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <UserPlus className="h-5 w-5" /> Add user
+            <UserPlus className="h-5 w-5" /> {t('users.addUserTitle')}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="create-name">Name</Label>
+            <Label htmlFor="create-name">{t('common.name')}</Label>
             <Input
               id="create-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Full name"
+              placeholder={t('users.placeholderFullName')}
               required
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="create-email">Email</Label>
+            <Label htmlFor="create-email">{t('common.email')}</Label>
             <Input
               id="create-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="user@example.com"
+              placeholder={t('users.placeholderEmail')}
               required
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="create-password">Password</Label>
+            <Label htmlFor="create-password">{t('common.password')}</Label>
             <Input
               id="create-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Min 6 characters"
+              placeholder={t('users.placeholderPassword')}
               minLength={6}
               required
             />
           </div>
           <div className="space-y-2">
-            <Label>Role</Label>
+            <Label>{t('common.role')}</Label>
             <Select
               value={role}
               onValueChange={(v) => setRole(v as User["role"])}
@@ -413,16 +405,16 @@ function CreateUserDialog({
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Warehouse (optional)</Label>
+            <Label>{t('users.warehouseOptional')}</Label>
             <Select
               value={warehouseId}
               onValueChange={(v) => setWarehouseId(v === "__none__" ? "" : v)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="No warehouse assigned" />
+                <SelectValue placeholder={t('users.placeholderNoWarehouse')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">No warehouse</SelectItem>
+                <SelectItem value="__none__">{t('common.noWarehouse')}</SelectItem>
                 {warehouseOptions.map((w) => (
                   <SelectItem key={w.value} value={w.value}>
                     {w.label}
@@ -432,20 +424,18 @@ function CreateUserDialog({
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="create-phone">Phone (optional)</Label>
+            <Label htmlFor="create-phone">{t('users.phoneOptional')}</Label>
             <Input
               id="create-phone"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="Phone"
+              placeholder={t('common.phone')}
             />
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => { reset(); onClose(); }}>
-              Cancel
-            </Button>
+            <Button type="button" variant="outline" onClick={() => { reset(); onClose(); }}>{t('common.cancel')}</Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Creating..." : "Create"}
+              {loading ? t('common.saving') : t('common.create')}
             </Button>
           </DialogFooter>
         </form>
@@ -471,6 +461,7 @@ function EditUserDialog({
   loading: boolean;
   warehouseOptions: WarehouseOption[];
 }) {
+  const { t } = useTranslation();
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<User["role"]>("user");
@@ -527,35 +518,33 @@ function EditUserDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit user</DialogTitle>
+          <DialogTitle>{t('users.editUserTitle')}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="edit-name">Name</Label>
+            <Label htmlFor="edit-name">{t('common.name')}</Label>
             <Input
               id="edit-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Full name"
+              placeholder={t('users.placeholderFullName')}
               required
             />
           </div>
           <p className="text-xs text-muted-foreground">Email: {user.email}</p>
           <div className="space-y-2">
-            <Label htmlFor="edit-password">
-              New password (leave blank to keep)
-            </Label>
+            <Label htmlFor="edit-password">{t('users.newPassword')}</Label>
             <Input
               id="edit-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Min 6 characters"
+              placeholder={t('users.placeholderPassword')}
               minLength={6}
             />
           </div>
           <div className="space-y-2">
-            <Label>Role</Label>
+            <Label>{t('common.role')}</Label>
             <Select
               value={role}
               onValueChange={(v) => setRole(v as User["role"])}
@@ -573,16 +562,16 @@ function EditUserDialog({
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Warehouse</Label>
+            <Label>{t('warehouses.title')}</Label>
             <Select
               value={warehouseId || "__none__"}
               onValueChange={(v) => setWarehouseId(v === "__none__" ? "" : v)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="No warehouse assigned" />
+                <SelectValue placeholder={t('users.placeholderNoWarehouse')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">No warehouse</SelectItem>
+                <SelectItem value="__none__">{t('common.noWarehouse')}</SelectItem>
                 {warehouseOptions.map((w) => (
                   <SelectItem key={w.value} value={w.value}>
                     {w.label}
@@ -592,12 +581,12 @@ function EditUserDialog({
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="edit-phone">Phone</Label>
+            <Label htmlFor="edit-phone">{t('common.phone')}</Label>
             <Input
               id="edit-phone"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="Phone"
+              placeholder={t('common.phone')}
             />
           </div>
           <div className="flex items-center gap-2">
@@ -609,19 +598,13 @@ function EditUserDialog({
               className="h-4 w-4 rounded border"
             />
             <Label htmlFor="edit-active" className="font-normal">
-              Active (can sign in)
+              {t('users.isActive')}
             </Label>
           </div>
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => handleOpenChange(false)}
-            >
-              Cancel
-            </Button>
+            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>{t('common.cancel')}</Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Saving..." : "Save"}
+              {loading ? t('common.saving') : t('common.save')}
             </Button>
           </DialogFooter>
         </form>

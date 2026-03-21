@@ -20,8 +20,10 @@ import type { FieldDef } from '@/components/shared/CrudFormDialog';
 import type { LineItem } from '@/components/shared/LineItemsEditor';
 import { useAuth } from '@/hooks/useAuth';
 import { can, type UserRole } from '@/lib/permissions';
+import { useTranslation } from 'react-i18next';
 
 export default function SalesOrdersPage() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { user } = useAuth();
   const canCreate = can((user?.role as UserRole) ?? undefined, 'sales-orders', 'create');
@@ -142,7 +144,7 @@ export default function SalesOrdersPage() {
       setDialogOpen(false);
       setEditing(null);
       setEditingItems([]);
-      toast.success(editing ? 'Order updated' : 'Order created');
+      toast.success(editing ? t('salesOrders.orderUpdated') : t('salesOrders.orderCreated'));
     },
     onError: (e: { response?: { data?: { error?: { message?: string } } } }) =>
       toast.error(e?.response?.data?.error?.message ?? 'Operation failed'),
@@ -152,7 +154,7 @@ export default function SalesOrdersPage() {
     mutationFn: (id: string) => salesOrdersApi.confirm(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['sales-orders'] });
-      toast.success('Order confirmed; pick list created');
+      toast.success(t('salesOrders.orderConfirmed'));
     },
     onError: (e: { response?: { data?: { error?: { message?: string } } } }) =>
       toast.error(e?.response?.data?.error?.message ?? 'Confirm failed'),
@@ -164,23 +166,23 @@ export default function SalesOrdersPage() {
     onSuccess: (_, { status }) => {
       qc.invalidateQueries({ queryKey: ['sales-orders'] });
       setDeleting(null);
-      toast.success(status === 'draft' ? 'Order deleted' : 'Order cancelled');
+      toast.success(status === 'draft' ? t('salesOrders.orderDeleted') : t('common.cancelled'));
     },
     onError: (e: { response?: { data?: { error?: { message?: string } } } }) =>
       toast.error(e?.response?.data?.error?.message ?? 'Delete failed'),
   });
 
   const columns = [
-    { key: 'so_number', label: 'SO #', render: (r: SalesOrder) => <span className="font-mono text-sm font-medium">{r.so_number}</span> },
-    { key: 'customer_name', label: 'Customer', render: (r: SalesOrder) => r.customer_name ?? '—' },
-    { key: 'warehouse_name', label: 'Warehouse', render: (r: SalesOrder) => r.warehouse_name ?? '—' },
-    { key: 'status', label: 'Status', render: (r: SalesOrder) => <StatusBadge status={r.status} /> },
-    { key: 'order_date', label: 'Date', render: (r: SalesOrder) => (r.order_date ? new Date(r.order_date).toLocaleDateString() : '—') },
-    { key: 'grand_total', label: 'Total', render: (r: SalesOrder) => `₹${Number(r.grand_total ?? 0).toLocaleString()}` },
-    { key: 'payment_status', label: 'Payment', render: (r: SalesOrder) => <StatusBadge status={r.payment_status} /> },
+    { key: 'so_number', label: t('salesOrders.soNumber'), render: (r: SalesOrder) => <span className="font-mono text-sm font-medium">{r.so_number}</span> },
+    { key: 'customer_name', label: t('salesOrders.customer'), render: (r: SalesOrder) => r.customer_name ?? '—' },
+    { key: 'warehouse_name', label: t('salesOrders.warehouse'), render: (r: SalesOrder) => r.warehouse_name ?? '—' },
+    { key: 'status', label: t('common.status'), render: (r: SalesOrder) => <StatusBadge status={r.status} /> },
+    { key: 'order_date', label: t('salesOrders.orderDate'), render: (r: SalesOrder) => (r.order_date ? new Date(r.order_date).toLocaleDateString() : '—') },
+    { key: 'grand_total', label: t('salesOrders.total'), render: (r: SalesOrder) => `₹${Number(r.grand_total ?? 0).toLocaleString()}` },
+    { key: 'payment_status', label: t('salesOrders.payment'), render: (r: SalesOrder) => <StatusBadge status={r.payment_status} /> },
     {
       key: 'actions',
-      label: 'Actions',
+      label: t('common.actions'),
       render: (r: SalesOrder) => (
         <div className="flex gap-1">
           {canUpdate && (
@@ -213,10 +215,10 @@ export default function SalesOrdersPage() {
   return (
     <div>
       <PageHeader
-        title="Sales Orders"
-        subtitle="Manage sales orders"
+        title={t('salesOrders.title')}
+        subtitle={t('salesOrders.subtitle')}
         onAdd={canCreate ? () => { setEditing(null); setEditingItems([]); setDialogOpen(true); } : undefined}
-        addLabel="New SO"
+        addLabel={t('salesOrders.newSO')}
       />
       <div className="mb-4 flex flex-wrap gap-2">
         <select
@@ -227,13 +229,13 @@ export default function SalesOrdersPage() {
           }}
           className="h-9 rounded-md border px-3 text-sm"
         >
-          <option value="">All statuses</option>
-          <option value="draft">Draft</option>
-          <option value="confirmed">Confirmed</option>
-          <option value="pick_ready">Pick Ready</option>
-          <option value="dispatched">Dispatched</option>
-          <option value="delivered">Delivered</option>
-          <option value="cancelled">Cancelled</option>
+          <option value="">{t('common.allStatuses')}</option>
+          <option value="draft">{t('common.draft')}</option>
+          <option value="confirmed">{t('common.confirmed')}</option>
+          <option value="pick_ready">{t('common.pickReady')}</option>
+          <option value="dispatched">{t('common.dispatched')}</option>
+          <option value="delivered">{t('common.delivered')}</option>
+          <option value="cancelled">{t('common.cancelled')}</option>
         </select>
         <select
           value={paymentFilter}
@@ -243,10 +245,10 @@ export default function SalesOrdersPage() {
           }}
           className="h-9 rounded-md border px-3 text-sm"
         >
-          <option value="">All payment</option>
-          <option value="pending">Pending</option>
-          <option value="partial">Partial</option>
-          <option value="paid">Paid</option>
+          <option value="">{t('common.allPayments')}</option>
+          <option value="pending">{t('common.pending')}</option>
+          <option value="partial">{t('common.partial')}</option>
+          <option value="paid">{t('common.paid')}</option>
         </select>
       </div>
       <DataTableShell<SalesOrder>
@@ -272,7 +274,7 @@ export default function SalesOrdersPage() {
         }}
         onSubmit={(header, items) => saveMutation.mutateAsync({ header, items })}
         headerFields={headerFields}
-        title={editing ? 'Edit Sales Order' : 'New Sales Order'}
+        title={editing ? t('salesOrders.editOrder') : t('salesOrders.newOrder')}
         initialData={editing ? { ...editing, so_number: editing.so_number, ...(editing.status === 'cancelled' ? { status: 'pick_ready' } : {}) } : undefined}
         initialItems={editingItems}
         loading={saveMutation.isPending}
@@ -282,8 +284,8 @@ export default function SalesOrdersPage() {
         open={!!deleting}
         onClose={() => setDeleting(null)}
         onConfirm={async () => deleting && deleteMutation.mutate({ id: deleting.id, status: deleting.status })}
-        title={deleting?.status === 'draft' ? 'Delete order' : 'Cancel order'}
-        description={deleting?.status === 'draft' ? 'This will permanently remove the draft order. Continue?' : 'This will mark the order as cancelled. Continue?'}
+        title={deleting?.status === 'draft' ? t('salesOrders.deleteTitle') : t('salesOrders.cancelTitle')}
+        description={deleting?.status === 'draft' ? t('salesOrders.deleteDesc') : t('salesOrders.cancelDesc')}
         loading={deleteMutation.isPending}
       />
     </div>

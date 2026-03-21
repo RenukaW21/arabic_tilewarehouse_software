@@ -29,10 +29,12 @@ import {
 import { Label } from '@/components/ui/label';
 import { Pencil, Trash2, Eye, CheckCircle, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 type PaymentStatus = 'pending' | 'partial' | 'paid';
 
 export default function PurchaseOrdersPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const qc = useQueryClient();
 
@@ -96,6 +98,8 @@ export default function PurchaseOrdersPage() {
     name:     p.name,
     mrp:      p.mrp ?? null,
     gst_rate: p.gstRate ?? 18,
+    piecesPerBox: p.piecesPerBox,
+    reorderLevelBoxes: p.reorderLevelBoxes,
   }));
 
   const getVendorName    = (id: string) => vendors.find((v) => v.id === id)?.name ?? '—';
@@ -117,7 +121,7 @@ export default function PurchaseOrdersPage() {
       invalidatePOs();
       setDialogOpen(false);
       setEditing(null);
-      toast.success(editing ? 'PO updated' : 'PO created');
+      toast.success(editing ? t('purchaseOrders.poUpdated') : t('purchaseOrders.poCreated'));
     },
     onError: (e: { response?: { data?: { error?: { message?: string }; message?: string } } }) => {
       toast.error(e?.response?.data?.error?.message ?? e?.response?.data?.message ?? 'Operation failed');
@@ -129,7 +133,7 @@ export default function PurchaseOrdersPage() {
     onSuccess: () => {
       invalidatePOs();
       setDeleting(null);
-      toast.success('PO cancelled');
+      toast.success(t('purchaseOrders.poCancelled'));
     },
     onError: (e: { response?: { data?: { error?: { message?: string }; message?: string } } }) => {
       toast.error(e?.response?.data?.error?.message ?? e?.response?.data?.message ?? 'Cancel failed');
@@ -141,7 +145,7 @@ export default function PurchaseOrdersPage() {
     onSuccess: () => {
       invalidatePOs();
       setApproving(null);
-      toast.success('PO approved');
+      toast.success(t('purchaseOrders.poApproved'));
     },
     onError: (e: { response?: { data?: { error?: { message?: string }; message?: string } } }) => {
       toast.error(e?.response?.data?.error?.message ?? e?.response?.data?.message ?? 'Approve failed');
@@ -155,7 +159,7 @@ export default function PurchaseOrdersPage() {
       invalidatePOs();
       qc.invalidateQueries({ queryKey: ['vendor-payments'] });
       setPaymentTarget(null);
-      toast.success('Payment status updated');
+      toast.success(t('purchaseOrders.paymentUpdated'));
     },
     onError: (e: { response?: { data?: { error?: { message?: string }; message?: string } } }) => {
       toast.error(e?.response?.data?.error?.message ?? e?.response?.data?.message ?? 'Update failed');
@@ -170,67 +174,18 @@ export default function PurchaseOrdersPage() {
 
   // ─── Columns ──────────────────────────────────────────────────────────────
   const columns = [
-    {
-      key: 'po_number',
-      label: 'PO #',
-      render: (r: PurchaseOrder) => (
-        <button
-          type="button"
-          className="font-mono text-sm font-medium text-primary hover:underline"
-          onClick={() => navigate(`/purchase/orders/${r.id}`)}
-        >
-          {r.po_number}
-        </button>
-      ),
-    },
-    {
-      key: 'vendor',
-      label: 'Vendor',
-      render: (r: PurchaseOrder) => r.vendor_name ?? getVendorName(r.vendor_id),
-    },
-    {
-      key: 'warehouse',
-      label: 'Warehouse',
-      render: (r: PurchaseOrder) => r.warehouse_name ?? getWarehouseName(r.warehouse_id),
-    },
-    {
-      key: 'status',
-      label: 'Status',
-      render: (r: PurchaseOrder) => <StatusBadge status={r.status} />,
-    },
-    {
-      key: 'payment_status',
-      label: 'Payment',
-      render: (r: PurchaseOrder) => <StatusBadge status={r.payment_status ?? 'pending'} />,
-    },
-    {
-      key: 'order_date',
-      label: 'Order Date',
-      render: (r: PurchaseOrder) =>
-        r.order_date ? new Date(r.order_date).toLocaleDateString('en-IN') : '—',
-    },
-    {
-      key: 'expected_date',
-      label: 'Expected Date',
-      render: (r: PurchaseOrder) =>
-        r.expected_date ? new Date(r.expected_date).toLocaleDateString('en-IN') : '—',
-    },
-    // FIX #9 — Added "Received Date" column per spec:
-    // disabled during creation, only editable when receiving items (enforced by backend + dialog)
-    {
-      key: 'received_date',
-      label: 'Received Date',
-      render: (r: PurchaseOrder) =>
-        r.received_date ? new Date(r.received_date).toLocaleDateString('en-IN') : '—',
-    },
-    {
-      key: 'grand_total',
-      label: 'Total',
-      render: (r: PurchaseOrder) => `₹${Number(r.grand_total ?? 0).toLocaleString()}`,
-    },
-    {
-      key: 'actions',
-      label: 'Actions',
+    { key: 'po_number', label: t('purchaseOrders.poNumber'), render: (r: PurchaseOrder) => (
+        <button type="button" className="font-mono text-sm font-medium text-primary hover:underline" onClick={() => navigate(`/purchase/orders/${r.id}`)}>{r.po_number}</button>
+    ) },
+    { key: 'vendor', label: t('purchaseOrders.vendor'), render: (r: PurchaseOrder) => r.vendor_name ?? getVendorName(r.vendor_id) },
+    { key: 'warehouse', label: t('purchaseOrders.warehouse'), render: (r: PurchaseOrder) => r.warehouse_name ?? getWarehouseName(r.warehouse_id) },
+    { key: 'status', label: t('common.status'), render: (r: PurchaseOrder) => <StatusBadge status={r.status} /> },
+    { key: 'payment_status', label: t('purchaseOrders.payment'), render: (r: PurchaseOrder) => <StatusBadge status={r.payment_status ?? 'pending'} /> },
+    { key: 'order_date', label: t('purchaseOrders.orderDate'), render: (r: PurchaseOrder) => r.order_date ? new Date(r.order_date).toLocaleDateString('en-IN') : '—' },
+    { key: 'expected_date', label: t('purchaseOrders.expectedDate'), render: (r: PurchaseOrder) => r.expected_date ? new Date(r.expected_date).toLocaleDateString('en-IN') : '—' },
+    { key: 'received_date', label: t('purchaseOrders.receivedDate'), render: (r: PurchaseOrder) => r.received_date ? new Date(r.received_date).toLocaleDateString('en-IN') : '—' },
+    { key: 'grand_total', label: t('purchaseOrders.total'), render: (r: PurchaseOrder) => `₹${Number(r.grand_total ?? 0).toLocaleString()}` },
+    { key: 'actions', label: t('common.actions'),
       render: (r: PurchaseOrder) => (
         <div className="flex gap-1">
           {/* View — always visible */}
@@ -304,10 +259,10 @@ export default function PurchaseOrdersPage() {
   return (
     <div>
       <PageHeader
-        title="Purchase Orders"
-        subtitle="Manage purchase orders"
+        title={t('purchaseOrders.title')}
+        subtitle={t('purchaseOrders.subtitle')}
         onAdd={() => { setEditing(null); setDialogOpen(true); }}
-        addLabel="New PO"
+        addLabel={t('purchaseOrders.newPO')}
       />
 
       <DataTableShell<PurchaseOrder>
@@ -341,29 +296,24 @@ export default function PurchaseOrdersPage() {
         onClose={() => setDeleting(null)}
         onConfirm={() => deleting ? deleteMutation.mutateAsync(deleting.id) : Promise.resolve()}
         loading={deleteMutation.isPending}
-        title="Cancel Purchase Order?"
-        description="This will cancel the PO. You cannot cancel if a GRN is already linked."
+        title={t('purchaseOrders.cancelTitle')}
+        description={t('purchaseOrders.cancelDesc')}
       />
 
       {/* Approve confirm */}
       <Dialog open={!!approving} onOpenChange={(open) => !open && setApproving(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Approve Purchase Order</DialogTitle>
+            <DialogTitle>{t('purchaseOrders.approvePO')}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             Approve <strong>{approving?.po_number}</strong>? Status will change from{' '}
             <strong>Draft</strong> to <strong>Confirmed</strong> and it can no longer be edited.
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setApproving(null)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => approving && approveMutation.mutate(approving.id)}
-              disabled={approveMutation.isPending}
-            >
-              {approveMutation.isPending ? 'Approving...' : 'Approve'}
+            <Button variant="outline" onClick={() => setApproving(null)}>{t('common.cancel')}</Button>
+            <Button onClick={() => approving && approveMutation.mutate(approving.id)} disabled={approveMutation.isPending}>
+              {approveMutation.isPending ? t('common.approving') : t('common.approve')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -373,7 +323,7 @@ export default function PurchaseOrdersPage() {
       <Dialog open={!!paymentTarget} onOpenChange={(open) => !open && setPaymentTarget(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Update Payment Status</DialogTitle>
+            <DialogTitle>{t('purchaseOrders.updatePaymentStatus')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <p className="text-sm text-muted-foreground">
@@ -381,7 +331,7 @@ export default function PurchaseOrdersPage() {
               <strong>₹{Number(paymentTarget?.grand_total ?? 0).toLocaleString()}</strong>
             </p>
             <div className="space-y-2">
-              <Label>Payment Status</Label>
+              <Label>{t('purchaseOrders.paymentStatus')}</Label>
               <Select
                 value={paymentStatus}
                 onValueChange={(v) => setPaymentStatus(v as PaymentStatus)}
@@ -390,25 +340,20 @@ export default function PurchaseOrdersPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="partial">Partial</SelectItem>
-                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="pending">{t('common.pending')}</SelectItem>
+                  <SelectItem value="partial">{t('common.partial')}</SelectItem>
+                  <SelectItem value="paid">{t('common.paid')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPaymentTarget(null)}>
-              Cancel
-            </Button>
+            <Button variant="outline" onClick={() => setPaymentTarget(null)}>{t('common.cancel')}</Button>
             <Button
-              onClick={() =>
-                paymentTarget &&
-                paymentMutation.mutate({ id: paymentTarget.id, status: paymentStatus })
-              }
+              onClick={() => paymentTarget && paymentMutation.mutate({ id: paymentTarget.id, status: paymentStatus })}
               disabled={paymentMutation.isPending}
             >
-              {paymentMutation.isPending ? 'Saving...' : 'Save'}
+              {paymentMutation.isPending ? t('common.saving') : t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>

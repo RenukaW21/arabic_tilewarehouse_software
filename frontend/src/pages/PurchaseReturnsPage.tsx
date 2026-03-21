@@ -31,8 +31,10 @@ import {
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Plus, AlertTriangle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function PurchaseReturnsPage() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<PurchaseReturn | null>(null);
@@ -237,21 +239,21 @@ export default function PurchaseReturnsPage() {
   const columns = [
     {
       key: 'return_number',
-      label: 'Return #',
+      label: t('purchaseReturns.returnNumber'),
       render: (r: PurchaseReturn) => <span className="font-mono text-sm font-medium">{r.return_number}</span>,
     },
-    { key: 'vendor_name', label: 'Vendor', render: (r: PurchaseReturn) => r.vendor_name ?? r.vendor_id },
-    { key: 'warehouse_name', label: 'Warehouse', render: (r: PurchaseReturn) => r.warehouse_name ?? r.warehouse_id },
-    { key: 'status', label: 'Status', render: (r: PurchaseReturn) => <StatusBadge status={r.status} /> },
+    { key: 'vendor_name', label: t('purchaseReturns.vendor'), render: (r: PurchaseReturn) => r.vendor_name ?? r.vendor_id },
+    { key: 'warehouse_name', label: t('purchaseReturns.warehouse'), render: (r: PurchaseReturn) => r.warehouse_name ?? r.warehouse_id },
+    { key: 'status', label: t('common.status'), render: (r: PurchaseReturn) => <StatusBadge status={r.status} /> },
     {
       key: 'return_date',
       label: 'Date',
       render: (r: PurchaseReturn) => (r.return_date ? new Date(r.return_date).toLocaleDateString() : '—'),
     },
-    { key: 'total_boxes', label: 'Boxes', render: (r: PurchaseReturn) => r.total_boxes ?? 0 },
+    { key: 'total_boxes', label: t('purchaseReturns.boxes'), render: (r: PurchaseReturn) => r.total_boxes ?? 0 },
     {
       key: 'actions',
-      label: 'Actions',
+      label: t('common.actions'),
       render: (r: PurchaseReturn) => (
         <div className="flex gap-1">
           {r.status === 'draft' && (
@@ -294,10 +296,10 @@ export default function PurchaseReturnsPage() {
   return (
     <div>
       <PageHeader
-        title="Purchase Returns"
-        subtitle="Manage purchase returns to vendors. Create as draft, then dispatch to reduce stock."
+        title={t('purchaseReturns.title')}
+        subtitle={t('purchaseReturns.formSubtitle')}
         onAdd={openCreate}
-        addLabel="New Return"
+        addLabel={t('purchaseReturns.newReturn')}
       />
 
       <DataTableShell<PurchaseReturn>
@@ -316,7 +318,7 @@ export default function PurchaseReturnsPage() {
       <Dialog open={dialogOpen} onOpenChange={(o) => !o && (setDialogOpen(false), setEditing(null))}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{isEdit ? 'Edit Purchase Return' : 'New Purchase Return'}</DialogTitle>
+            <DialogTitle>{isEdit ? t('purchaseReturns.editReturn') : t('purchaseReturns.newReturn')}</DialogTitle>
           </DialogHeader>
           {!isEdit && (
             <Alert variant="default" className="border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900">
@@ -329,9 +331,9 @@ export default function PurchaseReturnsPage() {
           <form onSubmit={isEdit ? handleSubmitEdit : handleSubmitCreate} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Vendor</Label>
+                <Label>{t('purchaseReturns.vendor')}</Label>
                 <Select value={formVendorId} onValueChange={setFormVendorId} required disabled={isEdit}>
-                  <SelectTrigger><SelectValue placeholder="Select vendor" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t('purchaseReturns.selectVendor')} /></SelectTrigger>
                   <SelectContent>
                     {vendorOptions.map((v) => (
                       <SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>
@@ -340,9 +342,9 @@ export default function PurchaseReturnsPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Warehouse</Label>
+                <Label>{t('purchaseReturns.warehouse')}</Label>
                 <Select value={formWarehouseId} onValueChange={setFormWarehouseId} required disabled={isEdit}>
-                  <SelectTrigger><SelectValue placeholder="Select warehouse" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t('purchaseReturns.selectWarehouse')} /></SelectTrigger>
                   <SelectContent>
                     {warehouseOptions.map((w) => (
                       <SelectItem key={w.value} value={w.value}>{w.label}</SelectItem>
@@ -351,38 +353,38 @@ export default function PurchaseReturnsPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Return Date</Label>
+                <Label>{t('purchaseReturns.returnDate')}</Label>
                 <Input type="date" value={formReturnDate} onChange={(e) => setFormReturnDate(e.target.value)} required />
               </div>
               <div className="space-y-2">
-                <Label>Reason</Label>
-                <Input value={formReason} onChange={(e) => setFormReason(e.target.value)} placeholder="Reason for return" required />
+                <Label>{t('purchaseReturns.reason')}</Label>
+                <Input value={formReason} onChange={(e) => setFormReason(e.target.value)} placeholder={t('purchaseReturns.placeholderReason')} required />
               </div>
               <div className="space-y-2 col-span-2">
-                <Label>Vehicle Number</Label>
-                <Input value={formVehicle} onChange={(e) => setFormVehicle(e.target.value)} placeholder="Optional" />
+                <Label>{t('purchaseReturns.vehicleNumber')}</Label>
+                <Input value={formVehicle} onChange={(e) => setFormVehicle(e.target.value)} placeholder={t('purchaseReturns.placeholderOptional')} />
               </div>
               <div className="space-y-2 col-span-2">
-                <Label>Notes</Label>
-                <Textarea value={formNotes} onChange={(e) => setFormNotes(e.target.value)} placeholder="Optional" />
+                <Label>{t('purchaseReturns.notes')}</Label>
+                <Textarea value={formNotes} onChange={(e) => setFormNotes(e.target.value)} placeholder={t('purchaseReturns.placeholderOptional')} />
               </div>
             </div>
 
             {!isEdit && (
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <Label>Return Items</Label>
+                  <Label>{t('purchaseReturns.returnItems')}</Label>
                   <Button type="button" variant="outline" size="sm" onClick={addReturnItem}>
-                    <Plus className="h-4 w-4 mr-1" /> Add
+                    <Plus className="h-4 w-4 mr-1" /> {t('common.addLine')}
                   </Button>
                 </div>
                 <div className="border rounded-lg overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-muted/40 border-b">
-                        <th className="text-left px-2 py-2 font-medium">Product</th>
-                        <th className="text-right px-2 py-2 font-medium w-24">Boxes</th>
-                        <th className="text-right px-2 py-2 font-medium w-28">Unit Price</th>
+                        <th className="text-left px-2 py-2 font-medium">{t('common.product')}</th>
+                        <th className="text-right px-2 py-2 font-medium w-24">{t('purchaseReturns.boxes')}</th>
+                        <th className="text-right px-2 py-2 font-medium w-28">{t('purchaseReturns.unitPrice')}</th>
                         <th className="w-10"></th>
                       </tr>
                     </thead>
@@ -398,7 +400,7 @@ export default function PurchaseReturnsPage() {
                                 updateReturnItem(idx, { product_id: v, unit_price: p?.mrp ?? 0 });
                               }}
                             >
-                              <SelectTrigger className="h-8"><SelectValue placeholder="Product" /></SelectTrigger>
+                              <SelectTrigger className="h-8"><SelectValue placeholder={t('common.product')} /></SelectTrigger>
                               <SelectContent>
                                 {products.map((p) => (
                                   <SelectItem key={p.id} value={p.id}>{p.code} — {p.name}</SelectItem>
@@ -441,10 +443,10 @@ export default function PurchaseReturnsPage() {
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={createMutation.isPending || updateMutation.isPending}>
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-                {createMutation.isPending || updateMutation.isPending ? 'Saving...' : isEdit ? 'Update' : 'Create Return'}
+                {createMutation.isPending || updateMutation.isPending ? t('common.saving') : isEdit ? t('common.update') : t('purchaseReturns.createReturn')}
               </Button>
             </DialogFooter>
           </form>

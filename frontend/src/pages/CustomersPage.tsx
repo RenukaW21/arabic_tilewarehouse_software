@@ -11,24 +11,26 @@ import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, FileUp } from "lucide-react";
 import { toast } from "sonner";
-
-const fields: FieldDef[] = [
-  { key: "name", label: "Customer Name", type: "text", required: true, placeholder: "Enter customer name" },
-  { key: "code", label: "Customer Code", type: "text", placeholder: "CUST-001" },
-  { key: "contact_person", label: "Contact Person", type: "text", placeholder: "Contact name" },
-  { key: "phone", label: "Phone", type: "text", placeholder: "Phone number" },
-  { key: "email", label: "Email", type: "email", placeholder: "Email address" },
-  { key: "gstin", label: "GSTIN", type: "text", placeholder: "22AAAAA0000A1Z5" },
-  { key: "state_code", label: "State Code", type: "text", placeholder: "e.g. 09" },
-  { key: "billing_address", label: "Billing Address", type: "textarea", placeholder: "Billing address" },
-  { key: "shipping_address", label: "Shipping Address", type: "textarea", placeholder: "Shipping address" },
-  { key: "credit_limit", label: "Credit Limit (₹)", type: "number", defaultValue: 0, placeholder: "0" },
-  { key: "payment_terms_days", label: "Payment Terms (Days)", type: "number", defaultValue: 0, placeholder: "0" },
-  { key: "is_active", label: "Status", type: "switch", defaultValue: true },
-];
+import { useTranslation } from "react-i18next";
 
 export default function CustomersPage() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
+
+  const fields: FieldDef[] = [
+    { key: "name", label: t('customers.customerName'), type: "text", required: true, placeholder: "Enter customer name" },
+    { key: "code", label: t('common.code'), type: "text", placeholder: "CUST-001" },
+    { key: "contact_person", label: t('customers.contactPerson'), type: "text", placeholder: "Contact name" },
+    { key: "phone", label: t('customers.phone'), type: "text", placeholder: "Phone number" },
+    { key: "email", label: t('customers.email'), type: "email", placeholder: "Email address" },
+    { key: "gstin", label: t('customers.gstNumber'), type: "text", placeholder: "22AAAAA0000A1Z5" },
+    { key: "state_code", label: "State Code", type: "text", placeholder: "e.g. 09" },
+    { key: "billing_address", label: "Billing Address", type: "textarea", placeholder: "Billing address" },
+    { key: "shipping_address", label: "Shipping Address", type: "textarea", placeholder: "Shipping address" },
+    { key: "credit_limit", label: "Credit Limit (₹)", type: "number", defaultValue: 0, placeholder: "0" },
+    { key: "payment_terms_days", label: "Payment Terms (Days)", type: "number", defaultValue: 0, placeholder: "0" },
+    { key: "is_active", label: t('common.status'), type: "switch", defaultValue: true },
+  ];
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
   const [deleting, setDeleting] = useState<Customer | null>(null);
@@ -85,7 +87,7 @@ export default function CustomersPage() {
       qc.invalidateQueries({ queryKey: ["customers"] });
       setDialogOpen(false);
       setEditing(null);
-      toast.success(editing ? "Customer updated" : "Customer created");
+      toast.success(editing ? t('customers.customerUpdated') : t('customers.customerCreated'));
     },
     onError: (e: { response?: { data?: { error?: { message?: string }; message?: string } } }) => {
       toast.error(e?.response?.data?.error?.message ?? e?.response?.data?.message ?? "Operation failed");
@@ -97,7 +99,7 @@ export default function CustomersPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["customers"] });
       setDeleting(null);
-      toast.success("Customer deleted");
+      toast.success(t('customers.customerDeleted'));
     },
     onError: (e: { response?: { data?: { error?: { message?: string }; message?: string } } }) => {
       toast.error(e?.response?.data?.error?.message ?? e?.response?.data?.message ?? "Delete failed");
@@ -105,15 +107,15 @@ export default function CustomersPage() {
   });
 
   const columns = [
-    { key: "code", label: "Code", render: (r: Customer) => <span className="font-mono text-sm">{r.code ?? "—"}</span> },
-    { key: "name", label: "Customer Name" },
-    { key: "contact_person", label: "Contact", render: (r: Customer) => r.contact_person ?? "—" },
-    { key: "phone", label: "Phone", render: (r: Customer) => r.phone ?? "—" },
+    { key: "code", label: t('common.code'), render: (r: Customer) => <span className="font-mono text-sm">{r.code ?? "—"}</span> },
+    { key: "name", label: t('customers.customerName') },
+    { key: "contact_person", label: t('customers.contactPerson'), render: (r: Customer) => r.contact_person ?? "—" },
+    { key: "phone", label: t('customers.phone'), render: (r: Customer) => r.phone ?? "—" },
     { key: "credit_limit", label: "Credit Limit", render: (r: Customer) => (r.credit_limit != null ? `₹${Number(r.credit_limit).toLocaleString()}` : "—") },
-    { key: "is_active", label: "Status", render: (r: Customer) => <StatusBadge status={r.is_active ? "active" : "inactive"} /> },
+    { key: "is_active", label: t('common.status'), render: (r: Customer) => <StatusBadge status={r.is_active ? "active" : "inactive"} /> },
     {
       key: "actions",
-      label: "Actions",
+      label: t('common.actions'),
       render: (r: Customer) => (
         <div className="flex gap-1">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditing(r); setDialogOpen(true); }}>
@@ -130,10 +132,10 @@ export default function CustomersPage() {
   return (
     <div>
       <PageHeader
-        title="Customers"
-        subtitle="Manage your customers"
+        title={t('customers.title')}
+        subtitle={t('customers.subtitle')}
         onAdd={() => { setEditing(null); setDialogOpen(true); }}
-        addLabel="Add Customer"
+        addLabel={t('customers.addCustomer')}
       >
         <Button
           variant="outline"
@@ -142,14 +144,13 @@ export default function CustomersPage() {
           className="flex items-center gap-1.5"
         >
           <FileUp className="h-4 w-4" />
-          Import CSV
+          {t('common.importCsv')}
         </Button>
       </PageHeader>
       <DataTableShell<Customer>
         data={customers}
         columns={columns}
         searchKey="name"
-        searchPlaceholder="Search by name or code..."
         serverSide
         searchValue={searchInput}
         onSearchChange={handleSearchChange}
@@ -162,7 +163,7 @@ export default function CustomersPage() {
         onClose={() => { setDialogOpen(false); setEditing(null); }}
         onSubmit={(d) => saveMutation.mutateAsync(d)}
         fields={fields}
-        title={editing ? "Edit Customer" : "New Customer"}
+        title={editing ? t('customers.editCustomer') : t('customers.newCustomer')}
         initialData={editing}
         loading={saveMutation.isPending}
       />

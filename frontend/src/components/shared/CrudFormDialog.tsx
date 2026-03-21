@@ -12,6 +12,7 @@ import { fetchNextDocNumber } from '@/hooks/useNextDocNumber';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Check, ChevronsUpDown } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export interface FieldDef {
   key: string;
@@ -43,6 +44,7 @@ interface CrudFormDialogProps {
 }
 
 export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initialData, loading, autoNumber, onValueChange, values }: CrudFormDialogProps) {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const prevOpen = useRef(open);
@@ -53,8 +55,6 @@ export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initial
     const initialDataChanged = initialData !== prevInitialData.current;
     
     if (open) {
-      // Only reset the whole form if it just opened or if initialData literally changed
-      // (This avoids resetting when 'fields' changes due to dynamic options e.g. rack filtering)
       const shouldReset = becameOpen || initialDataChanged;
 
       if (shouldReset) {
@@ -73,7 +73,6 @@ export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initial
         });
         setFormData(defaults);
 
-        // Auto-generate doc number for new records
         if (!initialData && autoNumber) {
           fetchNextDocNumber(autoNumber.docType)
             .then(num => setFormData(prev => ({ ...prev, [autoNumber.fieldKey]: num })))
@@ -101,7 +100,7 @@ export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initial
       if (!f.required) return;
       const val = formData[f.key];
       const empty = val === undefined || val === null || val === '' || (f.type === 'select' && (val === 'none' || val === ''));
-      if (empty) next[f.key] = `${f.label} is required`;
+      if (empty) next[f.key] = `${f.label} ${t('crudForm.isRequired')}`;
     });
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -155,9 +154,9 @@ export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initial
                 <Textarea id={f.key} value={formData[f.key] || ''} onChange={e => setValue(f.key, e.target.value)} placeholder={f.placeholder} required={f.required} className={errors[f.key] ? 'border-destructive' : ''} />
               ) : f.type === 'select' ? (
                 <Select value={formData[f.key] || (f.required ? '' : 'none')} onValueChange={v => setValue(f.key, v)}>
-                  <SelectTrigger className={errors[f.key] ? 'border-destructive' : ''}><SelectValue placeholder={f.placeholder || 'Select...'} /></SelectTrigger>
+                  <SelectTrigger className={errors[f.key] ? 'border-destructive' : ''}><SelectValue placeholder={f.placeholder || t('common.select')} /></SelectTrigger>
                   <SelectContent>
-                    {!f.required && <SelectItem value="none">— None —</SelectItem>}
+                    {!f.required && <SelectItem value="none">{t('common.none')}</SelectItem>}
                     {f.options?.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -175,7 +174,7 @@ export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initial
                     >
                       {formData[f.key]
                         ? f.options?.find(o => o.value === formData[f.key])?.label
-                        : (f.placeholder || "Select...")}
+                        : (f.placeholder || t('common.select'))}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
@@ -210,7 +209,7 @@ export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initial
               ) : f.type === 'switch' ? (
                 <div className="flex items-center gap-2">
                   <Switch id={f.key} checked={!!formData[f.key]} onCheckedChange={v => setValue(f.key, v)} />
-                  <span className="text-sm text-muted-foreground">{formData[f.key] ? 'Active' : 'Inactive'}</span>
+                  <span className="text-sm text-muted-foreground">{formData[f.key] ? t('crudForm.active') : t('crudForm.inactive')}</span>
                 </div>
               ) : (
                 <Input
@@ -236,8 +235,8 @@ export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initial
             </div>
           ))}
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={loading}>{loading ? 'Saving...' : initialData ? 'Update' : 'Create'}</Button>
+            <Button type="button" variant="outline" onClick={onClose}>{t('crudForm.cancel')}</Button>
+            <Button type="submit" disabled={loading}>{loading ? t('crudForm.saving') : initialData ? t('crudForm.update') : t('crudForm.create')}</Button>
           </div>
         </form>
       </DialogContent>

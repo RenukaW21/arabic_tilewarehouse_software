@@ -33,6 +33,8 @@ interface Product {
   name: string;
   mrp: number | null;
   gst_rate: number;
+  piecesPerBox?: number;
+  reorderLevelBoxes?: number;
 }
 
 export interface Shade {
@@ -50,6 +52,8 @@ interface LineItemsEditorProps {
   shades?: Shade[];
   /** When true, line items are read-only (e.g. editing non-draft order) */
   readOnly?: boolean;
+  /** When true, unit price cannot be manually edited */
+  lockUnitPrice?: boolean;
 }
 
 function calcLineTotal(item: LineItem): number {
@@ -63,7 +67,8 @@ const emptyItem = (): LineItem => ({
   product_id:    '',
   product_name:  '',
   shade_id:      null,
-  ordered_boxes: 1,
+  ordered_boxes: 0,
+  ordered_pieces: 0,
   unit_price:    0,
   discount_pct:  0,
   tax_pct:       18,
@@ -79,6 +84,7 @@ export function LineItemsEditor({
   products,
   shades = [],
   readOnly = false,
+  lockUnitPrice = false,
 }: LineItemsEditorProps) {
 
   const updateItem = (index: number, patch: Partial<LineItem>) => {
@@ -108,6 +114,8 @@ export function LineItemsEditor({
         product_id: product.id,
         product_name: product.name,
         shade_id: null,
+        ordered_boxes: 0,
+        ordered_pieces: product.piecesPerBox ?? 0,
         unit_price: product.mrp ?? 0,
         tax_pct: product.gst_rate ?? 18,
       });
@@ -217,15 +225,11 @@ export function LineItemsEditor({
                     <td className="px-1 py-1.5">
                       <Input
                         type="number"
-                        min={1}
-                        className="h-8 text-xs text-right w-full"
+                        min={0}
+                        className="h-8 text-xs text-right w-full bg-muted"
                         value={item.ordered_pieces || ''}
                         placeholder="Pcs"
-                        onChange={(e) =>
-                          !readOnly &&
-                          updateItem(idx, { ordered_pieces: Math.max(1, Number(e.target.value) || 1) })
-                        }
-                        readOnly={readOnly || !item.product_id}
+                        readOnly={true}
                       />
                     </td>
 
@@ -233,12 +237,13 @@ export function LineItemsEditor({
                     <td className="px-1 py-1.5">
                       <Input
                         type="number"
-                        min={1}
-                        className="h-8 text-xs text-right w-full"
-                        value={item.ordered_boxes}
+                        min={0}
+                        className={cn("h-8 text-xs text-right w-full", item.ordered_boxes === 0 && item.product_id && "border-red-500 focus-visible:ring-red-500")}
+                        value={item.ordered_boxes || ''}
+                        placeholder="0"
                         onChange={(e) =>
                           !readOnly &&
-                          updateItem(idx, { ordered_boxes: Math.max(1, Number(e.target.value) || 1) })
+                          updateItem(idx, { ordered_boxes: Math.max(0, Number(e.target.value) || 0) })
                         }
                         readOnly={readOnly}
                       />
@@ -249,12 +254,13 @@ export function LineItemsEditor({
                       <Input
                         type="number"
                         step="any"
-                        className="h-8 text-xs text-right w-full"
+                        className={cn("h-8 text-xs text-right w-full", lockUnitPrice && "bg-muted")}
                         value={item.unit_price}
+                        placeholder="0.00"
                         onChange={(e) =>
-                          !readOnly && updateItem(idx, { unit_price: Number(e.target.value) || 0 })
+                          !readOnly && !lockUnitPrice && updateItem(idx, { unit_price: Number(e.target.value) || 0 })
                         }
-                        readOnly={readOnly}
+                        readOnly={readOnly || lockUnitPrice}
                       />
                     </td>
 

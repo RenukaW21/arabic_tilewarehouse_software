@@ -14,16 +14,14 @@ import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 export default function CategoriesPage() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [deleting, setDeleting] = useState<any>(null);
-
-  /* ===============================
-     FETCH SAFE
-  =============================== */
 
   const { data, isLoading } = useQuery({
     queryKey: ["categories"],
@@ -32,7 +30,6 @@ export default function CategoriesPage() {
 
   const categories = useMemo(() => {
     if (!Array.isArray(data)) return [];
-
     return data.map((c: any) => ({
       id: c.id,
       name: c.name,
@@ -41,24 +38,20 @@ export default function CategoriesPage() {
     }));
   }, [data]);
 
-  /* ===============================
-     FORM FIELDS
-  =============================== */
-
   const fields: FieldDef[] = useMemo(() => [
     {
       key: "name",
-      label: "Category Name",
+      label: t('categories.categoryName'),
       type: "text",
       required: true,
       placeholder: "Floor Tiles",
     },
     {
       key: "parentId",
-      label: "Parent Category",
+      label: t('common.none'),
       type: "select",
       options: [
-        { value: "__none__", label: "None" },
+        { value: "__none__", label: t('common.none') },
         ...categories
           .filter((c) => c.id !== editing?.id)
           .map((c) => ({
@@ -69,15 +62,11 @@ export default function CategoriesPage() {
     },
     {
       key: "isActive",
-      label: "Status",
+      label: t('common.status'),
       type: "switch",
       defaultValue: true,
     },
-  ], [categories, editing]);
-
-  /* ===============================
-     SAVE
-  =============================== */
+  ], [categories, editing, t]);
 
   const saveMutation = useMutation({
     mutationFn: async (formData: any) => {
@@ -89,7 +78,6 @@ export default function CategoriesPage() {
             : formData.parentId || null,
         isActive: formData.isActive ?? true,
       };
-
       return editing
         ? updateCategory(editing.id, payload)
         : createCategory(payload);
@@ -98,29 +86,21 @@ export default function CategoriesPage() {
       qc.invalidateQueries({ queryKey: ["categories"] });
       setDialogOpen(false);
       setEditing(null);
-      toast.success(editing ? "Category updated" : "Category created");
+      toast.success(editing ? t('categories.categoryUpdated') : t('categories.categoryCreated'));
     },
   });
-
-  /* ===============================
-     DELETE
-  =============================== */
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteCategory(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["categories"] });
       setDeleting(null);
-      toast.success("Category deleted");
+      toast.success(t('categories.categoryDeleted'));
     },
   });
 
-  /* ===============================
-     TABLE
-  =============================== */
-
   const columns = [
-    { key: "name", label: "Category Name" },
+    { key: "name", label: t('categories.categoryName') },
     {
       key: "parentId",
       label: "Parent",
@@ -129,14 +109,14 @@ export default function CategoriesPage() {
     },
     {
       key: "isActive",
-      label: "Status",
+      label: t('common.status'),
       render: (row: any) => (
         <StatusBadge status={row.isActive ? "active" : "inactive"} />
       ),
     },
     {
       key: "actions",
-      label: "Actions",
+      label: t('common.actions'),
       render: (row: any) => (
         <div className="flex gap-1">
           <Button
@@ -165,23 +145,22 @@ export default function CategoriesPage() {
   return (
     <div>
       <PageHeader
-        title="Categories"
-        subtitle="Manage product categories"
+        title={t('categories.title')}
+        subtitle={t('categories.subtitle')}
         onAdd={() => {
           setEditing(null);
           setDialogOpen(true);
         }}
-        addLabel="Add Category"
+        addLabel={t('categories.addCategory')}
       />
 
       {isLoading ? (
-        <p>Loading...</p>
+        <p>{t('common.loading')}</p>
       ) : (
         <DataTableShell
           data={categories}
           columns={columns}
           searchKey="name"
-          searchPlaceholder="Search categories..."
         />
       )}
 
@@ -193,7 +172,7 @@ export default function CategoriesPage() {
         }}
         onSubmit={(data) => saveMutation.mutateAsync(data)}
         fields={fields}
-        title={editing ? "Edit Category" : "New Category"}
+        title={editing ? t('categories.editCategory') : t('categories.newCategory')}
         initialData={editing}
         loading={saveMutation.isPending}
       />

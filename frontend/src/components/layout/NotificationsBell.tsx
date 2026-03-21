@@ -12,13 +12,14 @@ import { notificationApi } from '@/api/miscApi';
 import { Notification } from '@/types/misc.types';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
-
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 export function NotificationsBell() {
   const [open, setOpen] = useState(false);
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const { data: response, isLoading } = useQuery({
     queryKey: ['notifications'],
@@ -60,21 +61,23 @@ export function NotificationsBell() {
       <PopoverContent className="w-[320px] p-0" align="end" sideOffset={8}>
         <div className="flex items-center justify-between p-4 border-b border-border bg-muted/20">
           <div className="flex flex-col">
-            <h3 className="font-semibold text-sm">Notifications</h3>
+            <h3 className="font-semibold text-sm">{t('notifications.title')}</h3>
             {unreadCount > 0 && (
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{unreadCount} unread items</span>
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                {t('notifications.unreadItems', { count: unreadCount })}
+              </span>
             )}
           </div>
           {unreadCount > 0 && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               className="h-7 text-[10px] font-medium px-2"
               onClick={() => {
                 notifications.filter(n => !n.is_read).forEach(n => markReadMutation.mutate(n.id));
               }}
             >
-              Mark all read
+              {t('notifications.markAllRead')}
             </Button>
           )}
         </div>
@@ -83,13 +86,13 @@ export function NotificationsBell() {
             <div className="p-10 text-center text-sm text-muted-foreground">
               <div className="flex flex-col items-center gap-2">
                 <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                <span>Syncing alerts...</span>
+                <span>{t('notifications.syncingAlerts')}</span>
               </div>
             </div>
           ) : notifications.length === 0 ? (
             <div className="p-12 text-center text-sm text-muted-foreground flex flex-col items-center gap-3">
               <Bell className="h-8 w-8 text-muted-foreground/30" />
-              <p>Everything is up to date.</p>
+              <p>{t('notifications.everythingUpToDate')}</p>
             </div>
           ) : (
             <div className="flex flex-col divide-y divide-border/50">
@@ -129,15 +132,15 @@ export function NotificationsBell() {
           )}
         </ScrollArea>
         <div className="p-2 border-t border-border bg-muted/10">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             className="w-full text-[11px] h-8 font-semibold text-primary hover:bg-primary/10"
             onClick={() => {
               setOpen(false);
               navigate('/alerts');
             }}
           >
-            Go to Alerts Center
+            {t('notifications.goToAlertsCenter')}
           </Button>
         </div>
       </PopoverContent>

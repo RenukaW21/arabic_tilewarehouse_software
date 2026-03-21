@@ -10,8 +10,10 @@ import { DeleteConfirmDialog } from '@/components/shared/DeleteConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 export default function DamageEntriesPage() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<DamageEntry | null>(null);
@@ -34,14 +36,14 @@ export default function DamageEntriesPage() {
   const warehouseOptions = warehouses.map((w) => ({ value: w.id, label: w.name }));
   const productOptions = products.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }));
   const fields: FieldDef[] = [
-    { key: 'warehouse_id', label: 'Warehouse', type: 'select', required: true, options: warehouseOptions },
-    { key: 'product_id', label: 'Product', type: 'select', required: true, options: productOptions },
-    { key: 'damage_date', label: 'Damage Date', type: 'date' },
-    { key: 'damaged_boxes', label: 'Damaged Boxes', type: 'number', defaultValue: 0 },
-    { key: 'damaged_pieces', label: 'Damaged Pieces', type: 'number', defaultValue: 0 },
-    { key: 'damage_reason', label: 'Reason', type: 'text' },
-    { key: 'estimated_loss', label: 'Estimated Loss (₹)', type: 'number' },
-    { key: 'notes', label: 'Notes', type: 'textarea' },
+    { key: 'warehouse_id', label: t('damageEntriesPage.warehouse'), type: 'select', required: true, options: warehouseOptions },
+    { key: 'product_id', label: t('damageEntriesPage.product'), type: 'select', required: true, options: productOptions },
+    { key: 'damage_date', label: t('damageEntriesPage.damageDate'), type: 'date' },
+    { key: 'damaged_boxes', label: t('damageEntriesPage.damagedBoxes'), type: 'number', defaultValue: 0 },
+    { key: 'damaged_pieces', label: t('damageEntriesPage.damagedPieces'), type: 'number', defaultValue: 0 },
+    { key: 'damage_reason', label: t('damageEntriesPage.damageReason'), type: 'text' },
+    { key: 'estimated_loss', label: t('damageEntriesPage.estimatedLoss'), type: 'number' },
+    { key: 'notes', label: t('damageEntriesPage.notes'), type: 'textarea' },
   ];
 
   const saveMutation = useMutation({
@@ -59,24 +61,24 @@ export default function DamageEntriesPage() {
       if (editing) return damageEntriesApi.update(editing.id, payload);
       return damageEntriesApi.create(payload);
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['damage-entries'] }); setDialogOpen(false); setEditing(null); toast.success(editing ? 'Updated' : 'Damage entry created. Stock reduced.'); },
-    onError: (e: { response?: { data?: { error?: { message?: string } } } }) => toast.error(e?.response?.data?.error?.message ?? 'Operation failed'),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['damage-entries'] }); setDialogOpen(false); setEditing(null); toast.success(editing ? t('damageEntriesPage.updated') : t('damageEntriesPage.created')); },
+    onError: (e: { response?: { data?: { error?: { message?: string } } } }) => toast.error(e?.response?.data?.error?.message ?? t('common.operationFailed', 'فشلت العملية')),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => damageEntriesApi.delete(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['damage-entries'] }); setDeleting(null); toast.success('Deleted'); },
-    onError: (e: { response?: { data?: { error?: { message?: string } } } }) => toast.error(e?.response?.data?.error?.message ?? 'Delete failed'),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['damage-entries'] }); setDeleting(null); toast.success(t('damageEntriesPage.deleted')); },
+    onError: (e: { response?: { data?: { error?: { message?: string } } } }) => toast.error(e?.response?.data?.error?.message ?? t('common.deleteFailed', 'فشل الحذف')),
   });
 
   const columns = [
-    { key: 'product', label: 'Product', render: (r: DamageEntry) => `${r.product_code ?? ''} — ${r.product_name ?? r.product_id}` },
-    { key: 'warehouse_name', label: 'Warehouse', render: (r: DamageEntry) => r.warehouse_name ?? '—' },
-    { key: 'damaged_boxes', label: 'Boxes', render: (r: DamageEntry) => r.damaged_boxes },
-    { key: 'damage_reason', label: 'Reason', render: (r: DamageEntry) => r.damage_reason ?? '—' },
-    { key: 'estimated_loss', label: 'Loss', render: (r: DamageEntry) => r.estimated_loss != null ? `₹${Number(r.estimated_loss).toLocaleString()}` : '—' },
-    { key: 'damage_date', label: 'Date', render: (r: DamageEntry) => r.damage_date ? new Date(r.damage_date).toLocaleDateString() : '—' },
-    { key: 'actions', label: 'Actions', render: (r: DamageEntry) => (
+    { key: 'product', label: t('damageEntriesPage.product'), render: (r: DamageEntry) => `${r.product_code ?? ''} — ${r.product_name ?? r.product_id}` },
+    { key: 'warehouse_name', label: t('damageEntriesPage.warehouse'), render: (r: DamageEntry) => r.warehouse_name ?? '—' },
+    { key: 'damaged_boxes', label: t('damageEntriesPage.boxes'), render: (r: DamageEntry) => r.damaged_boxes },
+    { key: 'damage_reason', label: t('damageEntriesPage.reason'), render: (r: DamageEntry) => r.damage_reason ?? '—' },
+    { key: 'estimated_loss', label: t('damageEntriesPage.loss'), render: (r: DamageEntry) => r.estimated_loss != null ? `₹${Number(r.estimated_loss).toLocaleString()}` : '—' },
+    { key: 'damage_date', label: t('damageEntriesPage.date'), render: (r: DamageEntry) => r.damage_date ? new Date(r.damage_date).toLocaleDateString() : '—' },
+    { key: 'actions', label: t('damageEntriesPage.actions'), render: (r: DamageEntry) => (
       <div className="flex gap-1">
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditing(r); setDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleting(r)}><Trash2 className="h-4 w-4" /></Button>
@@ -86,12 +88,12 @@ export default function DamageEntriesPage() {
 
   return (
     <div>
-      <PageHeader title="Damage Entries" subtitle="Record damaged stock. Creating an entry reduces stock." onAdd={() => { setEditing(null); setDialogOpen(true); }} addLabel="New Entry" />
+      <PageHeader title={t('damageEntriesPage.title')} subtitle={t('damageEntriesPage.subtitle')} onAdd={() => { setEditing(null); setDialogOpen(true); }} addLabel={t('damageEntriesPage.newEntry')} />
       <DataTableShell<DamageEntry>
         data={rows}
         columns={columns}
         searchKey="damage_reason"
-        searchPlaceholder="Search..."
+        searchPlaceholder={t('damageEntriesPage.searchPlaceholder')}
         serverSide
         searchValue={searchInput}
         onSearchChange={(v) => { setSearchInput(v); applySearch(v); }}
@@ -99,7 +101,7 @@ export default function DamageEntriesPage() {
         onPageChange={setPage}
         isLoading={isLoading}
       />
-      <CrudFormDialog open={dialogOpen} onClose={() => { setDialogOpen(false); setEditing(null); }} onSubmit={(d) => saveMutation.mutateAsync(d)} fields={fields} title={editing ? 'Edit Damage Entry' : 'New Damage Entry'} initialData={editing} loading={saveMutation.isPending} />
+      <CrudFormDialog open={dialogOpen} onClose={() => { setDialogOpen(false); setEditing(null); }} onSubmit={(d) => saveMutation.mutateAsync(d)} fields={fields} title={editing ? t('damageEntriesPage.editEntry') : t('damageEntriesPage.newEntry')} initialData={editing} loading={saveMutation.isPending} />
       <DeleteConfirmDialog open={!!deleting} onClose={() => setDeleting(null)} onConfirm={() => deleting && deleteMutation.mutateAsync(deleting.id)} loading={deleteMutation.isPending} />
     </div>
   );

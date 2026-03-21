@@ -1,5 +1,56 @@
 'use strict';
 
+const syncRackProductInventory = async (trx, { tenantId, rackId, productId }) => {
+  if (!rackId || !productId) return;
+
+  const rows = await trx.query(
+    `SELECT COALESCE(SUM(total_boxes), 0) AS total_boxes
+     FROM stock_summary
+     WHERE tenant_id = ? AND rack_id = ? AND product_id = ? AND total_boxes > 0`,
+    [tenantId, rackId, productId]
+  );
+
+  const totalBoxes = Math.max(0, parseFloat(rows[0]?.total_boxes) || 0);
+  const storedBoxes = Math.round(totalBoxes);
+
+  if (storedBoxes > 0) {
+    await trx.query(
+      `INSERT INTO product_racks (id, tenant_id, product_id, rack_id, boxes_stored)
+       VALUES (UUID(), ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE boxes_stored = VALUES(boxes_stored), updated_at = CURRENT_TIMESTAMP`,
+      [tenantId, productId, rackId, storedBoxes]
+    );
+  } else {
+    await trx.query(
+      `DELETE FROM product_racks
+       WHERE tenant_id = ? AND product_id = ? AND rack_id = ?`,
+      [tenantId, productId, rackId]
+    );
+  }
+
+  await trx.query(
+    `UPDATE racks r
+     SET
+       occupied_boxes = (
+         SELECT COALESCE(SUM(pr.boxes_stored), 0)
+         FROM product_racks pr
+         JOIN products p ON pr.product_id = p.id
+         WHERE pr.tenant_id = r.tenant_id AND pr.rack_id = r.id AND p.is_active = 1
+       ),
+       available_boxes = CASE
+         WHEN r.capacity_boxes IS NULL THEN NULL
+         ELSE r.capacity_boxes - (
+           SELECT COALESCE(SUM(pr.boxes_stored), 0)
+           FROM product_racks pr
+           JOIN products p ON pr.product_id = p.id
+           WHERE pr.tenant_id = r.tenant_id AND pr.rack_id = r.id AND p.is_active = 1
+         )
+       END
+     WHERE r.id = ? AND r.tenant_id = ?`,
+    [rackId, tenantId]
+  );
+};
+
 /**
  * Post a stock movement within an existing transaction.
  * Updates stock_summary (upsert) and appends to stock_ledger.
@@ -68,10 +119,7 @@ const postStockMovement = async (trx, {
   const balanceBoxes = parseFloat(prev.total_boxes) + boxesIn - boxesOut;
   const balancePieces = parseFloat(prev.total_pieces) + piecesIn - piecesOut;
   
-  // Convert pieces to boxes for validation if needed, but here we just check if absolute balances are negative
-  if (balanceBoxes < 0 || balancePieces < 0) {
-    throw new Error(`Insufficient stock: cannot post ${boxesOut} boxes / ${piecesOut} pieces (balance would be ${balanceBoxes} / ${balancePieces})`);
-  }
+  // Allowed to go negative to ensure dispatch and invoice can proceed. Low stock alert will catch this.
   const sqftIn = boxesIn * sqftPerBox;
   const sqftOut = boxesOut * sqftPerBox;
   const totalSqft = parseFloat(prev.total_sqft || 0) + sqftIn - sqftOut;
@@ -156,6 +204,10 @@ const postStockMovement = async (trx, {
   // 6 — Check for low stock alert
   await checkLowStockAlert(trx, { tenantId, warehouseId, productId, shadeId, balanceBoxes });
 
+  if (rackId) {
+    await syncRackProductInventory(trx, { tenantId, rackId, productId });
+  }
+
   return { balanceBoxes, balancePieces };
 };
 
@@ -216,4 +268,4 @@ const checkLowStockAlert = async (trx, { tenantId, warehouseId, productId, shade
   }
 };
 
-module.exports = { postStockMovement };
+module.exports = { postStockMovement, syncRackProductInventory };

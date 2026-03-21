@@ -11,18 +11,10 @@ import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, Eye } from "lucide-react";
 import { toast } from "sonner";
-
-const fields: FieldDef[] = [
-  { key: "name", label: "Warehouse Name", type: "text", required: true, placeholder: "Main Warehouse" },
-  { key: "code", label: "Code", type: "text", required: true, placeholder: "WH-MAIN" },
-  { key: "address", label: "Address", type: "textarea", placeholder: "Full address" },
-  { key: "city", label: "City", type: "text", placeholder: "City" },
-  { key: "state", label: "State", type: "text", placeholder: "State" },
-  { key: "pincode", label: "Pincode", type: "text", placeholder: "Pincode" },
-  { key: "is_active", label: "Status", type: "switch", defaultValue: true },
-];
+import { useTranslation } from "react-i18next";
 
 export default function WarehousesPage() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -31,6 +23,16 @@ export default function WarehousesPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
+
+  const fields: FieldDef[] = [
+    { key: "name", label: t('warehouses.warehouseName'), type: "text", required: true, placeholder: "Main Warehouse" },
+    { key: "code", label: t('common.code'), type: "text", required: true, placeholder: "WH-MAIN" },
+    { key: "address", label: t('vendors.address'), type: "textarea", placeholder: "Full address" },
+    { key: "city", label: "City", type: "text", placeholder: "City" },
+    { key: "state", label: "State", type: "text", placeholder: "State" },
+    { key: "pincode", label: "Pincode", type: "text", placeholder: "Pincode" },
+    { key: "is_active", label: t('common.status'), type: "switch", defaultValue: true },
+  ];
 
   const listParams = {
     page,
@@ -59,7 +61,6 @@ export default function WarehousesPage() {
 
   const saveMutation = useMutation({
     mutationFn: async (fd: Record<string, unknown>) => {
-      // Use the form data directly, but sanitize optional fields
       const payload: any = {
         name: fd.name ? String(fd.name) : undefined,
         code: fd.code ? String(fd.code) : undefined,
@@ -69,10 +70,7 @@ export default function WarehousesPage() {
         pincode: fd.pincode ? String(fd.pincode) : null,
         is_active: fd.is_active ?? true,
       };
-
-      // Remove undefined keys to keep it clean for partial updates
       Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
-
       if (editing) return warehouseApi.update(editing.id, payload);
       return warehouseApi.create(payload as CreateWarehouseDto);
     },
@@ -80,9 +78,9 @@ export default function WarehousesPage() {
       qc.invalidateQueries({ queryKey: ["warehouses"] });
       setDialogOpen(false);
       setEditing(null);
-      toast.success(editing ? "Warehouse updated" : "Warehouse created");
+      toast.success(editing ? t('warehouses.warehouseUpdated') : t('warehouses.warehouseCreated'));
     },
-    onError: (e: { response?: { data?: { error?: { message?: string }; message?: string } } }) => {
+    onError: (e: any) => {
       toast.error(e?.response?.data?.error?.message ?? e?.response?.data?.message ?? "Operation failed");
     },
   });
@@ -92,22 +90,22 @@ export default function WarehousesPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["warehouses"] });
       setDeleting(null);
-      toast.success("Warehouse deleted");
+      toast.success(t('warehouses.warehouseDeleted'));
     },
-    onError: (e: { response?: { data?: { error?: { message?: string }; message?: string } } }) => {
+    onError: (e: any) => {
       toast.error(e?.response?.data?.error?.message ?? e?.response?.data?.message ?? "Delete failed");
     },
   });
 
   const columns = [
-    { key: "code", label: "Code", render: (r: Warehouse) => <span className="font-mono text-sm font-medium">{r.code}</span> },
-    { key: "name", label: "Name" },
+    { key: "code", label: t('common.code'), render: (r: Warehouse) => <span className="font-mono text-sm font-medium">{r.code}</span> },
+    { key: "name", label: t('common.name') },
     { key: "city", label: "City", render: (r: Warehouse) => r.city ?? "—" },
-    { key: "rack_count", label: "Racks", render: (r: Warehouse) => <span className="font-medium">{r.rack_count ?? 0}</span> },
-    { key: "is_active", label: "Status", render: (r: Warehouse) => <StatusBadge status={r.is_active ? "active" : "inactive"} /> },
+    { key: "rack_count", label: t('nav.racks'), render: (r: Warehouse) => <span className="font-medium">{r.rack_count ?? 0}</span> },
+    { key: "is_active", label: t('common.status'), render: (r: Warehouse) => <StatusBadge status={r.is_active ? "active" : "inactive"} /> },
     {
       key: "actions",
-      label: "Actions",
+      label: t('common.actions'),
       render: (r: Warehouse) => (
         <div className="flex gap-1">
           <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => navigate(`/setup/warehouses/${r.id}`)}>
@@ -127,16 +125,15 @@ export default function WarehousesPage() {
   return (
     <div>
       <PageHeader
-        title="Warehouses"
-        subtitle="Manage warehouse locations"
+        title={t('warehouses.title')}
+        subtitle={t('warehouses.subtitle')}
         onAdd={() => { setEditing(null); setDialogOpen(true); }}
-        addLabel="Add Warehouse"
+        addLabel={t('warehouses.addWarehouse')}
       />
       <DataTableShell<any>
         data={warehouses}
         columns={columns}
         searchKey="name"
-        searchPlaceholder="Search by name or code..."
         serverSide
         searchValue={searchInput}
         onSearchChange={handleSearchChange}
@@ -149,7 +146,7 @@ export default function WarehousesPage() {
         onClose={() => { setDialogOpen(false); setEditing(null); }}
         onSubmit={async (d) => { await saveMutation.mutateAsync(d); }}
         fields={fields}
-        title={editing ? "Edit Warehouse" : "New Warehouse"}
+        title={editing ? t('warehouses.editWarehouse') : t('warehouses.newWarehouse')}
         initialData={editing as any}
         loading={saveMutation.isPending}
       />
@@ -162,4 +159,3 @@ export default function WarehousesPage() {
     </div>
   );
 }
-

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { PaginationMeta } from "@/types/api.types";
 import { ChevronLeft, ChevronRight, Search, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface ColumnDef<T = any> {
   key: string;
@@ -13,18 +14,12 @@ interface ColumnDef<T = any> {
 interface DataTableShellProps<T = any> {
   data?: T[];
   columns: ColumnDef<T>[];
-  /** Client-side: filter by this key. Server-side: pass search to parent */
   searchKey?: string;
   searchPlaceholder?: string;
-  /** Server-side: pagination meta from API */
   paginationMeta?: PaginationMeta | null;
-  /** Server-side: called when user changes search */
   onSearchChange?: (value: string) => void;
-  /** Server-side: called when user changes page */
   onPageChange?: (page: number) => void;
-  /** If true, search is server-side (onSearchChange required) */
   serverSide?: boolean;
-  /** Server-side: controlled search input value from parent */
   searchValue?: string;
   isLoading?: boolean;
 }
@@ -33,7 +28,7 @@ export function DataTableShell<T extends any>({
   data = [],
   columns,
   searchKey,
-  searchPlaceholder = "Search...",
+  searchPlaceholder,
   paginationMeta = null,
   onSearchChange,
   onPageChange,
@@ -41,28 +36,24 @@ export function DataTableShell<T extends any>({
   searchValue: serverSideSearchValue,
   isLoading = false,
 }: DataTableShellProps<T>) {
-  // Internal state for the input to keep typing fluid
+  const { t } = useTranslation();
+  const resolvedPlaceholder = searchPlaceholder ?? t('common.search');
+
   const [localSearch, setLocalSearch] = useState(serverSide ? (serverSideSearchValue ?? "") : "");
   const safeData = Array.isArray(data) ? data : [];
 
-  // Sync internal state when parent state changes (e.g. cleared from outside)
   useEffect(() => {
     if (serverSide && serverSideSearchValue !== undefined) {
       setLocalSearch(serverSideSearchValue);
     }
   }, [serverSideSearchValue, serverSide]);
 
-  // Debounce server-side search
   useEffect(() => {
     if (!serverSide || !onSearchChange) return;
-    
-    // Only trigger if local state and parent state differ
     if (localSearch === serverSideSearchValue) return;
-
     const handler = setTimeout(() => {
       onSearchChange(localSearch);
-    }, 400); // 400ms debounce
-
+    }, 400);
     return () => clearTimeout(handler);
   }, [localSearch, serverSide, onSearchChange, serverSideSearchValue]);
 
@@ -88,7 +79,7 @@ export function DataTableShell<T extends any>({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="text"
-            placeholder={searchPlaceholder}
+            placeholder={resolvedPlaceholder}
             value={localSearch}
             onChange={onSearchInput}
             className="pl-9 h-10 shadow-sm"
@@ -116,13 +107,13 @@ export function DataTableShell<T extends any>({
             {isLoading ? (
               <tr>
                 <td colSpan={columns.length} className="px-4 py-8 text-center text-muted-foreground">
-                  Loading...
+                  {t('dataTable.loading')}
                 </td>
               </tr>
             ) : filteredData.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="px-4 py-8 text-center text-muted-foreground">
-                  No records found.
+                  {t('dataTable.noRecordsFound')}
                 </td>
               </tr>
             ) : (
@@ -143,7 +134,11 @@ export function DataTableShell<T extends any>({
       {paginationMeta && onPageChange && (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-muted-foreground">
-            Page {paginationMeta.page} of {paginationMeta.totalPages} ({paginationMeta.total} total)
+            {t('dataTable.pageOf', {
+              page: paginationMeta.page,
+              totalPages: paginationMeta.totalPages,
+              total: paginationMeta.total,
+            })}
           </p>
           <div className="flex items-center gap-1">
             <Button
@@ -153,7 +148,7 @@ export function DataTableShell<T extends any>({
               disabled={!paginationMeta.hasPrev || isLoading}
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
-              Previous
+              {t('dataTable.previous')}
             </Button>
             {(() => {
               const totalPages = Math.max(1, paginationMeta.totalPages);
@@ -186,7 +181,7 @@ export function DataTableShell<T extends any>({
               onClick={() => onPageChange(paginationMeta.page + 1)}
               disabled={!paginationMeta.hasNext || isLoading}
             >
-              Next
+              {t('dataTable.next')}
               <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </div>

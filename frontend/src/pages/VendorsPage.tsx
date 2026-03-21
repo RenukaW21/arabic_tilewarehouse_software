@@ -11,21 +11,10 @@ import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, FileUp } from "lucide-react";
 import { toast } from "sonner";
-
-const fields: FieldDef[] = [
-  { key: "name", label: "Vendor Name", type: "text", required: true, placeholder: "Enter vendor name" },
-  { key: "code", label: "Vendor Code", type: "text", placeholder: "VND-001" },
-  { key: "contact_person", label: "Contact Person", type: "text", placeholder: "Enter contact person name" },
-  { key: "phone", label: "Phone", type: "text", placeholder: "Enter phone number" },
-  { key: "email", label: "Email", type: "email", placeholder: "Enter email address" },
-  { key: "gstin", label: "GSTIN", type: "text", placeholder: "22AAAAA0000A1Z5" },
-  { key: "pan", label: "PAN", type: "text", placeholder: "ABCDE1234F" },
-  { key: "address", label: "Address", type: "textarea", placeholder: "Enter vendor address" },
-  { key: "payment_terms_days", label: "Payment Terms (Days)", type: "number", defaultValue: 30, placeholder: "Enter payment terms in days" },
-  { key: "is_active", label: "Status", type: "switch", defaultValue: true },
-];
+import { useTranslation } from "react-i18next";
 
 export default function VendorsPage() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Vendor | null>(null);
@@ -34,7 +23,20 @@ export default function VendorsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
-  // Sync search to API (optionally debounce in future)
+
+  const fields: FieldDef[] = [
+    { key: "name", label: t('vendors.vendorName'), type: "text", required: true, placeholder: "Enter vendor name" },
+    { key: "code", label: t('common.code'), type: "text", placeholder: "VND-001" },
+    { key: "contact_person", label: t('vendors.contactPerson'), type: "text", placeholder: "Enter contact person name" },
+    { key: "phone", label: t('vendors.phone'), type: "text", placeholder: "Enter phone number" },
+    { key: "email", label: t('vendors.email'), type: "email", placeholder: "Enter email address" },
+    { key: "gstin", label: t('vendors.gstNumber'), type: "text", placeholder: "22AAAAA0000A1Z5" },
+    { key: "pan", label: "PAN", type: "text", placeholder: "ABCDE1234F" },
+    { key: "address", label: t('vendors.address'), type: "textarea", placeholder: "Enter vendor address" },
+    { key: "payment_terms_days", label: "Payment Terms (Days)", type: "number", defaultValue: 30 },
+    { key: "is_active", label: t('common.status'), type: "switch", defaultValue: true },
+  ];
+
   const applySearch = useCallback((value: string) => {
     setSearch(value);
     setPage(1);
@@ -84,9 +86,9 @@ export default function VendorsPage() {
       qc.invalidateQueries({ queryKey: ["vendors"] });
       setDialogOpen(false);
       setEditing(null);
-      toast.success(editing ? "Vendor updated" : "Vendor created");
+      toast.success(editing ? t('vendors.vendorUpdated') : t('vendors.vendorCreated'));
     },
-    onError: (e: { response?: { data?: { error?: { message?: string }; message?: string } } }) => {
+    onError: (e: any) => {
       const msg = e?.response?.data?.error?.message ?? e?.response?.data?.message ?? "Operation failed";
       toast.error(msg);
     },
@@ -97,24 +99,24 @@ export default function VendorsPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["vendors"] });
       setDeleting(null);
-      toast.success("Vendor deleted");
+      toast.success(t('vendors.vendorDeleted'));
     },
-    onError: (e: { response?: { data?: { error?: { message?: string }; message?: string } } }) => {
+    onError: (e: any) => {
       const msg = e?.response?.data?.error?.message ?? e?.response?.data?.message ?? "Delete failed";
       toast.error(msg);
     },
   });
 
   const columns = [
-    { key: "code", label: "Code", render: (r: Vendor) => <span className="font-mono text-sm">{r.code ?? "—"}</span> },
-    { key: "name", label: "Vendor Name" },
-    { key: "contact_person", label: "Contact Person", render: (r: Vendor) => r.contact_person ?? "—" },
-    { key: "phone", label: "Phone", render: (r: Vendor) => r.phone ?? "—" },
-    { key: "gstin", label: "GSTIN", render: (r: Vendor) => r.gstin ?? "—" },
-    { key: "is_active", label: "Status", render: (r: Vendor) => <StatusBadge status={r.is_active ? "active" : "inactive"} /> },
+    { key: "code", label: t('common.code'), render: (r: Vendor) => <span className="font-mono text-sm">{r.code ?? "—"}</span> },
+    { key: "name", label: t('vendors.vendorName') },
+    { key: "contact_person", label: t('vendors.contactPerson'), render: (r: Vendor) => r.contact_person ?? "—" },
+    { key: "phone", label: t('vendors.phone'), render: (r: Vendor) => r.phone ?? "—" },
+    { key: "gstin", label: t('vendors.gstNumber'), render: (r: Vendor) => r.gstin ?? "—" },
+    { key: "is_active", label: t('common.status'), render: (r: Vendor) => <StatusBadge status={r.is_active ? "active" : "inactive"} /> },
     {
       key: "actions",
-      label: "Actions",
+      label: t('common.actions'),
       render: (r: Vendor) => (
         <div className="flex gap-1">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditing(r); setDialogOpen(true); }}>
@@ -131,10 +133,10 @@ export default function VendorsPage() {
   return (
     <div>
       <PageHeader
-        title="Vendors"
-        subtitle="Manage your tile suppliers"
+        title={t('vendors.title')}
+        subtitle={t('vendors.subtitle')}
         onAdd={() => { setEditing(null); setDialogOpen(true); }}
-        addLabel="Add Vendor"
+        addLabel={t('vendors.addVendor')}
       >
         <Button
           variant="outline"
@@ -143,7 +145,7 @@ export default function VendorsPage() {
           className="flex items-center gap-1.5"
         >
           <FileUp className="h-4 w-4" />
-          Import CSV
+          {t('common.importCsv')}
         </Button>
       </PageHeader>
 
@@ -151,7 +153,6 @@ export default function VendorsPage() {
         data={vendors}
         columns={columns}
         searchKey="name"
-        searchPlaceholder="Search by name or code..."
         serverSide
         searchValue={searchInput}
         onSearchChange={handleSearchChange}
@@ -165,7 +166,7 @@ export default function VendorsPage() {
         onClose={() => { setDialogOpen(false); setEditing(null); }}
         onSubmit={(d) => saveMutation.mutateAsync(d)}
         fields={fields}
-        title={editing ? "Edit Vendor" : "New Vendor"}
+        title={editing ? t('vendors.editVendor') : t('vendors.newVendor')}
         initialData={editing}
         loading={saveMutation.isPending}
       />
