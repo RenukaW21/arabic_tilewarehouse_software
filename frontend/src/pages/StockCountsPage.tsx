@@ -55,7 +55,7 @@ export default function StockCountsPage() {
       setWarehouseId('');
       const id = res?.data?.id;
       if (id) navigate(`/inventory/counts/${id}`);
-      toast.success(t('stockCountsPage.created'));
+      toast.success(t('stockCounts.created'));
     },
     onError: (e: { response?: { data?: { error?: { message?: string } } } }) => toast.error(e?.response?.data?.error?.message ?? t('common.createFailed', 'فشل الإنشاء')),
   });
@@ -66,17 +66,17 @@ export default function StockCountsPage() {
   };
 
   const columns = [
-    { key: 'count_number', label: t('stockCountsPage.countHash'), render: (r: StockCount) => <span className="font-mono text-sm">{r.count_number}</span> },
-    { key: 'warehouse_name', label: t('stockCountsPage.warehouse'), render: (r: StockCount) => r.warehouse_name ?? r.warehouse_id },
-    { key: 'count_type', label: t('stockCountsPage.type'), render: (r: StockCount) => r.count_type },
-    { key: 'status', label: t('stockCountsPage.status'), render: (r: StockCount) => <StatusBadge status={r.status} /> },
-    { key: 'count_date', label: t('stockCountsPage.date'), render: (r: StockCount) => r.count_date ? new Date(r.count_date).toLocaleDateString() : '—' },
+    { key: 'count_number', label: t('stockCounts.countHash'), render: (r: StockCount) => <span className="font-mono text-sm">{r.count_number}</span> },
+    { key: 'warehouse_name', label: t('stockCounts.warehouse'), render: (r: StockCount) => r.warehouse_name ?? r.warehouse_id },
+    { key: 'count_type', label: t('stockCounts.type'), render: (r: StockCount) => t(`stockCounts.type${r.count_type.charAt(0).toUpperCase() + r.count_type.slice(1)}`) },
+    { key: 'status', label: t('stockCounts.status'), render: (r: StockCount) => <StatusBadge status={r.status} /> },
+    { key: 'count_date', label: t('stockCounts.date'), render: (r: StockCount) => r.count_date ? new Date(r.count_date).toLocaleDateString() : '—' },
     {
       key: 'actions',
-      label: t('stockCountsPage.actions'),
+      label: t('stockCounts.actions'),
       render: (r: StockCount) => (
         <Button variant="ghost" size="sm" onClick={() => navigate(`/inventory/counts/${r.id}`)}>
-          {t('stockCountsPage.view')}
+          {t('stockCounts.view')}
         </Button>
       ),
     },
@@ -85,16 +85,16 @@ export default function StockCountsPage() {
   return (
     <div>
       <PageHeader
-        title={t('stockCountsPage.title')}
-        subtitle={t('stockCountsPage.subtitle')}
+        title={t('stockCounts.title')}
+        subtitle={t('stockCounts.subtitle')}
         onAdd={() => setCreateOpen(true)}
-        addLabel={t('stockCountsPage.newCount')}
+        addLabel={t('stockCounts.newCount')}
       />
       <DataTableShell<StockCount>
         data={rows}
         columns={columns}
         searchKey="count_number"
-        searchPlaceholder={t('stockCountsPage.searchPlaceholder')}
+        searchPlaceholder={t('stockCounts.searchPlaceholder')}
         serverSide
         searchValue={searchInput}
         onSearchChange={(v) => { setSearchInput(v); setSearch(v); setPage(1); }}
@@ -105,13 +105,13 @@ export default function StockCountsPage() {
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('stockCountsPage.newStockCount')}</DialogTitle>
+            <DialogTitle>{t('stockCounts.newStockCount')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>{t('stockCountsPage.warehouse')}</Label>
+              <Label>{t('stockCounts.warehouse')}</Label>
               <Select value={warehouseId} onValueChange={setWarehouseId} required>
-                <SelectTrigger><SelectValue placeholder={t('stockCountsPage.selectWarehouse')} /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t('stockCounts.selectWarehouse')} /></SelectTrigger>
                 <SelectContent>
                   {warehouses.map((w) => (
                     <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
@@ -120,13 +120,13 @@ export default function StockCountsPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>{t('stockCountsPage.countType')}</Label>
+              <Label>{t('stockCounts.countType')}</Label>
               <Select value={countType} onValueChange={(v) => setCountType(v as 'full' | 'cycle' | 'spot')}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="full">{t('stockCountsPage.typeFull')}</SelectItem>
-                  <SelectItem value="cycle">{t('stockCountsPage.typeCycle')}</SelectItem>
-                  <SelectItem value="spot">{t('stockCountsPage.typeSpot')}</SelectItem>
+                  <SelectItem value="full">{t('stockCounts.typeFull')}</SelectItem>
+                  <SelectItem value="cycle">{t('stockCounts.typeCycle')}</SelectItem>
+                  <SelectItem value="spot">{t('stockCounts.typeSpot')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -134,7 +134,7 @@ export default function StockCountsPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>{t('common.cancel', 'إلغاء')}</Button>
             <Button onClick={handleCreate} disabled={!warehouseId || createMutation.isPending}>
-              {createMutation.isPending ? t('stockCountsPage.creating') : t('common.create', 'إنشاء')}
+              {createMutation.isPending ? t('stockCounts.creating') : t('common.create', 'إنشاء')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -160,7 +160,7 @@ export function StockCountDetailPage() {
     mutationFn: () => stockCountsApi.loadFromStock(id!),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['stock-counts', id] });
-      toast.success(t('stockCountsPage.loadFromStock'));
+      toast.success(t('stockCounts.loadFromStock'));
     },
     onError: (e: { response?: { data?: { error?: { message?: string } } } }) => toast.error(e?.response?.data?.error?.message ?? t('common.loadFailed', 'فشل التحميل')),
   });
@@ -180,36 +180,36 @@ export function StockCountDetailPage() {
   const count = countData?.data;
   const items: StockCountItem[] = count?.items ?? [];
 
-  if (!id) return <div className="p-4">{t('stockCountsPage.missingId')}</div>;
-  if (isLoading || !countData) return <div className="p-4">{t('stockCountsPage.loading')}</div>;
-  if (!count) return <div className="p-4">{t('stockCountsPage.notFound')}</div>;
+  if (!id) return <div className="p-4">{t('stockCounts.missingId')}</div>;
+  if (isLoading || !countData) return <div className="p-4">{t('stockCounts.loading')}</div>;
+  if (!count) return <div className="p-4">{t('stockCounts.notFound')}</div>;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/inventory/counts')}>{t('stockCountsPage.back')}</Button>
+        <Button variant="ghost" size="sm" onClick={() => navigate('/inventory/counts')}>{t('stockCounts.back')}</Button>
       </div>
       <PageHeader title={count.count_number} subtitle={`${count.warehouse_name ?? count.warehouse_id} — ${count.status}`} />
       {count.status === 'draft' && items.length === 0 && (
         <Button onClick={() => loadFromStockMutation.mutate()} disabled={loadFromStockMutation.isPending}>
           {loadFromStockMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Package className="h-4 w-4 mr-2" />}
-          {t('stockCountsPage.loadFromStock')}
+          {t('stockCounts.loadFromStock')}
         </Button>
       )}
       <div className="rounded-md border">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50">
-              <th className="text-left px-4 py-2 font-medium">{t('stockCountsPage.product')}</th>
-              <th className="text-right px-4 py-2 font-medium">{t('stockCountsPage.system')}</th>
-              <th className="text-right px-4 py-2 font-medium">{t('stockCountsPage.counted')}</th>
-              <th className="text-right px-4 py-2 font-medium">{t('stockCountsPage.variance')}</th>
+              <th className="text-left px-4 py-2 font-medium">{t('stockCounts.product')}</th>
+              <th className="text-right px-4 py-2 font-medium">{t('stockCounts.system')}</th>
+              <th className="text-right px-4 py-2 font-medium">{t('stockCounts.counted')}</th>
+              <th className="text-right px-4 py-2 font-medium">{t('stockCounts.variance')}</th>
               {count.status === 'draft' && <th className="w-32" />}
             </tr>
           </thead>
           <tbody>
             {items.length === 0 && (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">{t('stockCountsPage.noItems')}</td></tr>
+              <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">{t('stockCounts.noItems')}</td></tr>
             )}
             {items.map((item) => (
               <tr key={item.id} className="border-b">

@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { reportApi } from '@/api/reportApi';
 import { FileText, IndianRupee, Receipt, Hash } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const fmt = (n: number) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
 
@@ -25,6 +26,7 @@ function StatCard({ label, value, icon: Icon, color }: any) {
 }
 
 export default function GSTReportPage() {
+    const { t } = useTranslation();
     const [month, setMonth] = useState(CURR_MONTH);
     const [year, setYear] = useState(CURR_YEAR);
 
@@ -55,8 +57,8 @@ export default function GSTReportPage() {
             {/* Header with filters */}
             <div className="flex items-start justify-between flex-wrap gap-3">
                 <div>
-                    <h1 className="text-2xl font-bold font-display">GST Report</h1>
-                    <p className="text-muted-foreground text-sm mt-0.5">GSTR-1 style invoice-wise tax summary</p>
+                    <h1 className="text-2xl font-bold font-display">{t('gstReport.title')}</h1>
+                    <p className="text-muted-foreground text-sm mt-0.5">{t('gstReport.subtitle')}</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <select
@@ -84,10 +86,10 @@ export default function GSTReportPage() {
                 <>
                     {/* Summary KPI Cards */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                        <StatCard label="Total Invoices" value={summary.totalInvoices ?? 0} icon={FileText} color="bg-blue-500" />
-                        <StatCard label="Taxable Amount" value={fmt(summary.taxableAmount)} icon={IndianRupee} color="bg-amber-500" />
-                        <StatCard label="CGST + SGST" value={fmt((summary.cgst ?? 0) + (summary.sgst ?? 0))} icon={Receipt} color="bg-purple-500" />
-                        <StatCard label="Grand Total" value={fmt(summary.grandTotal)} icon={Hash} color="bg-emerald-500" />
+                        <StatCard label={t('gstReport.totalInvoices')} value={summary.totalInvoices ?? 0} icon={FileText} color="bg-blue-500" />
+                        <StatCard label={t('gstReport.taxableAmount')} value={fmt(summary.taxableAmount)} icon={IndianRupee} color="bg-amber-500" />
+                        <StatCard label={t('gstReport.cgstPlusSgst')} value={fmt((summary.cgst ?? 0) + (summary.sgst ?? 0))} icon={Receipt} color="bg-purple-500" />
+                        <StatCard label={t('gstReport.grandTotal')} value={fmt(summary.grandTotal)} icon={Hash} color="bg-emerald-500" />
                     </div>
 
                     {/* Main Content */}
@@ -95,13 +97,13 @@ export default function GSTReportPage() {
                         {/* Tabs + Search */}
                         <div className="flex items-center justify-between border-b px-4 gap-4 flex-wrap">
                             <div className="flex">
-                                {[{ id: 'invoices', label: `Invoices (${invoices.length})` }, { id: 'hsn', label: `HSN Summary (${hsnSummary.length})` }].map(t => (
+                                {[{ id: 'invoices', label: `${t('gstReport.invoices')} (${invoices.length})` }, { id: 'hsn', label: `${t('gstReport.hsnSummary')} (${hsnSummary.length})` }].map(tab => (
                                     <button
-                                        key={t.id}
-                                        onClick={() => setActiveTab(t.id as any)}
-                                        className={`px-4 py-3.5 text-sm font-medium transition-colors border-b-2 -mb-px ${activeTab === t.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                                        key={tab.id}
+                                        onClick={() => setActiveTab(tab.id as any)}
+                                        className={`px-4 py-3.5 text-sm font-medium transition-colors border-b-2 -mb-px ${activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
                                     >
-                                        {t.label}
+                                        {tab.label}
                                     </button>
                                 ))}
                             </div>
@@ -109,7 +111,7 @@ export default function GSTReportPage() {
                                 <input
                                     value={searchTerm}
                                     onChange={e => setSearchTerm(e.target.value)}
-                                    placeholder="Search invoice, customer, GSTIN..."
+                                    placeholder={t('gstReport.searchPlaceholder')}
                                     className="border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary my-2 w-72"
                                 />
                             )}
@@ -120,13 +122,13 @@ export default function GSTReportPage() {
                                 filtered.length === 0 ? (
                                     <div className="text-center py-16 text-muted-foreground">
                                         <FileText className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                                        <p>No invoices found for {MONTHS[month - 1]} {year}</p>
+                                        <p>{t('gstReport.noInvoicesFound', { month: MONTHS[month - 1], year })}</p>
                                     </div>
                                 ) : (
                                     <table className="w-full text-sm">
                                         <thead>
                                             <tr className="border-b bg-muted/50">
-                                                {['Invoice #', 'Date', 'Customer', 'GSTIN', 'Taxable', 'CGST', 'SGST', 'IGST', 'Total'].map(h => (
+                                                {[t('gstReport.invoiceHash'), t('gstReport.date'), t('gstReport.customer'), t('gstReport.gstin'), t('gstReport.taxable'), t('gstReport.cgst'), t('gstReport.sgst'), t('gstReport.igst'), t('gstReport.total')].map(h => (
                                                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">{h}</th>
                                                 ))}
                                             </tr>
@@ -148,7 +150,7 @@ export default function GSTReportPage() {
                                         </tbody>
                                         <tfoot>
                                             <tr className="bg-muted/50 border-t-2">
-                                                <td colSpan={4} className="px-4 py-3 text-sm font-semibold">Total ({filtered.length} invoices)</td>
+                                                <td colSpan={4} className="px-4 py-3 text-sm font-semibold">{t('gstReport.totalRow', { count: filtered.length })}</td>
                                                 <td className="px-4 py-3  font-semibold">{fmt(filtered.reduce((s, r) => s + parseFloat(r.sub_total || 0), 0))}</td>
                                                 <td className="px-4 py-3  font-semibold text-blue-600">{fmt(filtered.reduce((s, r) => s + parseFloat(r.cgst_amount || 0), 0))}</td>
                                                 <td className="px-4 py-3  font-semibold text-purple-600">{fmt(filtered.reduce((s, r) => s + parseFloat(r.sgst_amount || 0), 0))}</td>
@@ -162,13 +164,13 @@ export default function GSTReportPage() {
                                 hsnSummary.length === 0 ? (
                                     <div className="text-center py-16 text-muted-foreground">
                                         <Hash className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                                        <p>No HSN data for {MONTHS[month - 1]} {year}</p>
+                                        <p>{t('gstReport.noHsnData', { month: MONTHS[month - 1], year })}</p>
                                     </div>
                                 ) : (
                                     <table className="w-full text-sm">
                                         <thead>
                                             <tr className="border-b bg-muted/50">
-                                                {['HSN Code', 'Product', 'Boxes', 'Taxable', 'CGST', 'SGST', 'IGST'].map(h => (
+                                                {[t('gstReport.hsnCode'), t('gstReport.product'), t('gstReport.boxes'), t('gstReport.taxable'), t('gstReport.cgst'), t('gstReport.sgst'), t('gstReport.igst')].map(h => (
                                                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>
                                                 ))}
                                             </tr>

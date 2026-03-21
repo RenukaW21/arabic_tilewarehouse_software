@@ -196,11 +196,11 @@ export default function PurchaseOrderDetailsPage() {
 
   // Status label map for display
   const STATUS_LABELS: Record<POStatus, string> = {
-    draft:     'Draft',
-    confirmed: 'Confirmed',
-    partial:   'Partially Received',
-    received:  'Fully Received',
-    cancelled: 'Cancelled',
+    draft:     t('common.draft'),
+    confirmed: t('common.confirmed'),
+    partial:   t('purchaseOrders.partiallyReceived'),
+    received:  t('purchaseOrders.fullyReceived'),
+    cancelled: t('common.cancelled'),
   };
 
   // ─── Inline received qty handlers ─────────────────────────────────────────
@@ -237,7 +237,7 @@ export default function PurchaseOrderDetailsPage() {
         {/* Edit received date / notes */}
         <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
           <Pencil className="h-4 w-4 mr-1" />
-          {isDraft ? 'Edit' : 'Edit received date / notes'}
+          {isDraft ? t('common.edit') : t('purchaseOrders.editDateNotes')}
         </Button>
 
         {/* Draft-only: Approve + Cancel */}
@@ -248,13 +248,13 @@ export default function PurchaseOrderDetailsPage() {
               onClick={() => setApproveOpen(true)}
               disabled={approveMutation.isPending}
             >
-              <CheckCircle className="h-4 w-4 mr-1" /> Approve
+              <CheckCircle className="h-4 w-4 mr-1" /> {t('common.approve')}
             </Button>
             <Button
               variant="outline" size="sm" className="text-destructive"
               onClick={() => setDeleteOpen(true)}
             >
-              <Trash2 className="h-4 w-4 mr-1" /> Cancel PO
+              <Trash2 className="h-4 w-4 mr-1" /> {t('purchaseOrders.cancelPO')}
             </Button>
           </>
         )}
@@ -268,7 +268,7 @@ export default function PurchaseOrderDetailsPage() {
               setStatusOpen(true);
             }}
           >
-            <RefreshCw className="h-4 w-4 mr-1" /> Change Status
+            <RefreshCw className="h-4 w-4 mr-1" /> {t('purchaseOrders.changeStatus')}
           </Button>
         )}
 
@@ -281,7 +281,7 @@ export default function PurchaseOrderDetailsPage() {
               setPaymentOpen(true);
             }}
           >
-            <CreditCard className="h-4 w-4 mr-1" /> Payment Status
+            <CreditCard className="h-4 w-4 mr-1" /> {t('purchaseOrders.paymentStatus')}
           </Button>
         )}
       </div>
@@ -298,7 +298,7 @@ export default function PurchaseOrderDetailsPage() {
           <DetailField label={t('purchaseOrders.approvedBy')}     value={po.approved_by_name ?? po.approved_by ?? '—'} />
           <DetailField label={t('purchaseOrders.approvedAt')}     value={fmtDt(po.approved_at)} />
           <div className="col-span-2 md:col-span-4">
-            <DetailField label="Notes" value={po.notes} />
+            <DetailField label={t('purchaseOrders.notes')} value={po.notes} />
           </div>
         </div>
       </div>
@@ -306,12 +306,12 @@ export default function PurchaseOrderDetailsPage() {
       {/* Totals card */}
       <div className="rounded-lg border bg-card p-4">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          <DetailField label="Sub Total"           value={`₹${Number(po.total_amount ?? 0).toLocaleString('en-IN')}`} />
-          <DetailField label="Item Discount"       value={`₹${Number(po.discount_amount ?? 0).toLocaleString('en-IN')}`} />
-          <DetailField label="Additional Discount" value={`₹${Number((po as any).additional_discount ?? 0).toLocaleString('en-IN')}`} />
-          <DetailField label="Tax (GST)"           value={`₹${Number(po.tax_amount ?? 0).toLocaleString('en-IN')}`} />
+          <DetailField label={t('purchaseOrders.subTotal')}           value={`₹${Number(po.total_amount ?? 0).toLocaleString('en-IN')}`} />
+          <DetailField label={t('purchaseOrders.itemDiscount')}       value={`₹${Number(po.discount_amount ?? 0).toLocaleString('en-IN')}`} />
+          <DetailField label={t('purchaseOrders.additionalDiscount')} value={`₹${Number((po as any).additional_discount ?? 0).toLocaleString('en-IN')}`} />
+          <DetailField label={t('purchaseOrders.taxGst')}             value={`₹${Number(po.tax_amount ?? 0).toLocaleString('en-IN')}`} />
           <DetailField
-            label="Grand Total"
+            label={t('purchaseOrders.grandTotal')}
             value={<span className="text-base font-bold text-primary">₹{Number(po.grand_total ?? 0).toLocaleString('en-IN')}</span>}
           />
         </div>
@@ -320,26 +320,26 @@ export default function PurchaseOrderDetailsPage() {
       {/* Line items */}
       <div className="rounded-lg border">
         <div className="px-4 py-2 border-b bg-muted/50 flex items-center justify-between">
-          <h3 className="text-sm font-semibold">Line Items</h3>
+          <h3 className="text-sm font-semibold">{t('purchaseOrders.lineItems')}</h3>
           {canEditReceivedQty && (
-            <p className="text-xs text-muted-foreground">Click the received quantity to edit it</p>
+            <p className="text-xs text-muted-foreground">{t('purchaseOrders.clickQtyToEdit')}</p>
           )}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/30 text-left">
-                <th className="px-4 py-2 font-medium">Product</th>
-                <th className="px-4 py-2 font-medium">Shade</th>
-                <th className="px-4 py-2 font-medium text-right">Ordered</th>
+                <th className="px-4 py-2 font-medium">{t('common.product')}</th>
+                <th className="px-4 py-2 font-medium">{t('purchaseOrders.shade')}</th>
+                <th className="px-4 py-2 font-medium text-right">{t('purchaseOrders.ordered')}</th>
                 <th className="px-4 py-2 font-medium text-right">
-                  Received
-                  {canEditReceivedQty && <span className="ml-1 text-[10px] font-normal text-muted-foreground">(editable)</span>}
+                  {t('purchaseOrders.received')}
+                  {canEditReceivedQty && <span className="ml-1 text-[10px] font-normal text-muted-foreground">({t('purchaseOrders.editable')})</span>}
                 </th>
-                <th className="px-4 py-2 font-medium text-right">Unit Price</th>
-                <th className="px-4 py-2 font-medium text-right">Disc %</th>
-                <th className="px-4 py-2 font-medium text-right">Tax %</th>
-                <th className="px-4 py-2 font-medium text-right">Line Total</th>
+                <th className="px-4 py-2 font-medium text-right">{t('purchaseOrders.unitPrice')}</th>
+                <th className="px-4 py-2 font-medium text-right">{t('purchaseOrders.discPct')}</th>
+                <th className="px-4 py-2 font-medium text-right">{t('purchaseOrders.taxPct')}</th>
+                <th className="px-4 py-2 font-medium text-right">{t('purchaseOrders.lineTotal')}</th>
               </tr>
             </thead>
             <tbody>
@@ -403,27 +403,27 @@ export default function PurchaseOrderDetailsPage() {
           </table>
         </div>
         {(!po.items || po.items.length === 0) && (
-          <p className="px-4 py-6 text-center text-muted-foreground text-sm">No line items</p>
+          <p className="px-4 py-6 text-center text-muted-foreground text-sm">{t('purchaseOrders.noLineItems')}</p>
         )}
       </div>
 
       {/* Linked GRNs */}
       <div className="rounded-lg border">
         <div className="px-4 py-3 border-b bg-muted/50 flex items-center justify-between">
-          <h3 className="text-sm font-semibold">Goods Receipt Notes (GRNs)</h3>
+          <h3 className="text-sm font-semibold">{t('purchaseOrders.linkedGRNs')}</h3>
           {['confirmed', 'partial'].includes(po.status) && (
             <Button size="sm" variant="outline" onClick={() => navigate(`/purchase/grn?po_id=${po.id}`)}>
-              <Plus className="h-4 w-4 mr-1" /> Create GRN
+              <Plus className="h-4 w-4 mr-1" /> {t('purchaseOrders.createGRN')}
             </Button>
           )}
         </div>
         {linkedGRNs.length === 0 ? (
           <p className="px-4 py-6 text-center text-muted-foreground text-sm">
-            No GRNs linked to this purchase order yet.
+            {t('purchaseOrders.noGRNsLinked')}
             {['confirmed', 'partial'].includes(po.status) && (
               <button type="button" className="ml-1 text-primary underline hover:no-underline"
                 onClick={() => navigate(`/purchase/grn?po_id=${po.id}`)}>
-                Create one now
+                {t('purchaseOrders.createOneNow')}
               </button>
             )}
           </p>
@@ -432,12 +432,12 @@ export default function PurchaseOrderDetailsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/30 text-left">
-                  <th className="px-4 py-2 font-medium">GRN #</th>
-                  <th className="px-4 py-2 font-medium">Status</th>
-                  <th className="px-4 py-2 font-medium">Receipt Date</th>
-                  <th className="px-4 py-2 font-medium">Invoice #</th>
-                  <th className="px-4 py-2 font-medium">Vehicle #</th>
-                  <th className="px-4 py-2 font-medium">Actions</th>
+                  <th className="px-4 py-2 font-medium">{t('purchaseOrders.grnHash')}</th>
+                  <th className="px-4 py-2 font-medium">{t('common.status')}</th>
+                  <th className="px-4 py-2 font-medium">{t('purchaseOrders.receiptDate')}</th>
+                  <th className="px-4 py-2 font-medium">{t('purchaseOrders.invoiceHash')}</th>
+                  <th className="px-4 py-2 font-medium">{t('purchaseOrders.vehicleHash')}</th>
+                  <th className="px-4 py-2 font-medium">{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -481,7 +481,7 @@ export default function PurchaseOrderDetailsPage() {
         <DialogContent>
           <DialogHeader><DialogTitle>{t('purchaseOrders.approvePO')}</DialogTitle></DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Approve <strong>{po.po_number}</strong>? Status will change to <strong>Confirmed</strong> and the order can no longer be edited.
+            {t('purchaseOrders.approveConfirm', { number: po.po_number })}
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setApproveOpen(false)}>{t('common.cancel')}</Button>
@@ -503,13 +503,13 @@ export default function PurchaseOrderDetailsPage() {
       {/* Change Status dialog */}
       <Dialog open={statusOpen} onOpenChange={(v) => !v && setStatusOpen(false)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Change PO Status</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('purchaseOrders.changeStatusTitle')}</DialogTitle></DialogHeader>
           <div className="space-y-3 py-2">
             <p className="text-sm text-muted-foreground">
-              Current status: <strong>{STATUS_LABELS[po.status as POStatus]}</strong>
+              {t('purchaseOrders.currentStatus')}: <strong>{STATUS_LABELS[po.status as POStatus]}</strong>
             </p>
             <div className="space-y-2">
-              <Label>New Status</Label>
+              <Label>{t('purchaseOrders.newStatus')}</Label>
               <Select value={newStatus} onValueChange={(v) => setNewStatus(v as POStatus)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -522,29 +522,29 @@ export default function PurchaseOrderDetailsPage() {
             {/* Auto-GRN info note */}
             {newStatus === 'received' && (
               <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
-                <p className="font-medium mb-0.5">📦 Auto GRN will be generated</p>
+                <p className="font-medium mb-0.5">📦 {t('purchaseOrders.autoGrnWillBeGenerated')}</p>
                 <p className="text-xs text-blue-700">
-                  Marking this PO as <strong>Received</strong> will automatically:
+                  {t('purchaseOrders.markingAsReceived')}
                 </p>
                 <ul className="text-xs text-blue-700 list-disc list-inside mt-1 space-y-0.5">
-                  <li>Create a GRN with all ordered items (full quantity)</li>
-                  <li>Mark quality as <strong>Pass</strong> for all items</li>
-                  <li>Post stock movement to <strong>{po.warehouse_name ?? 'the warehouse'}</strong></li>
-                  <li>Activate any newly created products</li>
+                  <li>{t('purchaseOrders.autoGrnStep1')}</li>
+                  <li>{t('purchaseOrders.autoGrnStep2')}</li>
+                  <li>{t('purchaseOrders.autoGrnStep3', { warehouse: po.warehouse_name ?? t('purchaseOrders.theWarehouse') })}</li>
+                  <li>{t('purchaseOrders.autoGrnStep4')}</li>
                 </ul>
               </div>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setStatusOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setStatusOpen(false)}>{t('common.cancel')}</Button>
             <Button
               onClick={() => statusMutation.mutate(newStatus)}
               disabled={statusMutation.isPending}
               className={newStatus === 'received' ? 'bg-green-600 hover:bg-green-700 text-white' : ''}
             >
               {statusMutation.isPending
-                ? (newStatus === 'received' ? 'Generating GRN...' : 'Saving...')
-                : (newStatus === 'received' ? '✓ Mark Received & Auto-GRN' : 'Update Status')
+                ? (newStatus === 'received' ? t('purchaseOrders.generatingGRN') : t('common.saving'))
+                : (newStatus === 'received' ? t('purchaseOrders.markReceivedAutoGRN') : t('purchaseOrders.updateStatus'))
               }
             </Button>
           </DialogFooter>
@@ -557,7 +557,7 @@ export default function PurchaseOrderDetailsPage() {
           <DialogHeader><DialogTitle>{t('purchaseOrders.updatePaymentStatus')}</DialogTitle></DialogHeader>
           <div className="space-y-3 py-2">
             <p className="text-sm text-muted-foreground">
-              PO <strong>{po.po_number}</strong> — Grand total:{' '}
+              {t('purchaseOrders.poNumber')}: <strong>{po.po_number}</strong> — {t('purchaseOrders.grandTotal')}:{' '}
               <strong>₹{Number(po.grand_total ?? 0).toLocaleString()}</strong>
             </p>
             <div className="space-y-2">

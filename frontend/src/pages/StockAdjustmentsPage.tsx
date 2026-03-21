@@ -59,12 +59,12 @@ export default function StockAdjustmentsPage() {
   const productOptions = products.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }));
 
   const fields: FieldDef[] = [
-    { key: 'warehouse_id', label: t('stockAdjustmentsPage.warehouse'), type: 'select', required: true, options: warehouseOptions },
-    { key: 'product_id', label: t('stockAdjustmentsPage.product'), type: 'select', required: true, options: productOptions },
-    { key: 'adjustment_type', label: t('stockAdjustmentsPage.type'), type: 'select', required: true, options: [{ value: 'add', label: t('stockAdjustmentsPage.typeAdd') }, { value: 'deduct', label: t('stockAdjustmentsPage.typeDeduct') }], defaultValue: 'add' },
-    { key: 'boxes', label: t('stockAdjustmentsPage.boxes'), type: 'number', defaultValue: 0, required: true },
+    { key: 'warehouse_id', label: t('stockAdjustments.warehouse'), type: 'select', required: true, options: warehouseOptions },
+    { key: 'product_id', label: t('stockAdjustments.product'), type: 'select', required: true, options: productOptions },
+    { key: 'adjustment_type', label: t('stockAdjustments.type'), type: 'select', required: true, options: [{ value: 'add', label: t('stockAdjustments.typeAdd') }, { value: 'deduct', label: t('stockAdjustments.typeDeduct') }], defaultValue: 'add' },
+    { key: 'boxes', label: t('stockAdjustments.boxes'), type: 'number', defaultValue: 0, required: true },
     { key: 'pieces', label: t('common.pieces', 'قطع'), type: 'number', defaultValue: 0 },
-    { key: 'reason', label: t('stockAdjustmentsPage.reason'), type: 'text', required: true },
+    { key: 'reason', label: t('stockAdjustments.reason'), type: 'text', required: true },
   ];
 
   const saveMutation = useMutation({
@@ -84,7 +84,7 @@ export default function StockAdjustmentsPage() {
       qc.invalidateQueries({ queryKey: ['stock-adjustments'] });
       setDialogOpen(false);
       setEditing(null);
-      toast.success(editing ? t('stockAdjustmentsPage.updated') : t('stockAdjustmentsPage.created'));
+      toast.success(editing ? t('stockAdjustments.updated') : t('stockAdjustments.created'));
     },
     onError: (e: { response?: { data?: { error?: { message?: string } } } }) => {
       toast.error(e?.response?.data?.error?.message ?? t('common.operationFailed', 'فشلت العملية'));
@@ -95,7 +95,7 @@ export default function StockAdjustmentsPage() {
     mutationFn: (id: string) => stockAdjustmentsApi.approve(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['stock-adjustments'] });
-      toast.success(t('stockAdjustmentsPage.approved'));
+      toast.success(t('stockAdjustments.approved'));
     },
     onError: (e: { response?: { data?: { error?: { message?: string } } } }) => {
       toast.error(e?.response?.data?.error?.message ?? t('common.approveFailed', 'فشل الاعتماد'));
@@ -107,7 +107,7 @@ export default function StockAdjustmentsPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['stock-adjustments'] });
       setDeleting(null);
-      toast.success(t('stockAdjustmentsPage.deleted'));
+      toast.success(t('stockAdjustments.deleted'));
     },
     onError: (e: { response?: { data?: { error?: { message?: string } } } }) => {
       toast.error(e?.response?.data?.error?.message ?? t('common.deleteFailed', 'فشل الحذف'));
@@ -115,15 +115,15 @@ export default function StockAdjustmentsPage() {
   });
 
   const columns = [
-    { key: 'product', label: t('stockAdjustmentsPage.product'), render: (r: StockAdjustment) => `${r.product_code ?? ''} — ${r.product_name ?? r.product_id}` },
-    { key: 'warehouse_name', label: t('stockAdjustmentsPage.warehouse'), render: (r: StockAdjustment) => r.warehouse_name ?? '—' },
-    { key: 'adjustment_type', label: t('stockAdjustmentsPage.type'), render: (r: StockAdjustment) => <StatusBadge status={r.adjustment_type === 'add' ? 'active' : 'cancelled'} /> },
-    { key: 'boxes', label: t('stockAdjustmentsPage.boxes'), render: (r: StockAdjustment) => r.boxes },
-    { key: 'reason', label: t('stockAdjustmentsPage.reason'), render: (r: StockAdjustment) => r.reason },
-    { key: 'status', label: t('stockAdjustmentsPage.status'), render: (r: StockAdjustment) => <StatusBadge status={r.status} /> },
+    { key: 'product', label: t('stockAdjustments.product'), render: (r: StockAdjustment) => `${r.product_code ?? ''} — ${r.product_name ?? r.product_id}` },
+    { key: 'warehouse_name', label: t('stockAdjustments.warehouse'), render: (r: StockAdjustment) => r.warehouse_name ?? '—' },
+    { key: 'adjustment_type', label: t('stockAdjustments.type'), render: (r: StockAdjustment) => r.adjustment_type === 'add' ? <span className="text-emerald-600 font-medium">{t('stockAdjustments.typeAdd')}</span> : <span className="text-red-500 font-medium">{t('stockAdjustments.typeDeduct')}</span> },
+    { key: 'boxes', label: t('stockAdjustments.boxes'), render: (r: StockAdjustment) => r.boxes },
+    { key: 'reason', label: t('stockAdjustments.reason'), render: (r: StockAdjustment) => r.reason },
+    { key: 'status', label: t('stockAdjustments.status'), render: (r: StockAdjustment) => <StatusBadge status={r.status} /> },
     {
       key: 'actions',
-      label: t('stockAdjustmentsPage.actions'),
+      label: t('stockAdjustments.actions'),
       render: (r: StockAdjustment) => (
         <div className="flex gap-1">
           {r.status === 'pending' && (
@@ -140,12 +140,12 @@ export default function StockAdjustmentsPage() {
 
   return (
     <div>
-      <PageHeader title={t('stockAdjustmentsPage.title')} subtitle={t('stockAdjustmentsPage.subtitle')} onAdd={() => { setEditing(null); setDialogOpen(true); }} addLabel={t('stockAdjustmentsPage.newAdjustment')} />
+      <PageHeader title={t('stockAdjustments.title')} subtitle={t('stockAdjustments.subtitle')} onAdd={() => { setEditing(null); setDialogOpen(true); }} addLabel={t('stockAdjustments.newAdjustment')} />
       <DataTableShell<StockAdjustment>
         data={rows}
         columns={columns}
         searchKey="reason"
-        searchPlaceholder={t('stockAdjustmentsPage.searchPlaceholder')}
+        searchPlaceholder={t('stockAdjustments.searchPlaceholder')}
         serverSide
         searchValue={searchInput}
         onSearchChange={handleSearchChange}
@@ -153,7 +153,7 @@ export default function StockAdjustmentsPage() {
         onPageChange={setPage}
         isLoading={isLoading}
       />
-      <CrudFormDialog open={dialogOpen} onClose={() => { setDialogOpen(false); setEditing(null); }} onSubmit={(d) => saveMutation.mutateAsync(d)} fields={fields} title={editing ? t('stockAdjustmentsPage.editAdjustment') : t('stockAdjustmentsPage.newAdjustment')} initialData={editing} loading={saveMutation.isPending} />
+      <CrudFormDialog open={dialogOpen} onClose={() => { setDialogOpen(false); setEditing(null); }} onSubmit={(d) => saveMutation.mutateAsync(d)} fields={fields} title={editing ? t('stockAdjustments.editAdjustment') : t('stockAdjustments.newAdjustment')} initialData={editing} loading={saveMutation.isPending} />
       <DeleteConfirmDialog open={!!deleting} onClose={() => setDeleting(null)} onConfirm={() => deleting && deleteMutation.mutateAsync(deleting.id)} loading={deleteMutation.isPending} />
     </div>
   );

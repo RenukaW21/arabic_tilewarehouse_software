@@ -32,14 +32,7 @@ import { Pencil, Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
-const roleLabels: Record<string, string> = {
-  super_admin: "Super Admin",
-  admin: "Admin",
-  warehouse_manager: "Warehouse Manager",
-  sales: "Sales",
-  accountant: "Accountant",
-  user: "User",
-};
+// roleLabels will now use t() directly in render — see below
 
 interface WarehouseOption {
   value: string;
@@ -48,6 +41,15 @@ interface WarehouseOption {
 
 export default function UsersPage() {
   const { t } = useTranslation();
+
+  const roleLabels: Record<string, string> = {
+    super_admin: t('users.roleSuperAdmin'),
+    admin: t('users.roleAdmin'),
+    warehouse_manager: t('users.roleWarehouseManager'),
+    sales: t('users.roleSales'),
+    accountant: t('users.roleAccountant'),
+    user: t('users.roleUser'),
+  };
   const qc = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
@@ -236,7 +238,7 @@ export default function UsersPage() {
       <DataTableShell<User>
         data={users}
         columns={columns}
-        searchPlaceholder="Search by name or email..."
+        searchPlaceholder={t('users.searchPlaceholder')}
         serverSide
         searchValue={searchInput}
         onSearchChange={(v) => {
@@ -315,6 +317,14 @@ function CreateUserDialog({
   warehouseOptions: WarehouseOption[];
 }) {
   const { t } = useTranslation();
+  const roleLabels: Record<string, string> = {
+    super_admin: t('users.roleSuperAdmin'),
+    admin: t('users.roleAdmin'),
+    warehouse_manager: t('users.roleWarehouseManager'),
+    sales: t('users.roleSales'),
+    accountant: t('users.roleAccountant'),
+    user: t('users.roleUser'),
+  };
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -462,6 +472,14 @@ function EditUserDialog({
   warehouseOptions: WarehouseOption[];
 }) {
   const { t } = useTranslation();
+  const roleLabels: Record<string, string> = {
+    super_admin: t('users.roleSuperAdmin'),
+    admin: t('users.roleAdmin'),
+    warehouse_manager: t('users.roleWarehouseManager'),
+    sales: t('users.roleSales'),
+    accountant: t('users.roleAccountant'),
+    user: t('users.roleUser'),
+  };
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<User["role"]>("user");
@@ -531,7 +549,7 @@ function EditUserDialog({
               required
             />
           </div>
-          <p className="text-xs text-muted-foreground">Email: {user.email}</p>
+          <p className="text-xs text-muted-foreground">{t('users.emailLabel')}: {user.email}</p>
           <div className="space-y-2">
             <Label htmlFor="edit-password">{t('users.newPassword')}</Label>
             <Input

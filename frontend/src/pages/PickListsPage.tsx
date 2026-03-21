@@ -131,26 +131,26 @@ export default function PickListsPage() {
   });
 
   const columns = [
-    { key: 'pick_number', label: 'Pick #', render: (r: PickList) => <span className="font-mono text-sm font-medium">{r.pick_number}</span> },
-    { key: 'so_number', label: 'SO #', render: (r: PickList) => r.so_number ?? '—' },
-    { key: 'warehouse_name', label: 'Warehouse', render: (r: PickList) => r.warehouse_name ?? '—' },
-    { key: 'status', label: 'Status', render: (r: PickList) => <StatusBadge status={r.status} /> },
-    { key: 'assigned_to', label: 'Assigned', render: (r: PickList) => r.assigned_to ?? '—' },
+    { key: 'pick_number', label: t('pickLists.pickListNumber'), render: (r: PickList) => <span className="font-mono text-sm font-medium">{r.pick_number}</span> },
+    { key: 'so_number', label: t('pickLists.salesOrder'), render: (r: PickList) => r.so_number ?? '—' },
+    { key: 'warehouse_name', label: t('pickLists.warehouse'), render: (r: PickList) => r.warehouse_name ?? '—' },
+    { key: 'status', label: t('pickLists.status'), render: (r: PickList) => <StatusBadge status={r.status} /> },
+    { key: 'assigned_to', label: t('common.name', 'Assigned'), render: (r: PickList) => r.assigned_to ?? '—' },
     {
       key: 'actions',
-      label: 'Actions',
+      label: t('common.actions'),
       render: (r: PickList) => (
         <div className="flex gap-1">
           <Button variant="outline" size="sm" onClick={() => setDetailId(r.id)}>
-            View
+            {t('common.view')}
           </Button>
           {['pending', 'in_progress'].includes(r.status) && (
-            <Button variant="outline" size="sm" onClick={() => { setAssignDialog(r); setAssignedTo(r.assigned_to ?? ''); }} title="Edit / Assign">
-              <UserPlus className="h-4 w-4 mr-1" /> Edit
+            <Button variant="outline" size="sm" onClick={() => { setAssignDialog(r); setAssignedTo(r.assigned_to ?? ''); }} title={t('common.edit')}>
+              <UserPlus className="h-4 w-4 mr-1" /> {t('common.edit')}
             </Button>
           )}
           {r.status === 'pending' && (
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleting(r)} title="Delete">
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleting(r)} title={t('common.delete')}>
               <Trash2 className="h-4 w-4" />
             </Button>
           )}
@@ -161,7 +161,7 @@ export default function PickListsPage() {
 
   return (
     <div>
-      <PageHeader title="Pick Lists" subtitle="Manage pick lists from confirmed orders" />
+      <PageHeader title={t('pickLists.title')} subtitle={t('pickLists.subtitle')} />
       <div className="mb-4 flex flex-wrap gap-2">
         <select
           value={statusFilter}
@@ -178,7 +178,7 @@ export default function PickListsPage() {
       <DataTableShell<PickList>
         data={lists}
         columns={columns}
-        searchPlaceholder="Search pick # or SO #..."
+        searchPlaceholder={t('common.search')}
         serverSide
         searchValue={searchInput}
         onSearchChange={(v) => { setSearchInput(v); applySearch(v); }}
@@ -194,21 +194,21 @@ export default function PickListsPage() {
               <DialogTitle>{detail.pick_number} — {detail.so_number}</DialogTitle>
             </DialogHeader>
             <p className="text-sm text-muted-foreground">
-              Warehouse: {detail.warehouse_name} · Status: {detail.status} · Assigned: {detail.assigned_to ?? '—'}
+              {t('pickLists.warehouse')}: {detail.warehouse_name} · {t('pickLists.status')}: {detail.status} · {t('common.name', 'Assigned')}: {detail.assigned_to ?? '—'}
             </p>
             {detail.status === 'completed' && !(detail.items ?? []).some((item) => Number(item.picked_boxes) > 0) && (
               <div className="rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-3 text-sm">
                 <p className="text-amber-800 dark:text-amber-200 mb-2">
                   This pick list was completed with no items picked, so it cannot be used for a delivery challan.
                 </p>
-                <Button
+                  <Button
                   variant="outline"
                   size="sm"
                   onClick={() => reopenMutation.mutate(detail.id)}
                   disabled={reopenMutation.isPending}
                 >
                   {reopenMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  Reopen to enter picked quantities
+                  {t('common.edit')}
                 </Button>
               </div>
             )}
@@ -216,9 +216,9 @@ export default function PickListsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="px-4 py-2 text-left font-medium">Product</th>
-                    <th className="px-4 py-2 text-right font-medium">Requested</th>
-                    <th className="px-4 py-2 text-right font-medium">Picked</th>
+                  <th className="px-4 py-2 text-left font-medium">{t('common.product')}</th>
+                    <th className="px-4 py-2 text-right font-medium">{t('salesOrders.boxes')}</th>
+                    <th className="px-4 py-2 text-right font-medium">{t('stockCounts.countedBoxes')}</th>
                     {['pending', 'in_progress'].includes(detail.status) && <th className="w-28" />}
                   </tr>
                 </thead>
@@ -265,7 +265,7 @@ export default function PickListsPage() {
                   disabled={completeMutation.isPending || !(detail.items ?? []).some((item) => Number(item.picked_boxes) > 0)}
                 >
                   {completeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-                  Mark complete
+                  {t('common.confirm')}
                 </Button>
               </DialogFooter>
             )}
@@ -276,14 +276,14 @@ export default function PickListsPage() {
       <Dialog open={!!assignDialog} onOpenChange={(open) => !open && setAssignDialog(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Assign pick list</DialogTitle>
+            <DialogTitle>{t('pickLists.addPickList')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
-            <Label>Assigned to</Label>
+            <Label>{t('common.name', 'Assigned to')}</Label>
             <Select value={assignedTo || 'none'} onValueChange={(v) => setAssignedTo(v === 'none' ? '' : v)}>
-              <SelectTrigger><SelectValue placeholder="Select user (warehouse / sales)" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={t('common.select')} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">— None —</SelectItem>
+                <SelectItem value="none">{t('common.none')}</SelectItem>
                 {assignableUsers.map((u) => (
                   <SelectItem key={u.id} value={u.id}>{u.name} ({u.email}) — {u.role}</SelectItem>
                 ))}
@@ -291,12 +291,12 @@ export default function PickListsPage() {
             </Select>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAssignDialog(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setAssignDialog(null)}>{t('common.cancel')}</Button>
             <Button
               onClick={() => assignDialog && assignMutation.mutate({ id: assignDialog.id, assigned_to: assignedTo.trim() || null })}
               disabled={assignMutation.isPending}
             >
-              {assignMutation.isPending ? 'Saving...' : 'Assign'}
+              {assignMutation.isPending ? t('common.saving') : t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -307,8 +307,8 @@ export default function PickListsPage() {
         onClose={() => setDeleting(null)}
         onConfirm={() => deleting && deleteMutation.mutateAsync(deleting.id)}
         loading={deleteMutation.isPending}
-        title="Delete pick list"
-        description="Only pending pick lists can be deleted. Are you sure?"
+        title={t('pickLists.editPickList')}
+        description={t('deleteDialog.description')}
       />
     </div>
   );

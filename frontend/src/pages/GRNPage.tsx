@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { grnApi } from '@/api/grnApi';
 import { vendorApi } from '@/api/vendorApi';
@@ -83,10 +84,10 @@ function ProductCombobox({
         <Button
           variant="outline" role="combobox" type="button"
           disabled={disabled}
-          className={cn('w-full justify-between font-normal text-left h-9', !value && 'text-muted-foreground')}
+          className={cn('w-full justify-between font-normal text-start h-9', !value && 'text-muted-foreground')}
         >
           <span className="truncate text-sm">{label || 'Search product…'}</span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <ChevronsUpDown className="ms-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[360px] p-0" align="start">
@@ -109,7 +110,7 @@ function ProductCombobox({
                     setOpen(false);
                   }}
                 >
-                  <Check className={cn('mr-2 h-4 w-4 shrink-0', value === p.id ? 'opacity-100' : 'opacity-0')} />
+                  <Check className={cn('me-2 h-4 w-4 shrink-0', value === p.id ? 'opacity-100' : 'opacity-0')} />
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{p.name}</p>
                     <p className="text-xs text-muted-foreground">{p.code}</p>
@@ -172,6 +173,7 @@ function ShadeSelect({
 
 // ─── ItemsEditor ──────────────────────────────────────────────────────────────
 function ItemsEditor({ items, onChange }: { items: GRNItemRow[]; onChange: (items: GRNItemRow[]) => void }) {
+  const { t } = useTranslation();
   const addRow = () =>
     onChange([...items, {
       _key: crypto.randomUUID(),
@@ -191,18 +193,18 @@ function ItemsEditor({ items, onChange }: { items: GRNItemRow[]; onChange: (item
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <Label>
-          Items <span className="text-destructive">*</span>
-          <span className="ml-1.5 text-xs font-normal text-muted-foreground">(at least 1 required)</span>
+          {t('grn.lineItems')} <span className="text-destructive">*</span>
+          <span className="ms-1.5 text-xs font-normal text-muted-foreground">({t('grn.noItems', 'at least 1 required')})</span>
         </Label>
         <Button type="button" variant="outline" size="sm" onClick={addRow}>
-          <Plus className="mr-1 h-3.5 w-3.5" /> Add Row
+          <Plus className="me-1 h-3.5 w-3.5" /> {t('common.addLine')}
         </Button>
       </div>
 
       {items.length === 0 && (
         <div className="flex flex-col items-center py-8 rounded-md border border-dashed text-muted-foreground">
           <Package className="h-8 w-8 mb-2 opacity-30" />
-          <p className="text-sm">No items yet. Click "Add Row" to start.</p>
+          <p className="text-sm">{t('grn.noItems')}</p>
         </div>
       )}
 
@@ -210,13 +212,13 @@ function ItemsEditor({ items, onChange }: { items: GRNItemRow[]; onChange: (item
         {items.map((row, idx) => (
           <div key={row._key} className="rounded-md border bg-muted/20 p-3 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Item {idx + 1}</span>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('grn.product')} {idx + 1}</span>
               <Button
                 type="button" variant="ghost" size="icon"
                 className="h-6 w-6 text-destructive hover:text-destructive"
                 onClick={() => remove(row._key)}
                 disabled={items.length === 1}
-                title="Remove item"
+                title={t('common.delete')}
               >
                 <X className="h-3.5 w-3.5" />
               </Button>
@@ -224,7 +226,7 @@ function ItemsEditor({ items, onChange }: { items: GRNItemRow[]; onChange: (item
 
             {/* Product search */}
             <div className="space-y-1">
-              <Label className="text-xs">Product <span className="text-destructive">*</span></Label>
+              <Label className="text-xs">{t('grn.product')} <span className="text-destructive">*</span></Label>
               <ProductCombobox
                 value={row.product_id}
                 label={row.product_label}
@@ -238,7 +240,7 @@ function ItemsEditor({ items, onChange }: { items: GRNItemRow[]; onChange: (item
             {/* Row 1: Shade + Received Boxes + Unit Price */}
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs">Shade</Label>
+                <Label className="text-xs">{t('grn.rack', 'Shade')}</Label>
                 <ShadeSelect
                   productId={row.product_id}
                   value={row.shade_id}
@@ -247,10 +249,10 @@ function ItemsEditor({ items, onChange }: { items: GRNItemRow[]; onChange: (item
               </div>
               <div className="space-y-1">
                 <Label className="text-xs flex justify-between">
-                  <span>Received Boxes <span className="text-destructive">*</span></span>
+                  <span>{t('grn.receivedBoxes')} <span className="text-destructive">*</span></span>
                   {row.ordered_boxes !== undefined && (
-                    <span className="text-[10px] text-muted-foreground mr-1">
-                      Ordered: {row.ordered_boxes}
+                    <span className="text-[10px] text-muted-foreground me-1">
+                      {t('grn.orderedBoxes')}: {row.ordered_boxes}
                     </span>
                   )}
                 </Label>
@@ -261,7 +263,7 @@ function ItemsEditor({ items, onChange }: { items: GRNItemRow[]; onChange: (item
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Unit Price (₹) <span className="text-destructive">*</span></Label>
+                <Label className="text-xs">{t('purchaseOrders.unitPrice')} (₹) <span className="text-destructive">*</span></Label>
                 <Input
                   type="number" min={0} step="0.01" className="h-9"
                   value={row.unit_price}
@@ -274,8 +276,7 @@ function ItemsEditor({ items, onChange }: { items: GRNItemRow[]; onChange: (item
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">
-                  Received Pieces
-                  <span className="ml-1 text-muted-foreground font-normal">(loose, not full boxes)</span>
+                  {t('grn.receivedPieces')}
                 </Label>
                 <Input
                   type="number" min={0} step="0.01" className="h-9"
@@ -285,8 +286,7 @@ function ItemsEditor({ items, onChange }: { items: GRNItemRow[]; onChange: (item
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">
-                  Damaged Boxes
-                  <span className="ml-1 text-muted-foreground font-normal">(excluded from stock)</span>
+                  {t('damageEntries.title', 'Damaged Boxes')}
                 </Label>
                 <Input
                   type="number" min={0} step="0.01" className="h-9"
@@ -298,10 +298,6 @@ function ItemsEditor({ items, onChange }: { items: GRNItemRow[]; onChange: (item
           </div>
         ))}
       </div>
-
-      <p className="text-xs text-muted-foreground">
-        💡 Batch, rack, and quality check can be assigned on the GRN detail page after creation.
-      </p>
     </div>
   );
 }
@@ -445,29 +441,31 @@ function CreateGRNDialog({
     });
   };
 
+  const { t } = useTranslation();
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>New Goods Receipt Note</DialogTitle>
-          <DialogDescription>Complete the header and add at least one item.</DialogDescription>
+          <DialogTitle>{t('grn.newGRN')}</DialogTitle>
+          <DialogDescription>{t('grn.lineItems')}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-5 pt-1">
           {/* PO */}
           <div className="space-y-2">
             <Label className="flex items-center gap-1.5">
-              Linked Purchase Order
-              <Badge variant="secondary" className="text-[10px] px-1.5 font-normal">optional</Badge>
+              {t('grn.purchaseOrder')}
+              <Badge variant="secondary" className="text-[10px] px-1.5 font-normal">{t('racks.optional')}</Badge>
             </Label>
             <Select
               value={po_id || '__none__'}
               onValueChange={(v) => setPoId(v === '__none__' ? '' : v)}
               disabled={!!preselectedPoId}
             >
-              <SelectTrigger><SelectValue placeholder="Select a PO (optional)…" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={t('grn.purchaseOrder')} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">— No PO linked —</SelectItem>
+                <SelectItem value="__none__">{t('common.none')}</SelectItem>
                 {availablePOs.map((po: { id: string; po_number: string; vendor_name?: string }) => (
                   <SelectItem key={po.id} value={po.id}>
                     {po.po_number}{po.vendor_name ? ` · ${po.vendor_name}` : ''}
@@ -475,20 +473,15 @@ function CreateGRNDialog({
                 ))}
               </SelectContent>
             </Select>
-            {po_id && (
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <ExternalLink className="h-3 w-3" /> Vendor and warehouse auto-filled.
-              </p>
-            )}
           </div>
 
           <Separator />
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Vendor <span className="text-destructive">*</span></Label>
+              <Label>{t('grn.vendor')} <span className="text-destructive">*</span></Label>
               <Select value={vendor_id} onValueChange={setVendorId} disabled={!!po_id}>
-                <SelectTrigger><SelectValue placeholder="Select vendor" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t('grn.vendor')} /></SelectTrigger>
                 <SelectContent>
                   {vendors.map((v: { id: string; name: string }) => (
                     <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
@@ -497,9 +490,9 @@ function CreateGRNDialog({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Warehouse <span className="text-destructive">*</span></Label>
+              <Label>{t('grn.warehouse')} <span className="text-destructive">*</span></Label>
               <Select value={warehouse_id} onValueChange={setWarehouseId} disabled={!!po_id}>
-                <SelectTrigger><SelectValue placeholder="Select warehouse" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t('grn.warehouse')} /></SelectTrigger>
                 <SelectContent>
                   {warehouses.map((w: { id: string; name: string }) => (
                     <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
@@ -511,11 +504,11 @@ function CreateGRNDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Receipt Date <span className="text-destructive">*</span></Label>
+              <Label>{t('grn.receiptDate')} <span className="text-destructive">*</span></Label>
               <Input type="date" value={receipt_date} onChange={(e) => setReceiptDate(e.target.value)} required />
             </div>
             <div className="space-y-2">
-              <Label>Invoice Date</Label>
+              <Label>{t('purchaseOrders.expectedDate')}</Label>
               <Input type="date" value={invoice_date} onChange={(e) => setInvoiceDate(e.target.value)} />
             </div>
           </div>
@@ -523,13 +516,13 @@ function CreateGRNDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="flex items-center gap-1.5">
-                Vendor Invoice #
-                <Badge variant="secondary" className="text-[10px] px-1.5 font-normal">optional</Badge>
+                {t('grn.notes', 'Vendor Invoice #')}
+                <Badge variant="secondary" className="text-[10px] px-1.5 font-normal">{t('racks.optional')}</Badge>
               </Label>
               <Input value={invoice_number} onChange={(e) => setInvoiceNumber(e.target.value)} placeholder="e.g. INV-2025-001" />
             </div>
             <div className="space-y-2">
-              <Label>Vehicle Number</Label>
+              <Label>{t('purchaseReturns.vehicleNumber')}</Label>
               <Input value={vehicle_number} onChange={(e) => setVehicleNumber(e.target.value)} placeholder="e.g. GJ01AB1234" />
             </div>
           </div>
@@ -539,29 +532,29 @@ function CreateGRNDialog({
           <ItemsEditor items={items} onChange={setItems} />
 
           <div className="space-y-2">
-            <Label>Notes</Label>
-            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional notes…" rows={2} />
+            <Label>{t('grn.notes')}</Label>
+            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t('grn.notes')} rows={2} />
           </div>
 
           <div className="rounded-lg border bg-muted/30 p-4 space-y-2 mt-4">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Total Items</span>
+              <span className="text-muted-foreground">{t('grn.lineItems')}</span>
               <span className="font-semibold">{items.filter(it => it.product_id).length}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Total Boxes</span>
+              <span className="text-muted-foreground">{t('grn.receivedBoxes')}</span>
               <span className="font-semibold">{items.reduce((sum, it) => sum + (it.received_boxes || 0), 0)}</span>
             </div>
             <Separator />
             <div className="flex justify-between text-sm">
-              <span className="font-bold">Grand Total</span>
+              <span className="font-bold">{t('purchaseOrders.grandTotal')}</span>
               <span className="font-bold">₹{items.reduce((sum, it) => sum + ((it.received_boxes || 0) * (it.unit_price || 0)), 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
             </div>
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>Cancel</Button>
-            <Button type="submit" disabled={loading}>{loading ? 'Creating…' : 'Create GRN'}</Button>
+            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>{t('common.cancel')}</Button>
+            <Button type="submit" disabled={loading}>{loading ? t('common.saving') : t('grn.addGRN')}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -606,51 +599,53 @@ function EditGRNDialog({
     });
   };
 
+  const { t } = useTranslation();
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Edit {grn?.grn_number}</DialogTitle>
+          <DialogTitle>{t('grn.editGRN')} {grn?.grn_number}</DialogTitle>
           <DialogDescription>
-            Header fields only. Use the detail page to add or change items.
+            {t('purchaseOrders.notes')}
           </DialogDescription>
         </DialogHeader>
 
         {!editable && (
           <div className="rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
-            This GRN is <strong className="capitalize">{grn?.status}</strong> and cannot be edited.
+            {t('grn.status')}: <strong className="capitalize">{grn?.status}</strong>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Receipt Date</Label>
+              <Label>{t('grn.receiptDate')}</Label>
               <Input type="date" value={receipt_date} onChange={(e) => setReceiptDate(e.target.value)} disabled={!editable} />
             </div>
             <div className="space-y-2">
-              <Label>Invoice Date</Label>
+              <Label>{t('purchaseOrders.expectedDate')}</Label>
               <Input type="date" value={invoice_date} onChange={(e) => setInvoiceDate(e.target.value)} disabled={!editable} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Vendor Invoice #</Label>
+              <Label>{t('grn.vendor')}</Label>
               <Input value={invoice_number} onChange={(e) => setInvoiceNumber(e.target.value)} disabled={!editable} />
             </div>
             <div className="space-y-2">
-              <Label>Vehicle Number</Label>
+              <Label>{t('purchaseReturns.vehicleNumber')}</Label>
               <Input value={vehicle_number} onChange={(e) => setVehicleNumber(e.target.value)} disabled={!editable} />
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Notes</Label>
+            <Label>{t('grn.notes')}</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} disabled={!editable} />
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>{t('common.cancel')}</Button>
             <Button type="submit" disabled={loading || !editable}>
-              {loading ? 'Saving…' : 'Save Changes'}
+              {loading ? t('common.saving') : t('common.saveChanges')}
             </Button>
           </DialogFooter>
         </form>
@@ -688,14 +683,14 @@ function GRNDetailSheet({ id, open, onClose }: { id: string | null; open: boolea
             {/* Header grid */}
             <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
               {([
-                ['Vendor', grn.vendor_name],
-                ['Warehouse', grn.warehouse_name],
+                [t('grn.vendor'), grn.vendor_name],
+                [t('grn.warehouse'), grn.warehouse_name],
                 ['PO #', grn.po_number ?? '—'],
-                ['Receipt Date', grn.receipt_date ? new Date(String(grn.receipt_date)).toLocaleDateString('en-IN') : '—'],
-                ['Invoice #', grn.invoice_number ?? '—'],
-                ['Invoice Date', grn.invoice_date ? new Date(String(grn.invoice_date)).toLocaleDateString('en-IN') : '—'],
-                ['Vehicle #', grn.vehicle_number ?? '—'],
-                ['Grand Total', grn.grand_total != null ? `₹${Number(grn.grand_total).toLocaleString('en-IN')}` : '—'],
+                [t('grn.receiptDate'), grn.receipt_date ? new Date(String(grn.receipt_date)).toLocaleDateString('en-IN') : '—'],
+                [t('grn.grnNumber'), grn.invoice_number ?? '—'],
+                [t('grn.receiptDate'), grn.invoice_date ? new Date(String(grn.invoice_date)).toLocaleDateString('en-IN') : '—'],
+                [t('purchaseReturns.vehicleNumber'), grn.vehicle_number ?? '—'],
+                [t('purchaseOrders.grandTotal'), grn.grand_total != null ? `₹${Number(grn.grand_total).toLocaleString('en-IN')}` : '—'],
               ] as [string, string | null | undefined][]).map(([k, v]) => (
                 <div key={k}>
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{k}</p>
@@ -704,7 +699,7 @@ function GRNDetailSheet({ id, open, onClose }: { id: string | null; open: boolea
               ))}
               {grn.notes && (
                 <div className="col-span-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Notes</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t('grn.notes')}</p>
                   <p className="mt-0.5">{grn.notes}</p>
                 </div>
               )}
@@ -715,10 +710,10 @@ function GRNDetailSheet({ id, open, onClose }: { id: string | null; open: boolea
             {/* Items */}
             <div>
               <p className="text-sm font-semibold mb-3">
-                Line Items <span className="text-muted-foreground font-normal">({grn.items?.length ?? 0})</span>
+                {t('grn.lineItems')} <span className="text-muted-foreground font-normal">({grn.items?.length ?? 0})</span>
               </p>
               {!grn.items?.length ? (
-                <p className="text-sm text-muted-foreground">No items on this GRN.</p>
+                <p className="text-sm text-muted-foreground">{t('grn.noItems')}</p>
               ) : (
                 <div className="space-y-2">
                   {grn.items.map((item, i) => (
@@ -736,15 +731,15 @@ function GRNDetailSheet({ id, open, onClose }: { id: string | null; open: boolea
                             item.quality_status === 'pass' ? 'default' :
                               item.quality_status === 'fail' ? 'destructive' : 'secondary'
                           }
-                          className="ml-2 shrink-0"
+                          className="ms-2 shrink-0"
                         >
-                          {String(item.quality_status ?? 'pending')}
+                          {String(item.quality_status ?? t('common.pending'))}
                         </Badge>
                       </div>
                       <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
-                        <span>Rcvd: <strong className="text-foreground">{String(item.received_boxes)}</strong> boxes</span>
-                        <span>Damaged: <strong className="text-foreground">{String(item.damaged_boxes ?? 0)}</strong></span>
-                        <span>₹<strong className="text-foreground">{Number(item.unit_price).toLocaleString('en-IN')}</strong>/box</span>
+                        <span>{t('grn.receivedBoxes')}: <strong className="text-foreground">{String(item.received_boxes)}</strong></span>
+                        <span>{t('damageEntries.title', 'Damaged')}: <strong className="text-foreground">{String(item.damaged_boxes ?? 0)}</strong></span>
+                        <span>₹<strong className="text-foreground">{Number(item.unit_price).toLocaleString('en-IN')}</strong></span>
                       </div>
                     </div>
                   ))}
@@ -759,8 +754,8 @@ function GRNDetailSheet({ id, open, onClose }: { id: string | null; open: boolea
               variant="outline"
               onClick={() => { onClose(); navigate(`/purchase/grn/${grn.id}`); }}
             >
-              <ExternalLink className="mr-2 h-4 w-4" />
-              Open Full Detail Page
+              <ExternalLink className="me-2 h-4 w-4" />
+              {t('common.view')}
             </Button>
           </div>
         )}
@@ -776,23 +771,24 @@ function DeleteGRNDialog({
   grn: GRN | null; open: boolean; onClose: () => void;
   onConfirm: () => Promise<void>; loading: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <AlertDialog open={open} onOpenChange={(o) => !o && onClose()}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete {grn?.grn_number}?</AlertDialogTitle>
+          <AlertDialogTitle>{t('grn.grnNumber')} {grn?.grn_number}?</AlertDialogTitle>
           <AlertDialogDescription>
-            This will permanently delete this draft GRN and all its items. This cannot be undone.
+            {t('deleteDialog.description')}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={loading}>{t('common.cancel')}</AlertDialogCancel>
           <AlertDialogAction
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             onClick={onConfirm}
             disabled={loading}
           >
-            {loading ? 'Deleting…' : 'Delete GRN'}
+            {loading ? t('common.deleting') : t('common.delete')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -893,10 +889,12 @@ export default function GRNPage() {
   });
 
   // ─── Columns ───────────────────────────────────────────────────────────────
+  const { t } = useTranslation();
+
   const columns = [
     {
       key: 'grn_number',
-      label: 'GRN #',
+      label: t('grn.grnNumber'),
       render: (r: GRN) => (
         <button type="button"
           className="font-mono text-sm font-semibold text-primary hover:underline whitespace-nowrap"
@@ -907,7 +905,7 @@ export default function GRNPage() {
     },
     {
       key: 'po_number',
-      label: 'PO #',
+      label: t('grn.purchaseOrder'),
       render: (r: GRN) =>
         r.po_number
           ? <button type="button"
@@ -917,12 +915,12 @@ export default function GRNPage() {
           </button>
           : <span className="text-muted-foreground text-xs">—</span>,
     },
-    { key: 'vendor_name', label: 'Vendor', render: (r: GRN) => <span className="text-sm">{r.vendor_name ?? '—'}</span> },
-    { key: 'warehouse_name', label: 'Warehouse', render: (r: GRN) => <span className="text-sm">{r.warehouse_name ?? '—'}</span> },
-    { key: 'status', label: 'Status', render: (r: GRN) => <StatusBadge status={r.status} /> },
+    { key: 'vendor_name', label: t('grn.vendor'), render: (r: GRN) => <span className="text-sm">{r.vendor_name ?? '—'}</span> },
+    { key: 'warehouse_name', label: t('grn.warehouse'), render: (r: GRN) => <span className="text-sm">{r.warehouse_name ?? '—'}</span> },
+    { key: 'status', label: t('grn.status'), render: (r: GRN) => <StatusBadge status={r.status} /> },
     {
       key: 'receipt_date',
-      label: 'Receipt Date',
+      label: t('grn.receiptDate'),
       render: (r: GRN) => {
         const d = r.receipt_date ?? r.received_date;
         return <span className="text-sm whitespace-nowrap">{d ? new Date(String(d)).toLocaleDateString('en-IN') : '—'}</span>;
@@ -930,7 +928,7 @@ export default function GRNPage() {
     },
     {
       key: 'grand_total',
-      label: 'Total',
+      label: t('common.total'),
       render: (r: GRN) => (
         <span className="text-sm font-medium whitespace-nowrap">
           {r.grand_total != null ? `₹${Number(r.grand_total).toLocaleString('en-IN')}` : '—'}
@@ -939,29 +937,26 @@ export default function GRNPage() {
     },
     {
       key: 'invoice_number',
-      label: 'Invoice #',
+      label: t('grn.grnNumber'),
       render: (r: GRN) => <span className="text-sm">{r.invoice_number ?? '—'}</span>,
     },
     {
       key: 'actions',
-      label: 'Actions',
+      label: t('common.actions'),
       render: (r: GRN) => (
         <div className="flex gap-1">
-          {/* View */}
-          <Button variant="ghost" size="icon" className="h-8 w-8" title="Quick view"
+          <Button variant="ghost" size="icon" className="h-8 w-8" title={t('common.view')}
             onClick={() => setViewId(r.id)}>
             <Eye className="h-4 w-4" />
           </Button>
-          {/* Edit — only draft/verified */}
-          <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit header"
+          <Button variant="ghost" size="icon" className="h-8 w-8" title={t('common.edit')}
             onClick={() => setEditGRN(r)}
             disabled={r.status === 'posted'}>
             <Pencil className="h-4 w-4" />
           </Button>
-          {/* Delete — only draft */}
           <Button variant="ghost" size="icon"
             className="h-8 w-8 text-destructive hover:text-destructive disabled:opacity-30"
-            title={r.status === 'draft' ? 'Delete GRN' : 'Only draft GRNs can be deleted'}
+            title={t('common.delete')}
             onClick={() => setDeleteGRN(r)}
             disabled={r.status !== 'draft'}>
             <Trash2 className="h-4 w-4" />
@@ -974,17 +969,17 @@ export default function GRNPage() {
   return (
     <div>
       <PageHeader
-        title="Goods Receipt Notes"
-        subtitle="Manage goods receipts against purchase orders"
+        title={t('grn.title')}
+        subtitle={t('grn.subtitle')}
         onAdd={() => setCreateOpen(true)}
-        addLabel="New GRN"
+        addLabel={t('grn.addGRN')}
       />
 
       <DataTableShell<GRN>
         data={grns}
         columns={columns}
         searchKey="grn_number"
-        searchPlaceholder="Search by GRN # or vendor…"
+        searchPlaceholder={t('common.search')}
         serverSide
         searchValue={searchInput}
         onSearchChange={handleSearchChange}

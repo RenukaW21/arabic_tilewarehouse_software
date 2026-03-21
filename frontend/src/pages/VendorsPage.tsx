@@ -25,14 +25,14 @@ export default function VendorsPage() {
   const [searchInput, setSearchInput] = useState("");
 
   const fields: FieldDef[] = [
-    { key: "name", label: t('vendors.vendorName'), type: "text", required: true, placeholder: "Enter vendor name" },
-    { key: "code", label: t('common.code'), type: "text", placeholder: "VND-001" },
-    { key: "contact_person", label: t('vendors.contactPerson'), type: "text", placeholder: "Enter contact person name" },
-    { key: "phone", label: t('vendors.phone'), type: "text", placeholder: "Enter phone number" },
-    { key: "email", label: t('vendors.email'), type: "email", placeholder: "Enter email address" },
-    { key: "gstin", label: t('vendors.gstNumber'), type: "text", placeholder: "22AAAAA0000A1Z5" },
-    { key: "pan", label: "PAN", type: "text", placeholder: "ABCDE1234F" },
-    { key: "address", label: t('vendors.address'), type: "textarea", placeholder: "Enter vendor address" },
+    { key: "name", label: t('vendors.vendorName'), type: "text", required: true, placeholder: t('sampleData.enterName') },
+    { key: "code", label: t('common.code'), type: "text", placeholder: t('sampleData.vnd001') },
+    { key: "contact_person", label: t('vendors.contactPerson'), type: "text", placeholder: t('sampleData.enterContact') },
+    { key: "phone", label: t('vendors.phone'), type: "text", placeholder: t('sampleData.enterPhone') },
+    { key: "email", label: t('vendors.email'), type: "email", placeholder: t('sampleData.enterEmail') },
+    { key: "gstin", label: t('vendors.gstNumber'), type: "text", placeholder: t('sampleData.gstin') },
+    { key: "pan", label: "PAN", type: "text", placeholder: t('sampleData.pan') },
+    { key: "address", label: t('vendors.address'), type: "textarea", placeholder: t('sampleData.enterAddress') },
     { key: "payment_terms_days", label: "Payment Terms (Days)", type: "number", defaultValue: 30 },
     { key: "is_active", label: t('common.status'), type: "switch", defaultValue: true },
   ];
@@ -181,14 +181,14 @@ export default function VendorsPage() {
       <CsvImportDialog
         open={csvImportOpen}
         onClose={() => setCsvImportOpen(false)}
-        title="Bulk Import Vendors via CSV"
-        description="Upload a CSV file to import multiple vendors at once."
-        entityName="vendor(s)"
+        title={t('sampleData.importVendorsTitle')}
+        description={t('sampleData.importVendorsDesc')}
+        entityName={t('nav.vendors').toLowerCase()}
         queryKeyToInvalidate="vendors"
         requiredColumns={["name"]}
         optionalColumns={["code", "contact_person", "phone", "email", "address", "gstin", "pan", "payment_terms_days", "is_active"]}
         templateHeaders={["name", "code", "contact_person", "phone", "email", "address", "gstin", "pan", "payment_terms_days", "is_active"]}
-        sampleRow={"Acme Corp,VND-001,John Doe,1234567890,john@acme.com,123 Main St,22AAAAA0000A1Z5,ABCDE1234F,30,true"}
+        sampleRow={`${t('sampleData.acmeCorp')},${t('sampleData.vnd001')},${t('sampleData.johnDoe')},1234567890,john@acme.com,${t('sampleData.address1')},22AAAAA0000A1Z5,ABCDE1234F,30,true`}
         importMutationFn={(file: File) => vendorApi.importCsv(file)}
       />
     </div>

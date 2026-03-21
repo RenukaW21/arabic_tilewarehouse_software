@@ -34,7 +34,7 @@ export function TopBar({ onToggleSidebar, title }: TopBarProps) {
         <LanguageSwitcher />
         <NotificationsBell />
 
-        <div className="flex items-center gap-2 ml-2 pl-2 border-l border-border">
+        <div className="flex items-center gap-2 ms-2 ps-2 border-s border-border">
           <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
             <User className="h-4 w-4 text-primary-foreground" />
           </div>

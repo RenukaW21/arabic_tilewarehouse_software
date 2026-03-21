@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Package, User, ShoppingCart, Info, MapPin, Maximize2 } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useTranslation } from "react-i18next";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
 const BACKEND_URL = API_BASE.replace(/\/api\/v1\/?$/, '') || 'http://localhost:5000';
@@ -14,6 +15,7 @@ const BACKEND_URL = API_BASE.replace(/\/api\/v1\/?$/, '') || 'http://localhost:5
 export default function ProductDetailsPage() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { t } = useTranslation();
 
     const { data, isLoading, isError } = useQuery({
         queryKey: ["product", id],
@@ -21,8 +23,8 @@ export default function ProductDetailsPage() {
         enabled: !!id,
     });
 
-    if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading product details...</div>;
-    if (isError || !data?.data) return <div className="p-8 text-center text-destructive">Failed to load product.</div>;
+    if (isLoading) return <div className="p-8 text-center text-muted-foreground">{t('productDetails.loading')}</div>;
+    if (isError || !data?.data) return <div className="p-8 text-center text-destructive">{t('productDetails.loadFailed')}</div>;
 
     const product = data.data as any;
     const productImg = product.image_url || product.imageUrl || product.image;
@@ -33,7 +35,7 @@ export default function ProductDetailsPage() {
                 <Button variant="outline" size="icon" onClick={() => navigate("/master/products")}>
                     <ArrowLeft className="h-4 w-4" />
                 </Button>
-                <PageHeader title="Product Details" subtitle={`Viewing full details for ${product.code}`} />
+                <PageHeader title={t('productDetails.title')} subtitle={`${t('productDetails.viewing')} ${product.code}`} />
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">
@@ -41,7 +43,7 @@ export default function ProductDetailsPage() {
                 <Card className="shadow-sm">
                     <CardHeader className="flex flex-row items-center gap-2 pb-4 border-b">
                         <Info className="h-5 w-5 text-primary" />
-                        <CardTitle className="text-lg">Product Information</CardTitle>
+                        <CardTitle className="text-lg">{t('productDetails.productInfo')}</CardTitle>
                     </CardHeader>
                     <CardContent className="pt-6">
                         <div className="flex flex-col md:flex-row gap-6">
@@ -62,7 +64,7 @@ export default function ProductDetailsPage() {
                                         </DialogTrigger>
                                         <DialogContent className="max-w-3xl border-none bg-transparent p-0 shadow-none">
                                             <DialogHeader className="sr-only">
-                                                <DialogTitle>{product.name} Preview</DialogTitle>
+                                                <DialogTitle>{product.name} {t('common.preview')}</DialogTitle>
                                             </DialogHeader>
                                             <div className="flex items-center justify-center p-4">
                                                 <img
@@ -76,18 +78,18 @@ export default function ProductDetailsPage() {
                                 </div>
                             )}
                             <div className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm flex-1">
-                                <div><span className="text-muted-foreground block mb-1">Product Name</span><span className="font-medium">{product.name}</span></div>
-                                <div><span className="text-muted-foreground block mb-1">Product Code</span><span className="font-medium">{product.code}</span></div>
-                                <div><span className="text-muted-foreground block mb-1">Category</span><span className="font-medium">{product.category_name || "Uncategorized"}</span></div>
-                                <div><span className="text-muted-foreground block mb-1">Size</span><span className="font-medium">{product.size_label}</span></div>
-                                <div><span className="text-muted-foreground block mb-1">Pcs per Box</span><span className="font-medium">{product.pieces_per_box}</span></div>
-                                <div><span className="text-muted-foreground block mb-1">Sqft per Box</span><span className="font-medium">{product.sqft_per_box} sqft</span></div>
-                                <div><span className="text-muted-foreground block mb-1">MRP</span><span className="font-medium">₹{product.mrp || 0}</span></div>
-                                <div><span className="text-muted-foreground block mb-1">GST</span><span className="font-medium">{product.gst_rate}%</span></div>
-                                <div><span className="text-muted-foreground block mb-1">Status</span><StatusBadge status={product.is_active ? "active" : "inactive"} /></div>
+                                <div><span className="text-muted-foreground block mb-1">{t('products.productName')}</span><span className="font-medium">{product.name}</span></div>
+                                <div><span className="text-muted-foreground block mb-1">{t('products.productCode')}</span><span className="font-medium">{product.code}</span></div>
+                                <div><span className="text-muted-foreground block mb-1">{t('products.category')}</span><span className="font-medium">{product.category_name || t('productDetails.uncategorized')}</span></div>
+                                <div><span className="text-muted-foreground block mb-1">{t('common.size')}</span><span className="font-medium">{product.size_label}</span></div>
+                                <div><span className="text-muted-foreground block mb-1">{t('products.piecesPerBox')}</span><span className="font-medium">{product.pieces_per_box}</span></div>
+                                <div><span className="text-muted-foreground block mb-1">{t('products.sqftPerBox')}</span><span className="font-medium">{product.sqft_per_box} sqft</span></div>
+                                <div><span className="text-muted-foreground block mb-1">{t('products.mrp')}</span><span className="font-medium">₹{product.mrp || 0}</span></div>
+                                <div><span className="text-muted-foreground block mb-1">{t('products.gstRate')}</span><span className="font-medium">{product.gst_rate}%</span></div>
+                                <div><span className="text-muted-foreground block mb-1">{t('common.status')}</span><StatusBadge status={product.is_active ? "active" : "inactive"} /></div>
                                 <div className="col-span-2">
-                                    <span className="text-muted-foreground block mb-1">Description</span>
-                                    <p className="text-gray-700 whitespace-pre-wrap">{product.description || "N/A"}</p>
+                                    <span className="text-muted-foreground block mb-1">{t('common.description')}</span>
+                                    <p className="text-gray-700 whitespace-pre-wrap">{product.description || 'N/A'}</p>
                                 </div>
                             </div>
                         </div>
@@ -98,7 +100,7 @@ export default function ProductDetailsPage() {
                 <Card className="shadow-sm">
                     <CardHeader className="flex flex-row items-center gap-2 pb-4 border-b">
                         <Package className="h-5 w-5 text-primary" />
-                        <CardTitle className="text-lg">Storage Information</CardTitle>
+                        <CardTitle className="text-lg">{t('productDetails.storageInfo')}</CardTitle>
                     </CardHeader>
                     <CardContent className="pt-6">
                         {product.rackAssignments && product.rackAssignments.length > 0 ? (
@@ -112,19 +114,19 @@ export default function ProductDetailsPage() {
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <div className="h-4 w-4 bg-primary/10 rounded flex items-center justify-center text-[10px] font-bold text-primary">BX</div>
-                                            <span className="text-muted-foreground">Boxes Stored:</span>
+                                            <span className="text-muted-foreground">{t('productDetails.boxesStored')}:</span>
                                             <span className="font-medium">{assignment.boxes_stored}</span>
                                         </div>
                                     </div>
                                 ))}
                                 <div className="pt-2 border-t mt-4 flex justify-between items-center font-bold">
-                                    <span>Total Boxes</span>
+                                    <span>{t('productDetails.totalBoxes')}</span>
                                     <span className="text-lg">{product.total_boxes_stored || 0}</span>
                                 </div>
                             </div>
                         ) : (
                             <div className="text-sm text-muted-foreground bg-muted/50 p-4 rounded text-center border border-dashed">
-                                No rack locations assigned to this product.
+                                {t('productDetails.noRackLocations')}
                             </div>
                         )}
                     </CardContent>
@@ -134,10 +136,10 @@ export default function ProductDetailsPage() {
                 <Card className="shadow-sm flex flex-col">
                     <CardHeader className="flex flex-row items-center gap-2 pb-4 border-b">
                         <ShoppingCart className="h-5 w-5 text-primary" />
-                        <CardTitle className="text-lg">Purchase Information</CardTitle>
+                        <CardTitle className="text-lg">{t('productDetails.purchaseInfo')}</CardTitle>
                     </CardHeader>
                     <CardContent className="pt-6 flex-1">
-                        <span className="text-muted-foreground block mb-3 text-sm">Vendors (from whom purchased)</span>
+                        <span className="text-muted-foreground block mb-3 text-sm">{t('productDetails.vendorsFrom')}</span>
                         {product.vendors && product.vendors.length > 0 ? (
                             <ul className="space-y-2">
                                 {product.vendors.map((v: any) => (
@@ -147,14 +149,14 @@ export default function ProductDetailsPage() {
                                             <span className="font-medium">{v.name}</span>
                                         </div>
                                         <span className="text-muted-foreground text-xs font-medium">
-                                            {v.total_boxes || 0} boxes purchased
+                                            {t('productDetails.boxesPurchased', { count: v.total_boxes || 0 })}
                                         </span>
                                     </li>
                                 ))}
                             </ul>
                         ) : (
                             <div className="text-sm text-muted-foreground bg-muted/50 p-4 rounded text-center border border-dashed">
-                                No purchase history found for this product.
+                                {t('productDetails.noPurchaseHistory')}
                             </div>
                         )}
                     </CardContent>
@@ -164,10 +166,10 @@ export default function ProductDetailsPage() {
                 <Card className="shadow-sm flex flex-col">
                     <CardHeader className="flex flex-row items-center gap-2 pb-4 border-b">
                         <User className="h-5 w-5 text-primary" />
-                        <CardTitle className="text-lg">Sales Information</CardTitle>
+                        <CardTitle className="text-lg">{t('productDetails.salesInfo')}</CardTitle>
                     </CardHeader>
                     <CardContent className="pt-6 flex-1">
-                        <span className="text-muted-foreground block mb-3 text-sm">Customers (to whom sold)</span>
+                        <span className="text-muted-foreground block mb-3 text-sm">{t('productDetails.customersTo')}</span>
                         {product.customers && product.customers.length > 0 ? (
                             <ul className="space-y-2">
                                 {product.customers.map((c: any) => (
@@ -177,14 +179,14 @@ export default function ProductDetailsPage() {
                                             <span className="font-medium">{c.name}</span>
                                         </div>
                                         <span className="text-muted-foreground text-xs font-medium">
-                                            {c.total_boxes || 0} boxes sold
+                                            {t('productDetails.boxesSold', { count: c.total_boxes || 0 })}
                                         </span>
                                     </li>
                                 ))}
                             </ul>
                         ) : (
                             <div className="text-sm text-muted-foreground bg-muted/50 p-4 rounded text-center border border-dashed">
-                                No sales history found for this product.
+                                {t('productDetails.noSalesHistory')}
                             </div>
                         )}
                     </CardContent>

@@ -24,6 +24,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface ImportError {
@@ -71,37 +72,28 @@ const CSV_TEMPLATE_HEADERS = [
   "is_active",
 ].join(",");
 
-const CSV_SAMPLE_ROW =
-  "Vitrified Premium,VIT-001,Tiles,600x600,600,600,4,21.50,18,850,10,OrientBell,6907,Premium glossy vitrified tile,true";
-
-const TEMPLATE_CSV = `${CSV_TEMPLATE_HEADERS}\n${CSV_SAMPLE_ROW}`;
-
-function downloadTemplate() {
-  const blob = new Blob([TEMPLATE_CSV], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "products_import_template.csv";
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 // ─── Component ────────────────────────────────────────────────────────────────
 export function CsvImportDialog({ 
   open, 
   onClose,
-  title = "Bulk Import Products via CSV",
-  description = "Upload a CSV file to import multiple products at once. The system will validate each row and report any errors.",
+  title,
+  description,
   templateHeaders = CSV_TEMPLATE_HEADERS.split(','),
-  sampleRow = CSV_SAMPLE_ROW,
+  sampleRow,
   requiredColumns = ["name", "code", "size_label", "size_length_mm", "size_width_mm", "pieces_per_box", "sqft_per_box"],
   optionalColumns = ["category", "gst_rate", "mrp", "brand", "hsn_code", "reorder_level_boxes", "description", "is_active"],
-  entityName = "product(s)",
+  entityName,
   queryKeyToInvalidate = "products",
   importMutationFn = (file: File) => productApi.importCsv(file)
 }: CsvImportDialogProps) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const defaultTitle = t('sampleData.importProductsTitle');
+  const defaultDesc = t('sampleData.importProductsDesc');
+  const defaultSampleRow = "Vitrified Premium,VIT-001,Tiles,600x600,600,600,4,21.50,18,850,10,OrientBell,6907,Premium glossy vitrified tile,true";
+  const defaultEntityName = t('dashboard.products').toLowerCase();
 
   const [dragging, setDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -114,7 +106,7 @@ export function CsvImportDialog({
       setResult(data.data);
       qc.invalidateQueries({ queryKey: [queryKeyToInvalidate] });
       if (data.data.imported > 0) {
-        toast.success(`✅ ${data.data.imported} ${entityName} imported successfully!`);
+        toast.success(`✅ ${data.data.imported} ${entityName || defaultEntityName} imported successfully!`);
       }
       if (data.data.skipped > 0) {
         toast.warning(`⚠️ ${data.data.skipped} row(s) were skipped. Check errors below.`);
@@ -173,10 +165,10 @@ export function CsvImportDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg font-semibold">
             <FileText className="h-5 w-5 text-blue-600" />
-            {title}
+            {title || defaultTitle}
           </DialogTitle>
           <DialogDescription>
-            {description}
+            {description || defaultDesc}
           </DialogDescription>
         </DialogHeader>
 
@@ -187,10 +179,10 @@ export function CsvImportDialog({
               <Download className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
               <div>
                 <p className="text-sm font-medium text-blue-800">
-                  Download CSV Template
+                  {t('sampleData.downloadTemplate')}
                 </p>
                 <p className="text-xs text-blue-600 mt-0.5">
-                  Use the template to see the exact column format expected.
+                  {t('sampleData.downloadTemplateDesc')}
                 </p>
               </div>
             </div>
@@ -198,7 +190,7 @@ export function CsvImportDialog({
               variant="outline"
               size="sm"
               onClick={() => {
-                const blob = new Blob([`${templateHeaders.join(",")}\n${sampleRow}`], { type: "text/csv" });
+                const blob = new Blob([`${templateHeaders.join(",")}\n${sampleRow || defaultSampleRow}`], { type: "text/csv" });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
@@ -209,11 +201,9 @@ export function CsvImportDialog({
               className="border-blue-300 text-blue-700 hover:bg-blue-100 shrink-0"
             >
               <Download className="mr-1.5 h-3.5 w-3.5" />
-              Template
+              {t('sampleData.template')}
             </Button>
           </div>
-
-
 
           {/* ─── Drop Zone ─── */}
           {!hasResult && (
@@ -264,10 +254,10 @@ export function CsvImportDialog({
                   </div>
                   <div className="text-center">
                     <p className="font-medium">
-                      {dragging ? "Drop the file here" : "Drop CSV file here"}
+                      {dragging ? t('sampleData.dropZoneDragging') : t('sampleData.dropZone')}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      or click to browse · .csv files only
+                      {t('sampleData.orClickBrowse')}
                     </p>
                   </div>
                 </>
@@ -285,21 +275,21 @@ export function CsvImportDialog({
                     <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                     <span className="text-2xl font-bold text-emerald-700">{result.imported}</span>
                   </div>
-                  <span className="text-xs text-muted-foreground font-medium">Imported</span>
+                  <span className="text-xs text-muted-foreground font-medium">{t('sampleData.imported')}</span>
                 </div>
                 <div className="flex flex-col items-center gap-1 py-4">
                   <div className="flex items-center gap-1.5">
                     <XCircle className="h-4 w-4 text-red-500" />
                     <span className="text-2xl font-bold text-red-600">{result.skipped}</span>
                   </div>
-                  <span className="text-xs text-muted-foreground font-medium">Skipped</span>
+                  <span className="text-xs text-muted-foreground font-medium">{t('sampleData.skipped')}</span>
                 </div>
                 <div className="flex flex-col items-center gap-1 py-4">
                   <div className="flex items-center gap-1.5">
                     <AlertTriangle className="h-4 w-4 text-amber-500" />
                     <span className="text-2xl font-bold text-amber-600">{result.errors.length}</span>
                   </div>
-                  <span className="text-xs text-muted-foreground font-medium">Warnings / Errors</span>
+                  <span className="text-xs text-muted-foreground font-medium">{t('sampleData.warningsErrors')}</span>
                 </div>
               </div>
 
@@ -312,7 +302,7 @@ export function CsvImportDialog({
                   >
                     <span className="flex items-center gap-2">
                       <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-                      {result.errors.length} issue(s) — click to {showErrors ? "hide" : "view"}
+                      {t('sampleData.issuesClickTo', { action: showErrors ? t('sampleData.hide') : t('sampleData.view') })}
                     </span>
                     {showErrors ? (
                       <ChevronUp className="h-4 w-4 text-muted-foreground" />
@@ -355,14 +345,14 @@ export function CsvImportDialog({
                   }}
                 >
                   <Upload className="mr-1.5 h-4 w-4" />
-                  Import Another
+                  {t('sampleData.importAnother')}
                 </Button>
-                <Button onClick={handleClose}>Done</Button>
+                <Button onClick={handleClose}>{t('sampleData.done')}</Button>
               </>
             ) : (
               <>
                 <Button variant="outline" onClick={handleClose} disabled={isLoading}>
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
                 <Button
                   onClick={handleImport}
@@ -372,12 +362,12 @@ export function CsvImportDialog({
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Importing…
+                      {t('sampleData.importing')}
                     </>
                   ) : (
                     <>
                       <Upload className="mr-2 h-4 w-4" />
-                      Import Data
+                      {t('sampleData.importData')}
                     </>
                   )}
                 </Button>
@@ -389,3 +379,4 @@ export function CsvImportDialog({
     </Dialog>
   );
 }
+

@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useTranslation } from 'react-i18next';
 import {
   Command,
   CommandEmpty,
@@ -86,6 +87,7 @@ export function LineItemsEditor({
   readOnly = false,
   lockUnitPrice = false,
 }: LineItemsEditorProps) {
+  const { t } = useTranslation();
 
   const updateItem = (index: number, patch: Partial<LineItem>) => {
     const updated = items.map((item, i) => {
@@ -137,10 +139,10 @@ export function LineItemsEditor({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-semibold text-foreground">Line Items</h4>
+        <h4 className="text-sm font-semibold text-foreground">{t('purchaseOrders.lineItems')}</h4>
         {!readOnly && (
           <Button type="button" variant="outline" size="sm" onClick={addItem} className="h-7 text-xs">
-            <Plus className="h-3 w-3 mr-1" /> Add Item
+            <Plus className="h-3 w-3 me-1" /> {t('purchaseOrders.addItem')}
           </Button>
         )}
       </div>
@@ -150,14 +152,14 @@ export function LineItemsEditor({
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-muted/40 text-xs text-muted-foreground uppercase">
-                <th className="text-left px-3 py-2 font-medium w-[23%]">Product</th>
-                <th className="text-left px-2 py-2 font-medium w-[15%]">Shade</th>
-                <th className="text-right px-2 py-2 font-medium w-[8%]">Pcs/Box</th>
-                <th className="text-right px-2 py-2 font-medium w-[8%]">Boxes</th>
-                <th className="text-right px-2 py-2 font-medium w-[12%]">Unit Price</th>
-                <th className="text-right px-2 py-2 font-medium w-[8%]">Disc %</th>
-                <th className="text-right px-2 py-2 font-medium w-[8%]">Tax %</th>
-                <th className="text-right px-2 py-2 font-medium w-[12%]">Total</th>
+                <th className="text-start px-3 py-2 font-medium w-[23%]">{t('purchaseOrders.product')}</th>
+                <th className="text-start px-2 py-2 font-medium w-[15%]">{t('common.shade', 'Shade')}</th>
+                <th className="text-end px-2 py-2 font-medium w-[8%]">{t('purchaseOrders.pcsPerBox')}</th>
+                <th className="text-end px-2 py-2 font-medium w-[8%]">{t('purchaseOrders.orderedBoxes')}</th>
+                <th className="text-end px-2 py-2 font-medium w-[12%]">{t('purchaseOrders.unitPrice')}</th>
+                <th className="text-end px-2 py-2 font-medium w-[8%]">{t('common.discountPct', 'Disc %')}</th>
+                <th className="text-end px-2 py-2 font-medium w-[8%]">{t('common.taxGst', 'Tax %')}</th>
+                <th className="text-end px-2 py-2 font-medium w-[12%]">{t('common.total')}</th>
                 <th className="w-[5%]"></th>
               </tr>
             </thead>
@@ -190,11 +192,11 @@ export function LineItemsEditor({
                           disabled={readOnly || !item.product_id}
                         >
                           <SelectTrigger className="h-8 text-xs">
-                            <SelectValue placeholder="No shade" />
+                            <SelectValue placeholder={t('purchaseOrders.noShade')} />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="__none__" className="text-xs text-muted-foreground">
-                              No shade
+                              {t('purchaseOrders.noShade')}
                             </SelectItem>
                             {productShades.map((s) => (
                               <SelectItem key={s.id} value={s.id} className="text-xs">
@@ -216,7 +218,7 @@ export function LineItemsEditor({
                         </Select>
                       ) : (
                         <span className="px-2 text-xs text-muted-foreground">
-                          {item.product_id ? 'No shades' : '—'}
+                          {item.product_id ? t('purchaseOrders.noShades') : '—'}
                         </span>
                       )}
                     </td>
@@ -226,9 +228,9 @@ export function LineItemsEditor({
                       <Input
                         type="number"
                         min={0}
-                        className="h-8 text-xs text-right w-full bg-muted"
+                        className="h-8 text-xs text-end w-full bg-muted"
                         value={item.ordered_pieces || ''}
-                        placeholder="Pcs"
+                        placeholder={t('purchaseOrders.pcs')}
                         readOnly={true}
                       />
                     </td>
@@ -238,7 +240,7 @@ export function LineItemsEditor({
                       <Input
                         type="number"
                         min={0}
-                        className={cn("h-8 text-xs text-right w-full", item.ordered_boxes === 0 && item.product_id && "border-red-500 focus-visible:ring-red-500")}
+                        className={cn("h-8 text-xs text-end w-full", item.ordered_boxes === 0 && item.product_id && "border-red-500 focus-visible:ring-red-500")}
                         value={item.ordered_boxes || ''}
                         placeholder="0"
                         onChange={(e) =>
@@ -254,7 +256,7 @@ export function LineItemsEditor({
                       <Input
                         type="number"
                         step="any"
-                        className={cn("h-8 text-xs text-right w-full", lockUnitPrice && "bg-muted")}
+                        className={cn("h-8 text-xs text-end w-full", lockUnitPrice && "bg-muted")}
                         value={item.unit_price}
                         placeholder="0.00"
                         onChange={(e) =>
@@ -269,7 +271,7 @@ export function LineItemsEditor({
                       <Input
                         type="number"
                         step="any"
-                        className="h-8 text-xs text-right w-full"
+                        className="h-8 text-xs text-end w-full"
                         value={item.discount_pct}
                         onChange={(e) =>
                           !readOnly && updateItem(idx, { discount_pct: Number(e.target.value) || 0 })
@@ -283,7 +285,7 @@ export function LineItemsEditor({
                       <Input
                         type="number"
                         step="any"
-                        className="h-8 text-xs text-right w-full"
+                        className="h-8 text-xs text-end w-full"
                         value={item.tax_pct}
                         onChange={(e) =>
                           !readOnly && updateItem(idx, { tax_pct: Number(e.target.value) || 0 })
@@ -293,7 +295,7 @@ export function LineItemsEditor({
                     </td>
 
                     {/* Line Total */}
-                    <td className="px-2 py-1.5 text-right text-xs font-medium text-foreground">
+                    <td className="px-2 py-1.5 text-end text-xs font-medium text-foreground">
                       ₹{fmt(item.line_total)}
                     </td>
 
@@ -320,17 +322,17 @@ export function LineItemsEditor({
         </div>
 
         {/* Totals */}
-        <div className="border-t bg-muted/20 px-3 py-2 space-y-1">
+        <div className="border-s bg-muted/20 px-3 py-2 space-y-1">
           <div className="flex justify-between text-xs text-muted-foreground">
-            <span>Sub Total</span>
+            <span>{t('purchaseOrders.subtotal')}</span>
             <span>₹{fmt(subTotal)}</span>
           </div>
           <div className="flex justify-between text-xs text-muted-foreground">
-            <span>Tax</span>
+            <span>{t('purchaseOrders.taxGst')}</span>
             <span>₹{fmt(taxTotal)}</span>
           </div>
-          <div className="flex justify-between text-sm font-semibold text-foreground pt-1 border-t border-border">
-            <span>Grand Total</span>
+          <div className="flex justify-between text-sm font-semibold text-foreground pt-1 border-s border-border">
+            <span>{t('purchaseOrders.grandTotal')}</span>
             <span>₹{fmt(grandTotal)}</span>
           </div>
         </div>
@@ -348,7 +350,7 @@ interface ProductComboboxProps {
 
 function ProductCombobox({ products, value, onChange, disabled }: ProductComboboxProps) {
   const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState('');
+  const { t } = useTranslation();
 
   const selectedProduct = products.find(
     p => p.id === value || p.name === value || p.code === value
@@ -376,15 +378,15 @@ function ProductCombobox({ products, value, onChange, disabled }: ProductCombobo
           disabled={disabled}
         >
           <span className="truncate">
-            {displayValue || "Select or type new..."}
+            {displayValue || t('purchaseOrders.selectOrType')}
           </span>
-          <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+          <ChevronsUpDown className="ms-2 h-3 w-3 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)]" align="start">
         <Command>
           <CommandInput
-            placeholder="Search product..."
+            placeholder={t('purchaseOrders.searchProduct')}
             value={search}
             onValueChange={setSearch}
             className="h-9 text-xs"
@@ -398,13 +400,13 @@ function ProductCombobox({ products, value, onChange, disabled }: ProductCombobo
                   onSelect={() => onSelectHandler(search)}
                   className="text-xs"
                 >
-                  <Plus className="mr-2 h-3 w-3" />
-                  Add "{search}"
+                  <Plus className="me-2 h-3 w-3" />
+                  {t('purchaseOrders.addNew', { name: search })}
                 </CommandItem>
               </CommandGroup>
             )}
             <CommandEmpty className="py-2 px-2 text-center text-xs text-muted-foreground">
-              No products found.
+              {t('purchaseOrders.noProductsFound')}
             </CommandEmpty>
             <CommandGroup>
               {products.map((p) => (
@@ -416,7 +418,7 @@ function ProductCombobox({ products, value, onChange, disabled }: ProductCombobo
                 >
                   <Check
                     className={cn(
-                      "mr-2 h-3 w-3",
+                      "me-2 h-3 w-3",
                       selectedProduct?.id === p.id ? "opacity-100" : "opacity-0"
                     )}
                   />

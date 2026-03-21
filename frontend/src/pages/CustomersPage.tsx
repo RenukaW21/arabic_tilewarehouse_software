@@ -18,15 +18,15 @@ export default function CustomersPage() {
   const qc = useQueryClient();
 
   const fields: FieldDef[] = [
-    { key: "name", label: t('customers.customerName'), type: "text", required: true, placeholder: "Enter customer name" },
-    { key: "code", label: t('common.code'), type: "text", placeholder: "CUST-001" },
-    { key: "contact_person", label: t('customers.contactPerson'), type: "text", placeholder: "Contact name" },
-    { key: "phone", label: t('customers.phone'), type: "text", placeholder: "Phone number" },
-    { key: "email", label: t('customers.email'), type: "email", placeholder: "Email address" },
-    { key: "gstin", label: t('customers.gstNumber'), type: "text", placeholder: "22AAAAA0000A1Z5" },
-    { key: "state_code", label: "State Code", type: "text", placeholder: "e.g. 09" },
-    { key: "billing_address", label: "Billing Address", type: "textarea", placeholder: "Billing address" },
-    { key: "shipping_address", label: "Shipping Address", type: "textarea", placeholder: "Shipping address" },
+    { key: "name", label: t('customers.customerName'), type: "text", required: true, placeholder: t('sampleData.enterName') },
+    { key: "code", label: t('common.code'), type: "text", placeholder: t('sampleData.cust001') },
+    { key: "contact_person", label: t('customers.contactPerson'), type: "text", placeholder: t('sampleData.johnDoe') },
+    { key: "phone", label: t('customers.phone'), type: "text", placeholder: t('sampleData.phone') },
+    { key: "email", label: t('customers.email'), type: "email", placeholder: t('sampleData.email') },
+    { key: "gstin", label: t('customers.gstNumber'), type: "text", placeholder: t('sampleData.gstin') },
+    { key: "state_code", label: t('common.state'), type: "text", placeholder: "e.g. 09" },
+    { key: "billing_address", label: t('invoicesPage.billingAddress'), type: "textarea", placeholder: t('sampleData.addressBilling') },
+    { key: "shipping_address", label: t('invoicesPage.shippingAddress'), type: "textarea", placeholder: t('sampleData.addressShipping') },
     { key: "credit_limit", label: "Credit Limit (₹)", type: "number", defaultValue: 0, placeholder: "0" },
     { key: "payment_terms_days", label: "Payment Terms (Days)", type: "number", defaultValue: 0, placeholder: "0" },
     { key: "is_active", label: t('common.status'), type: "switch", defaultValue: true },
@@ -177,14 +177,14 @@ export default function CustomersPage() {
       <CsvImportDialog
         open={csvImportOpen}
         onClose={() => setCsvImportOpen(false)}
-        title="Bulk Import Customers via CSV"
-        description="Upload a CSV file to import multiple customers at once."
-        entityName="customer(s)"
+        title={t('sampleData.importCustomersTitle')}
+        description={t('sampleData.importCustomersDesc')}
+        entityName={t('nav.customers').toLowerCase()}
         queryKeyToInvalidate="customers"
         requiredColumns={["name"]}
         optionalColumns={["code", "contact_person", "phone", "email", "billing_address", "shipping_address", "gstin", "state_code", "credit_limit", "payment_terms_days", "is_active"]}
         templateHeaders={["name", "code", "contact_person", "phone", "email", "billing_address", "shipping_address", "gstin", "state_code", "credit_limit", "payment_terms_days", "is_active"]}
-        sampleRow={"Acme Corp,CUST-001,John Doe,1234567890,john@acme.com,123 Billing St,456 Shipping Ave,22AAAAA0000A1Z5,22,50000,30,true"}
+        sampleRow={`${t('sampleData.acmeCorp')},${t('sampleData.cust001')},${t('sampleData.johnDoe')},1234567890,john@acme.com,${t('sampleData.addressBilling')},${t('sampleData.addressShipping')},22AAAAA0000A1Z5,22,50000,30,true`}
         importMutationFn={(file: File) => customerApi.importCsv(file)}
       />
     </div>

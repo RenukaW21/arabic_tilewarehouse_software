@@ -11,8 +11,10 @@ import { Pencil, Trash2, Wand2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import api from "@/lib/api";
+import { useTranslation } from "react-i18next";
 
 export default function ProductInventoryPage() {
+    const { t } = useTranslation();
     const qc = useQueryClient();
     const [dialogOpen, setDialogOpen] = useState(false);
     const [autoDialogOpen, setAutoDialogOpen] = useState(false);
@@ -226,10 +228,10 @@ export default function ProductInventoryPage() {
     });
 
     const columns = [
-        { key: "product", label: "Product", render: (r: any) => `${r.product_code} - ${r.product_name}` },
-        { key: "rack_name", label: "Rack", render: (r: any) => r.rack_name },
-        { key: "warehouse_name", label: "Warehouse", render: (r: any) => r.warehouse_name },
-        { key: "boxes_stored", label: "Boxes Stored", render: (r: any) => r.boxes_stored },
+        { key: "product", label: t('productInventory.product'), render: (r: any) => `${r.product_code} - ${r.product_name}` },
+        { key: "rack_name", label: t('productInventory.rack'), render: (r: any) => r.rack_name },
+        { key: "warehouse_name", label: t('productInventory.warehouse'), render: (r: any) => r.warehouse_name },
+        { key: "boxes_stored", label: t('productInventory.boxesStored'), render: (r: any) => r.boxes_stored },
         {
             key: "actions",
             label: "Actions",
@@ -251,7 +253,7 @@ export default function ProductInventoryPage() {
                         size="icon"
                         className="h-8 w-8 text-destructive"
                         onClick={() => {
-                            if (confirm('Are you sure you want to remove this product assignment?')) {
+                            if (confirm(t('productInventory.confirmRemove'))) {
                                 deleteMutation.mutate(r);
                             }
                         }}
@@ -270,38 +272,37 @@ export default function ProductInventoryPage() {
         : undefined;
 
     const formFields: FieldDef[] = [
-        { key: "product_id", label: "Product", type: "combobox", required: true, options: productOptions },
-        { key: "warehouse_id", label: "Warehouse", type: "select", required: true, options: warehouseOptions },
-        { key: "rack_id", label: "Rack", type: "select", required: true, options: rackOptions, placeholder: selectedWarehouseId ? "Select Rack..." : "Select Warehouse First" },
+        { key: "product_id", label: t('productInventory.product'), type: "combobox", required: true, options: productOptions },
+        { key: "warehouse_id", label: t('productInventory.warehouse'), type: "select", required: true, options: warehouseOptions },
+        { key: "rack_id", label: t('productInventory.rack'), type: "select", required: true, options: rackOptions, placeholder: selectedWarehouseId ? t('productInventory.selectRack') : t('productInventory.selectWarehouseFirst') },
         {
             key: "boxes_stored",
-            label: "Boxes Stored",
+            label: t('productInventory.boxesStored'),
             type: "number",
             required: true,
             placeholder: availableToStore !== null ? `Max ${availableToStore}` : "0",
-            ...(boxesHelperText ? { description: boxesHelperText } : {}),
         },
     ];
 
     return (
         <div>
             <PageHeader
-                title="Product Inventory"
-                subtitle="Manage product storage across racks"
+                title={t('productInventory.title')}
+                subtitle={t('productInventory.subtitle')}
                 onAdd={() => {
                     setEditing(null);
                     setSelectedWarehouseId(listWarehouseId !== "all" ? listWarehouseId : null);
                     setDialogOpen(true);
                 }}
-                addLabel="Allocate Product"
+                addLabel={t('productInventory.allocateProduct')}
             >
                 <div className="flex items-center gap-2 mr-2">
                     <Select value={listWarehouseId} onValueChange={(val) => { setListWarehouseId(val); setPage(1); }}>
                         <SelectTrigger className="w-[180px] h-9">
-                            <SelectValue placeholder="All Warehouses" />
+                            <SelectValue placeholder={t('productInventory.allWarehouses')} />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="all">All Warehouses</SelectItem>
+                            <SelectItem value="all">{t('productInventory.allWarehouses')}</SelectItem>
                             {warehouseOptions.map((opt) => (
                                 <SelectItem key={opt.value} value={opt.value}>
                                     {opt.label}
@@ -321,7 +322,7 @@ export default function ProductInventoryPage() {
                     className="flex items-center gap-1.5"
                 >
                     <Wand2 className="h-4 w-4 text-purple-600" />
-                    Auto Allocate
+                    {t('productInventory.autoAllocate')}
                 </Button>
             </PageHeader>
 
@@ -329,7 +330,7 @@ export default function ProductInventoryPage() {
                 data={inventory}
                 columns={columns}
                 searchKey="search"
-                searchPlaceholder="Search product or rack..."
+                searchPlaceholder={t('productInventory.searchPlaceholder')}
                 serverSide
                 searchValue={searchInput}
                 onSearchChange={handleSearchChange}
@@ -346,7 +347,7 @@ export default function ProductInventoryPage() {
                 }}
                 onSubmit={(d) => saveMutation.mutateAsync(d)}
                 fields={formFields}
-                title={editing ? "Update Product Entry" : "Allocate Product"}
+                title={editing ? t('productInventory.updateEntry') : t('productInventory.allocateProduct')}
                 initialData={editing}
                 values={editing ? undefined : { warehouse_id: selectedWarehouseId }}
                 loading={saveMutation.isPending}
@@ -361,25 +362,23 @@ export default function ProductInventoryPage() {
                 onClose={() => setAutoDialogOpen(false)}
                 onSubmit={(d) => autoAllocateMutation.mutateAsync(d)}
                 fields={[
-                    { key: "product_id", label: "Product", type: "combobox", required: true, options: productOptions },
-                    { key: "warehouse_id", label: "Warehouse", type: "select", required: true, options: warehouseOptions },
+                    { key: "product_id", label: t('productInventory.product'), type: "combobox", required: true, options: productOptions },
+                    { key: "warehouse_id", label: t('productInventory.warehouse'), type: "select", required: true, options: warehouseOptions },
                     {
                         key: "boxes_needed",
-                        label: "Boxes to Allocate",
+                        label: t('productInventory.boxesToAllocate'),
                         type: "number",
                         required: true,
                         placeholder: availableToStore !== null ? `Max ${availableToStore}` : "1",
-                        ...(boxesHelperText ? { description: boxesHelperText } : {}),
                     },
                     {
                         key: "allow_split",
-                        label: "Allow splitting across multiple racks",
+                        label: t('productInventory.allowSplit'),
                         type: "switch",
                         defaultValue: true,
-                        description: "If no single rack can hold all boxes, automatically divide them into multiple available racks.",
                     }
                 ]}
-                title="Auto-Allocate Product"
+                title={t('productInventory.autoAllocateTitle')}
                 loading={autoAllocateMutation.isPending}
                 onValueChange={(key, val) => {
                     if (key === "warehouse_id") setSelectedWarehouseId(val);

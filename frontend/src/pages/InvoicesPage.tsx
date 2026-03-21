@@ -22,8 +22,10 @@ import { Loader2, FileCheck, Trash2, Pencil, Download } from 'lucide-react';
 import { generateInvoicePDF } from '@/utils/pdfGenerator';
 import { toast } from 'sonner';
 import { DeleteConfirmDialog } from '@/components/shared/DeleteConfirmDialog';
+import { useTranslation } from 'react-i18next';
 
 export default function InvoicesPage() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');
@@ -144,18 +146,18 @@ export default function InvoicesPage() {
   });
 
   const columns = [
-    { key: 'invoice_number', label: 'Invoice #', render: (r: Invoice) => <span className="font-mono text-sm font-medium">{r.invoice_number}</span> },
-    { key: 'customer_name', label: 'Customer', render: (r: Invoice) => (r as any).customer_name ?? '—' },
-    { key: 'invoice_date', label: 'Date', render: (r: Invoice) => (r.invoice_date ? new Date(r.invoice_date).toLocaleDateString() : '—') },
-    { key: 'grand_total', label: 'Total', render: (r: Invoice) => `₹${Number((r as any).grand_total ?? 0).toLocaleString()}` },
-    { key: 'status', label: 'Status', render: (r: Invoice) => <StatusBadge status={r.status} /> },
-    { key: 'payment_status', label: 'Payment', render: (r: Invoice) => <StatusBadge status={(r as any).payment_status ?? 'pending'} /> },
+    { key: 'invoice_number', label: t('invoicesPage.invoiceHash'), render: (r: Invoice) => <span className="font-mono text-sm font-medium">{r.invoice_number}</span> },
+    { key: 'customer_name', label: t('invoicesPage.customer'), render: (r: Invoice) => (r as any).customer_name ?? '—' },
+    { key: 'invoice_date', label: t('invoicesPage.date'), render: (r: Invoice) => (r.invoice_date ? new Date(r.invoice_date).toLocaleDateString() : '—') },
+    { key: 'grand_total', label: t('invoicesPage.total'), render: (r: Invoice) => `₹${Number((r as any).grand_total ?? 0).toLocaleString()}` },
+    { key: 'status', label: t('invoicesPage.status'), render: (r: Invoice) => <StatusBadge status={r.status} /> },
+    { key: 'payment_status', label: t('invoicesPage.payment'), render: (r: Invoice) => <StatusBadge status={(r as any).payment_status ?? 'pending'} /> },
     {
       key: 'actions',
-      label: 'Actions',
+      label: t('common.actions'),
       render: (r: Invoice) => (
         <div className="flex gap-1">
-          <Button variant="outline" size="sm" onClick={() => setDetailId(r.id)}>View</Button>
+          <Button variant="outline" size="sm" onClick={() => setDetailId(r.id)}>{t('invoicesPage.view')}</Button>
           <Button
             variant="outline"
             size="sm"
@@ -164,9 +166,9 @@ export default function InvoicesPage() {
               const p = (r as any).payment_status ?? 'pending';
               setPaymentDialogValue(['pending', 'partial', 'paid'].includes(p) ? p : 'pending');
             }}
-            title="Change payment status"
+            title={t('invoicesPage.changePaymentStatus')}
           >
-            Payment
+            {t('invoicesPage.payment_btn')}
           </Button>
           {r.status === 'issued' && (
             <Button
@@ -207,9 +209,9 @@ export default function InvoicesPage() {
                     });
                   }
                 }}
-                title="Edit"
+                title={t('common.edit')}
               >
-                <Pencil className="h-4 w-4 mr-1" /> Edit
+                <Pencil className="h-4 w-4 mr-1" /> {t('common.edit')}
               </Button>
               <Button
                 variant="default"
@@ -217,9 +219,9 @@ export default function InvoicesPage() {
                 onClick={() => issueMutation.mutate(r.id)}
                 disabled={issueMutation.isPending}
               >
-                <FileCheck className="h-4 w-4 mr-1" /> Issue
+                <FileCheck className="h-4 w-4 mr-1" /> {t('invoicesPage.issue')}
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleting(r)} title="Delete">
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleting(r)} title={t('common.delete')}>
                 <Trash2 className="h-4 w-4" />
               </Button>
             </>
@@ -232,10 +234,10 @@ export default function InvoicesPage() {
   return (
     <div>
       <PageHeader
-        title="Invoices"
-        subtitle="Generate from confirmed sales orders; issue to finalise"
+        title={t('invoicesPage.title')}
+        subtitle={t('invoicesPage.subtitle')}
         onAdd={() => setCreateOpen(true)}
-        addLabel="New Invoice"
+        addLabel={t('invoicesPage.newInvoice')}
       />
       <div className="mb-4 flex flex-wrap gap-2">
         <select
@@ -243,26 +245,26 @@ export default function InvoicesPage() {
           onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
           className="h-9 rounded-md border px-3 text-sm"
         >
-          <option value="">All statuses</option>
-          <option value="draft">Draft</option>
-          <option value="issued">Issued</option>
-          <option value="cancelled">Cancelled</option>
+          <option value="">{t('invoicesPage.allStatuses')}</option>
+          <option value="draft">{t('invoicesPage.statusDraft')}</option>
+          <option value="issued">{t('invoicesPage.statusIssued')}</option>
+          <option value="cancelled">{t('invoicesPage.statusCancelled')}</option>
         </select>
         <select
           value={paymentFilter}
           onChange={(e) => { setPaymentFilter(e.target.value); setPage(1); }}
           className="h-9 rounded-md border px-3 text-sm"
         >
-          <option value="">All payment</option>
-          <option value="pending">Pending</option>
-          <option value="partial">Partial</option>
-          <option value="paid">Paid</option>
+          <option value="">{t('invoicesPage.allPayments')}</option>
+          <option value="pending">{t('invoicesPage.paymentPending')}</option>
+          <option value="partial">{t('invoicesPage.paymentPartial')}</option>
+          <option value="paid">{t('invoicesPage.paymentPaid')}</option>
         </select>
       </div>
       <DataTableShell<Invoice>
         data={invoices}
         columns={columns}
-        searchPlaceholder="Search invoice # or customer..."
+        searchPlaceholder={t('invoicesPage.searchPlaceholder')}
         serverSide
         searchValue={searchInput}
         onSearchChange={(v) => { setSearchInput(v); applySearch(v); }}
@@ -274,12 +276,12 @@ export default function InvoicesPage() {
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create invoice from sales order</DialogTitle>
+            <DialogTitle>{t('invoicesPage.createFromSO')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
-            <Label>Confirmed / Pick ready / Dispatched sales order</Label>
+            <Label>{t('invoicesPage.confirmedOrders')}</Label>
             <Select value={salesOrderId} onValueChange={setSalesOrderId}>
-              <SelectTrigger><SelectValue placeholder="Select order" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={t('invoicesPage.selectOrder')} /></SelectTrigger>
               <SelectContent>
                 {orderOptions.map((so) => (
                   <SelectItem key={so.id} value={so.id}>{so.so_number} — {so.customer_name}</SelectItem>
@@ -288,10 +290,10 @@ export default function InvoicesPage() {
             </Select>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>{t('common.cancel')}</Button>
             <Button onClick={() => createMutation.mutate()} disabled={!salesOrderId || createMutation.isPending}>
               {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Create invoice
+              {t('invoicesPage.createBtn')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -305,17 +307,17 @@ export default function InvoicesPage() {
             </DialogHeader>
             <div className="space-y-4 text-sm">
               <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                <span className="text-muted-foreground">Customer</span>
+                <span className="text-muted-foreground">{t('invoicesPage.customer')}</span>
                 <span>{detail.customer_name ?? '—'}</span>
-                <span className="text-muted-foreground">Customer GSTIN</span>
+                <span className="text-muted-foreground">{t('invoicesPage.customerGstin')}</span>
                 <span>{detail.customer_gstin ?? '—'}</span>
-                <span className="text-muted-foreground">Invoice date</span>
+                <span className="text-muted-foreground">{t('invoicesPage.invoiceDate')}</span>
                 <span>{detail.invoice_date ? new Date(detail.invoice_date).toLocaleDateString() : '—'}</span>
-                <span className="text-muted-foreground">Due date</span>
+                <span className="text-muted-foreground">{t('invoicesPage.dueDate')}</span>
                 <span>{detail.due_date ? new Date(detail.due_date).toLocaleDateString() : '—'}</span>
-                <span className="text-muted-foreground">Status</span>
+                <span className="text-muted-foreground">{t('invoicesPage.status')}</span>
                 <span><StatusBadge status={detail.status} /></span>
-                <span className="text-muted-foreground">Payment status</span>
+                <span className="text-muted-foreground">{t('invoicesPage.paymentStatus')}</span>
                 <span className="flex items-center gap-2">
                   <Select
                     value={detail.payment_status ?? 'pending'}
@@ -327,26 +329,26 @@ export default function InvoicesPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="partial">Partial</SelectItem>
-                      <SelectItem value="paid">Paid</SelectItem>
+                      <SelectItem value="pending">{t('invoicesPage.paymentPending')}</SelectItem>
+                      <SelectItem value="partial">{t('invoicesPage.paymentPartial')}</SelectItem>
+                      <SelectItem value="paid">{t('invoicesPage.paymentPaid')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </span>
-                <span className="text-muted-foreground">SO number</span>
+                <span className="text-muted-foreground">{t('invoicesPage.soNumber')}</span>
                 <span>{detail.so_number ?? '—'}</span>
               </div>
               {(detail.billing_address || detail.shipping_address) && (
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                   {detail.billing_address && (
                     <>
-                      <span className="text-muted-foreground">Billing address</span>
+                      <span className="text-muted-foreground">{t('invoicesPage.billingAddress')}</span>
                       <span className="whitespace-pre-wrap">{detail.billing_address}</span>
                     </>
                   )}
                   {detail.shipping_address && (
                     <>
-                      <span className="text-muted-foreground">Shipping address</span>
+                      <span className="text-muted-foreground">{t('invoicesPage.shippingAddress')}</span>
                       <span className="whitespace-pre-wrap">{detail.shipping_address}</span>
                     </>
                   )}
@@ -354,7 +356,7 @@ export default function InvoicesPage() {
               )}
               {detail.notes && (
                 <div>
-                  <span className="text-muted-foreground block mb-1">Notes</span>
+                  <span className="text-muted-foreground block mb-1">{t('invoicesPage.notes')}</span>
                   <p className="whitespace-pre-wrap">{detail.notes}</p>
                 </div>
               )}
@@ -362,17 +364,17 @@ export default function InvoicesPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="px-4 py-2 text-left font-medium">Product</th>
-                      <th className="px-4 py-2 text-right font-medium">HSN</th>
-                      <th className="px-4 py-2 text-right font-medium">Qty</th>
-                      <th className="px-4 py-2 text-right font-medium">Unit price</th>
-                      <th className="px-4 py-2 text-right font-medium">Disc %</th>
-                      <th className="px-4 py-2 text-right font-medium">Taxable</th>
-                      <th className="px-4 py-2 text-right font-medium">GST</th>
-                      <th className="px-4 py-2 text-right font-medium">CGST</th>
-                      <th className="px-4 py-2 text-right font-medium">SGST</th>
-                      <th className="px-4 py-2 text-right font-medium">IGST</th>
-                      <th className="px-4 py-2 text-right font-medium">Line total</th>
+                      <th className="px-4 py-2 text-left font-medium">{t('invoicesPage.product')}</th>
+                      <th className="px-4 py-2 text-right font-medium">{t('invoicesPage.hsn')}</th>
+                      <th className="px-4 py-2 text-right font-medium">{t('invoicesPage.qty')}</th>
+                      <th className="px-4 py-2 text-right font-medium">{t('invoicesPage.unitPrice')}</th>
+                      <th className="px-4 py-2 text-right font-medium">{t('invoicesPage.discPct')}</th>
+                      <th className="px-4 py-2 text-right font-medium">{t('invoicesPage.taxable')}</th>
+                      <th className="px-4 py-2 text-right font-medium">{t('invoicesPage.gst')}</th>
+                      <th className="px-4 py-2 text-right font-medium">{t('gstReport.cgst')}</th>
+                      <th className="px-4 py-2 text-right font-medium">{t('gstReport.sgst')}</th>
+                      <th className="px-4 py-2 text-right font-medium">{t('gstReport.igst')}</th>
+                      <th className="px-4 py-2 text-right font-medium">{t('invoicesPage.lineTotal')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -395,12 +397,12 @@ export default function InvoicesPage() {
                 </table>
               </div>
               <div className="flex flex-col items-end gap-1 border-t pt-2">
-                <div className="flex gap-8"><span className="text-muted-foreground w-32">Sub total</span><span>₹{Number((detail as { sub_total?: number }).sub_total ?? detail.subtotal ?? 0).toLocaleString()}</span></div>
-                <div className="flex gap-8"><span className="text-muted-foreground w-32">Discount</span><span>₹{Number(detail.discount_amount ?? 0).toLocaleString()}</span></div>
-                <div className="flex gap-8"><span className="text-muted-foreground w-32">CGST</span><span>₹{Number(detail.cgst_amount ?? 0).toLocaleString()}</span></div>
-                <div className="flex gap-8"><span className="text-muted-foreground w-32">SGST</span><span>₹{Number(detail.sgst_amount ?? 0).toLocaleString()}</span></div>
-                <div className="flex gap-8"><span className="text-muted-foreground w-32">IGST</span><span>₹{Number(detail.igst_amount ?? 0).toLocaleString()}</span></div>
-                <div className="flex gap-8 font-medium"><span className="text-muted-foreground w-32">Grand total</span><span>₹{Number(detail.grand_total ?? 0).toLocaleString()}</span></div>
+                <div className="flex gap-8"><span className="text-muted-foreground w-32">{t('invoicesPage.subTotal')}</span><span>₹{Number((detail as { sub_total?: number }).sub_total ?? detail.subtotal ?? 0).toLocaleString()}</span></div>
+                <div className="flex gap-8"><span className="text-muted-foreground w-32">{t('invoicesPage.discount')}</span><span>₹{Number(detail.discount_amount ?? 0).toLocaleString()}</span></div>
+                <div className="flex gap-8"><span className="text-muted-foreground w-32">{t('gstReport.cgst')}</span><span>₹{Number(detail.cgst_amount ?? 0).toLocaleString()}</span></div>
+                <div className="flex gap-8"><span className="text-muted-foreground w-32">{t('gstReport.sgst')}</span><span>₹{Number(detail.sgst_amount ?? 0).toLocaleString()}</span></div>
+                <div className="flex gap-8"><span className="text-muted-foreground w-32">{t('gstReport.igst')}</span><span>₹{Number(detail.igst_amount ?? 0).toLocaleString()}</span></div>
+                <div className="flex gap-8 font-medium"><span className="text-muted-foreground w-32">{t('invoicesPage.grandTotal')}</span><span>₹{Number(detail.grand_total ?? 0).toLocaleString()}</span></div>
               </div>
             </div>
           </DialogContent>
@@ -412,14 +414,14 @@ export default function InvoicesPage() {
         onClose={() => setDeleting(null)}
         onConfirm={async () => { if (deleting) await deleteMutation.mutateAsync(deleting.id); }}
         loading={deleteMutation.isPending}
-        title="Delete invoice"
-        description="Only draft invoices can be deleted. Are you sure?"
+        title={t('invoicesPage.deleteTitle')}
+        description={t('invoicesPage.deleteDesc')}
       />
 
       <Dialog open={!!paymentDialogInvoice} onOpenChange={(open) => !open && setPaymentDialogInvoice(null)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Change payment status</DialogTitle>
+            <DialogTitle>{t('invoicesPage.changePaymentStatus')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             {paymentDialogInvoice && (
@@ -428,7 +430,7 @@ export default function InvoicesPage() {
               </p>
             )}
             <div className="space-y-2">
-              <Label>Payment status</Label>
+              <Label>{t('invoicesPage.paymentStatus')}</Label>
               <Select
                 value={paymentDialogValue}
                 onValueChange={(v: 'pending' | 'partial' | 'paid') => setPaymentDialogValue(v)}
@@ -437,15 +439,15 @@ export default function InvoicesPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="partial">Partial</SelectItem>
-                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="pending">{t('invoicesPage.paymentPending')}</SelectItem>
+                  <SelectItem value="partial">{t('invoicesPage.paymentPartial')}</SelectItem>
+                  <SelectItem value="paid">{t('invoicesPage.paymentPaid')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPaymentDialogInvoice(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setPaymentDialogInvoice(null)}>{t('common.cancel')}</Button>
             <Button
               onClick={() =>
                 paymentDialogInvoice &&
@@ -454,7 +456,7 @@ export default function InvoicesPage() {
               disabled={!paymentDialogInvoice || updatePaymentMutation.isPending}
             >
               {updatePaymentMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Save
+              {t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -463,11 +465,11 @@ export default function InvoicesPage() {
       <Dialog open={!!editingInvoice} onOpenChange={(open) => !open && setEditingInvoice(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit invoice</DialogTitle>
+            <DialogTitle>{t('invoicesPage.editInvoice')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Due date</Label>
+              <Label>{t('invoicesPage.dueDate')}</Label>
               <Input
                 type="date"
                 value={editForm.due_date}
@@ -475,29 +477,29 @@ export default function InvoicesPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Billing address</Label>
+              <Label>{t('invoicesPage.billingAddress')}</Label>
               <Textarea
                 value={editForm.billing_address}
                 onChange={(e) => setEditForm((f) => ({ ...f, billing_address: e.target.value }))}
-                placeholder="Billing address"
+                placeholder={t('invoicesPage.billingAddr')}
                 rows={2}
               />
             </div>
             <div className="space-y-2">
-              <Label>Shipping address</Label>
+              <Label>{t('invoicesPage.shippingAddress')}</Label>
               <Textarea
                 value={editForm.shipping_address}
                 onChange={(e) => setEditForm((f) => ({ ...f, shipping_address: e.target.value }))}
-                placeholder="Shipping address"
+                placeholder={t('invoicesPage.shippingAddr')}
                 rows={2}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingInvoice(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setEditingInvoice(null)}>{t('common.cancel')}</Button>
             <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending}>
               {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Update
+              {t('common.saveChanges')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -25,12 +25,12 @@ export default function WarehousesPage() {
   const [searchInput, setSearchInput] = useState("");
 
   const fields: FieldDef[] = [
-    { key: "name", label: t('warehouses.warehouseName'), type: "text", required: true, placeholder: "Main Warehouse" },
-    { key: "code", label: t('common.code'), type: "text", required: true, placeholder: "WH-MAIN" },
-    { key: "address", label: t('vendors.address'), type: "textarea", placeholder: "Full address" },
-    { key: "city", label: "City", type: "text", placeholder: "City" },
-    { key: "state", label: "State", type: "text", placeholder: "State" },
-    { key: "pincode", label: "Pincode", type: "text", placeholder: "Pincode" },
+    { key: "name", label: t('warehouses.warehouseName'), type: "text", required: true, placeholder: t('sampleData.mainWarehouse') },
+    { key: "code", label: t('common.code'), type: "text", required: true, placeholder: t('sampleData.whMain') },
+    { key: "address", label: t('vendors.address'), type: "textarea", placeholder: t('sampleData.enterAddress') },
+    { key: "city", label: t('common.city'), type: "text", placeholder: t('sampleData.city') },
+    { key: "state", label: t('common.state'), type: "text", placeholder: t('sampleData.state') },
+    { key: "pincode", label: t('common.pincode'), type: "text", placeholder: t('sampleData.pincode') },
     { key: "is_active", label: t('common.status'), type: "switch", defaultValue: true },
   ];
 

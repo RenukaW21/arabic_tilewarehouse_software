@@ -311,11 +311,11 @@ export default function DashboardPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-xs text-muted-foreground uppercase bg-muted/30">
-                    <th className="text-left px-4 py-2.5 font-medium">{t('dashboard.order')}</th>
-                    <th className="text-left px-4 py-2.5 font-medium">{t('dashboard.customer')}</th>
-                    <th className="text-left px-4 py-2.5 font-medium">{t('common.date')}</th>
-                    <th className="text-left px-4 py-2.5 font-medium">{t('common.status')}</th>
-                    <th className="text-right px-4 py-2.5 font-medium">{t('common.total')}</th>
+                    <th className="text-start px-4 py-2.5 font-medium">{t('dashboard.order')}</th>
+                    <th className="text-start px-4 py-2.5 font-medium">{t('dashboard.customer')}</th>
+                    <th className="text-start px-4 py-2.5 font-medium">{t('common.date')}</th>
+                    <th className="text-start px-4 py-2.5 font-medium">{t('common.status')}</th>
+                    <th className="text-end px-4 py-2.5 font-medium">{t('common.total')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -346,7 +346,7 @@ export default function DashboardPage() {
                         <td className="px-4 py-2.5">
                           <StatusBadge status={so.status} />
                         </td>
-                        <td className="px-4 py-2.5 text-right font-medium text-foreground">
+                        <td className="px-4 py-2.5 text-end font-medium text-foreground">
                           {formatCurrency(Number(so.grand_total))}
                         </td>
                       </tr>
@@ -384,11 +384,11 @@ export default function DashboardPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-xs text-muted-foreground uppercase bg-muted/30">
-                    <th className="text-left px-4 py-2.5 font-medium">{t('dashboard.grn')}</th>
-                    <th className="text-left px-4 py-2.5 font-medium">{t('dashboard.vendor')}</th>
-                    <th className="text-left px-4 py-2.5 font-medium">{t('dashboard.warehouse')}</th>
-                    <th className="text-left px-4 py-2.5 font-medium">{t('common.date')}</th>
-                    <th className="text-left px-4 py-2.5 font-medium">{t('common.status')}</th>
+                    <th className="text-start px-4 py-2.5 font-medium">{t('dashboard.grn')}</th>
+                    <th className="text-start px-4 py-2.5 font-medium">{t('dashboard.vendor')}</th>
+                    <th className="text-start px-4 py-2.5 font-medium">{t('dashboard.warehouse')}</th>
+                    <th className="text-start px-4 py-2.5 font-medium">{t('common.date')}</th>
+                    <th className="text-start px-4 py-2.5 font-medium">{t('common.status')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -453,10 +453,10 @@ export default function DashboardPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-xs text-muted-foreground uppercase bg-muted/30">
-                    <th className="text-left px-4 py-2.5 font-medium">{t('dashboard.transfer')}</th>
-                    <th className="text-left px-4 py-2.5 font-medium">{t('dashboard.fromTo')}</th>
-                    <th className="text-left px-4 py-2.5 font-medium">{t('common.date')}</th>
-                    <th className="text-left px-4 py-2.5 font-medium">{t('common.status')}</th>
+                    <th className="text-start px-4 py-2.5 font-medium">{t('dashboard.transfer')}</th>
+                    <th className="text-start px-4 py-2.5 font-medium">{t('dashboard.fromTo')}</th>
+                    <th className="text-start px-4 py-2.5 font-medium">{t('common.date')}</th>
+                    <th className="text-start px-4 py-2.5 font-medium">{t('common.status')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -524,11 +524,11 @@ export default function DashboardPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-xs text-muted-foreground uppercase bg-muted/30">
-                    <th className="text-left px-4 py-2.5 font-medium">{t('dashboard.po')}</th>
-                    <th className="text-left px-4 py-2.5 font-medium">{t('dashboard.vendor')}</th>
-                    <th className="text-left px-4 py-2.5 font-medium">{t('common.date')}</th>
-                    <th className="text-left px-4 py-2.5 font-medium">{t('common.status')}</th>
-                    <th className="text-right px-4 py-2.5 font-medium">{t('common.total')}</th>
+                    <th className="text-start px-4 py-2.5 font-medium">{t('dashboard.po')}</th>
+                    <th className="text-start px-4 py-2.5 font-medium">{t('dashboard.vendor')}</th>
+                    <th className="text-start px-4 py-2.5 font-medium">{t('common.date')}</th>
+                    <th className="text-start px-4 py-2.5 font-medium">{t('common.status')}</th>
+                    <th className="text-end px-4 py-2.5 font-medium">{t('common.total')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -564,7 +564,7 @@ export default function DashboardPage() {
                         <td className="px-4 py-2.5">
                           <StatusBadge status={po.status} />
                         </td>
-                        <td className="px-4 py-2.5 text-right font-medium text-foreground">
+                        <td className="px-4 py-2.5 text-end font-medium text-foreground">
                           {formatCurrency(Number(po.grand_total))}
                         </td>
                       </tr>
@@ -610,7 +610,7 @@ export default function DashboardPage() {
                     </p>
                   </div>
 
-                  <div className="text-right">
+                  <div className="text-end">
                     <p className="text-xs font-mono font-bold text-destructive">
                       {alert.current_stock_boxes}{" "}
                       <span className="text-[10px] text-muted-foreground">

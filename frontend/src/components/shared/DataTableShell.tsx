@@ -76,16 +76,16 @@ export function DataTableShell<T extends any>({
     <div className="space-y-4">
       {showSearch && (
         <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="text"
             placeholder={resolvedPlaceholder}
             value={localSearch}
             onChange={onSearchInput}
-            className="pl-9 h-10 shadow-sm"
+            className="ps-9 h-10 shadow-sm"
           />
           {isLoading && serverSide && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            <div className="absolute end-3 top-1/2 -translate-y-1/2">
               <Loader2 className="h-4 w-4 animate-spin text-primary" />
             </div>
           )}
@@ -97,7 +97,7 @@ export function DataTableShell<T extends any>({
           <thead>
             <tr className="border-b bg-muted/50">
               {columns.map((col) => (
-                <th key={col.key} className="px-4 py-3 text-left text-sm font-medium">
+                <th key={col.key} className="px-4 py-3 text-start text-sm font-medium">
                   {col.label}
                 </th>
               ))}
@@ -147,7 +147,7 @@ export function DataTableShell<T extends any>({
               onClick={() => onPageChange(paginationMeta.page - 1)}
               disabled={!paginationMeta.hasPrev || isLoading}
             >
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ChevronLeft className="h-4 w-4 me-1 rtl:rotate-180" />
               {t('dataTable.previous')}
             </Button>
             {(() => {
@@ -182,7 +182,7 @@ export function DataTableShell<T extends any>({
               disabled={!paginationMeta.hasNext || isLoading}
             >
               {t('dataTable.next')}
-              <ChevronRight className="h-4 w-4 ml-1" />
+              <ChevronRight className="h-4 w-4 ms-1 rtl:rotate-180" />
             </Button>
           </div>
         </div>

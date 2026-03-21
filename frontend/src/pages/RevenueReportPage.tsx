@@ -7,6 +7,7 @@ import {
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import { TrendingUp, TrendingDown, IndianRupee, Package, Users, ShoppingCart } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const fmt = (n: number) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
 const fmtNum = (n: number) => Number(n || 0).toLocaleString('en-IN');
@@ -34,14 +35,14 @@ function StatCard({ label, value, sub, icon: Icon, trend, color }: any) {
 
 const MONTHS_OPTIONS = [3, 6, 12, 24];
 
-const CUSTOM_TOOLTIP = ({ active, payload, label }: any) => {
+const CUSTOM_TOOLTIP = ({ active, payload, label, t }: any) => {
     if (active && payload?.length) {
         return (
             <div className="bg-popover border rounded-lg shadow-lg p-3 text-sm">
                 <p className="font-semibold text-foreground mb-1">{label}</p>
                 {payload.map((p: any) => (
                     <p key={p.name} style={{ color: p.color }}>
-                        {p.name}: {p.name === 'Revenue' || p.name === 'Tax' ? fmt(p.value) : fmtNum(p.value)}
+                        {p.name === 'Revenue' ? t('revenueReport.revenue') : p.name === 'Tax' ? t('revenueReport.tax') : t('revenueReport.invoices')}: {p.name === 'Revenue' || p.name === 'Tax' ? fmt(p.value) : fmtNum(p.value)}
                     </p>
                 ))}
             </div>
@@ -51,6 +52,7 @@ const CUSTOM_TOOLTIP = ({ active, payload, label }: any) => {
 };
 
 export default function RevenueReportPage() {
+    const { t } = useTranslation();
     const [months, setMonths] = useState(12);
     const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'customers'>('overview');
 
@@ -76,9 +78,9 @@ export default function RevenueReportPage() {
     }));
 
     const tabs = [
-        { id: 'overview', label: 'Monthly Trend' },
-        { id: 'products', label: 'Top Products' },
-        { id: 'customers', label: 'Top Customers' },
+        { id: 'overview', label: t('revenueReport.monthlyTrend') },
+        { id: 'products', label: t('revenueReport.topProducts') },
+        { id: 'customers', label: t('revenueReport.topCustomers') },
     ];
 
     return (
@@ -86,8 +88,8 @@ export default function RevenueReportPage() {
             {/* Header */}
             <div className="flex items-start justify-between flex-wrap gap-3">
                 <div>
-                    <h1 className="text-2xl font-bold font-display">Revenue Report</h1>
-                    <p className="text-muted-foreground text-sm mt-0.5">Sales revenue analysis and trends</p>
+                    <h1 className="text-2xl font-bold font-display">{t('revenueReport.title')}</h1>
+                    <p className="text-muted-foreground text-sm mt-0.5">{t('revenueReport.subtitle')}</p>
                 </div>
                 <div className="flex items-center gap-2 bg-muted rounded-lg p-1">
                     {MONTHS_OPTIONS.map(m => (
@@ -110,10 +112,10 @@ export default function RevenueReportPage() {
                 <>
                     {/* KPI Cards */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                        <StatCard label="Total Revenue" value={fmt(totalRevenue)} sub={`Last ${months} months`} icon={IndianRupee} color="bg-blue-500" />
-                        <StatCard label="Tax Collected" value={fmt(totalTax)} sub="GST collected" icon={TrendingUp} color="bg-purple-500" />
-                        <StatCard label="Total Invoices" value={fmtNum(totalInvoices)} sub="Issued invoices" icon={Package} color="bg-amber-500" />
-                        <StatCard label="Avg Monthly" value={fmt(avgMonthly)} sub="Per month average" icon={ShoppingCart} color="bg-emerald-500" />
+                        <StatCard label={t('revenueReport.totalRevenue')} value={fmt(totalRevenue)} sub={t('revenueReport.lastMonths', { months })} icon={IndianRupee} color="bg-blue-500" />
+                        <StatCard label={t('revenueReport.taxCollected')} value={fmt(totalTax)} sub={t('revenueReport.gstCollected')} icon={TrendingUp} color="bg-purple-500" />
+                        <StatCard label={t('revenueReport.totalInvoices')} value={fmtNum(totalInvoices)} sub={t('revenueReport.issuedInvoices')} icon={Package} color="bg-amber-500" />
+                        <StatCard label={t('revenueReport.avgMonthly')} value={fmt(avgMonthly)} sub={t('revenueReport.perMonthAverage')} icon={ShoppingCart} color="bg-emerald-500" />
                     </div>
 
                     {/* Tabs */}
@@ -134,7 +136,7 @@ export default function RevenueReportPage() {
                             {activeTab === 'overview' && (
                                 <div className="space-y-6">
                                     <div>
-                                        <h3 className="text-sm font-semibold text-muted-foreground mb-4">Revenue vs Tax Trend</h3>
+                                        <h3 className="text-sm font-semibold text-muted-foreground mb-4">{t('revenueReport.revVsTaxTrend')}</h3>
                                         <div className="h-72">
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <AreaChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
@@ -151,7 +153,7 @@ export default function RevenueReportPage() {
                                                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                                                     <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                                                     <YAxis tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12 }} />
-                                                    <Tooltip content={<CUSTOM_TOOLTIP />} />
+                                                    <Tooltip content={<CUSTOM_TOOLTIP t={t} />} />
                                                     <Legend />
                                                     <Area type="monotone" dataKey="Revenue" stroke="#3b82f6" strokeWidth={2} fill="url(#revGrad)" />
                                                     <Area type="monotone" dataKey="Tax" stroke="#8b5cf6" strokeWidth={2} fill="url(#taxGrad)" />
@@ -160,14 +162,14 @@ export default function RevenueReportPage() {
                                         </div>
                                     </div>
                                     <div>
-                                        <h3 className="text-sm font-semibold text-muted-foreground mb-4">Invoice Count per Month</h3>
+                                        <h3 className="text-sm font-semibold text-muted-foreground mb-4">{t('revenueReport.invoiceCountPerMonth')}</h3>
                                         <div className="h-48">
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <BarChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                                                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                                                     <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                                                     <YAxis tick={{ fontSize: 12 }} />
-                                                    <Tooltip content={<CUSTOM_TOOLTIP />} />
+                                                    <Tooltip content={<CUSTOM_TOOLTIP t={t} />} />
                                                     <Bar dataKey="Invoices" fill="#f59e0b" radius={[4, 4, 0, 0]} />
                                                 </BarChart>
                                             </ResponsiveContainer>
@@ -178,9 +180,9 @@ export default function RevenueReportPage() {
 
                             {activeTab === 'products' && (
                                 <div>
-                                    <h3 className="text-sm font-semibold text-muted-foreground mb-4">Top 10 Products by Revenue</h3>
+                                    <h3 className="text-sm font-semibold text-muted-foreground mb-4">{t('revenueReport.top10Products')}</h3>
                                     {topProducts.length === 0 ? (
-                                        <p className="text-muted-foreground text-center py-12">No product data available</p>
+                                        <p className="text-muted-foreground text-center py-12">{t('revenueReport.noProductData')}</p>
                                     ) : (
                                         <div className="space-y-3">
                                             {topProducts.map((p: any, i: number) => {
@@ -188,16 +190,16 @@ export default function RevenueReportPage() {
                                                 const pct = (parseFloat(p.revenue || 0) / maxRev) * 100;
                                                 return (
                                                     <div key={p.code} className="flex items-center gap-3">
-                                                        <span className="w-5 text-xs text-muted-foreground font-mono text-right">{i + 1}</span>
+                                                        <span className="w-5 text-xs text-muted-foreground font-mono text-end">{i + 1}</span>
                                                         <div className="flex-1">
                                                             <div className="flex justify-between items-center mb-1">
                                                                 <span className="text-sm font-medium truncate">{p.name}</span>
-                                                                <span className="text-sm font-semibold text-primary ml-2 shrink-0">{fmt(p.revenue)}</span>
+                                                                <span className="text-sm font-semibold text-primary ms-2 shrink-0">{fmt(p.revenue)}</span>
                                                             </div>
                                                             <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                                                                 <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
                                                             </div>
-                                                            <p className="text-xs text-muted-foreground mt-0.5">{fmtNum(p.boxes_sold)} boxes sold</p>
+                                                            <p className="text-xs text-muted-foreground mt-0.5">{t('revenueReport.boxesSold', { count: fmtNum(p.boxes_sold) })}</p>
                                                         </div>
                                                     </div>
                                                 );
@@ -209,9 +211,9 @@ export default function RevenueReportPage() {
 
                             {activeTab === 'customers' && (
                                 <div>
-                                    <h3 className="text-sm font-semibold text-muted-foreground mb-4">Top 10 Customers by Revenue</h3>
+                                    <h3 className="text-sm font-semibold text-muted-foreground mb-4">{t('revenueReport.top10Customers')}</h3>
                                     {topCustomers.length === 0 ? (
-                                        <p className="text-muted-foreground text-center py-12">No customer data available</p>
+                                        <p className="text-muted-foreground text-center py-12">{t('revenueReport.noCustomerData')}</p>
                                     ) : (
                                         <div className="space-y-3">
                                             {topCustomers.map((c: any, i: number) => {
@@ -219,16 +221,16 @@ export default function RevenueReportPage() {
                                                 const pct = (parseFloat(c.total_revenue || 0) / maxRev) * 100;
                                                 return (
                                                     <div key={c.code} className="flex items-center gap-3">
-                                                        <span className="w-5 text-xs text-muted-foreground font-mono text-right">{i + 1}</span>
+                                                        <span className="w-5 text-xs text-muted-foreground font-mono text-end">{i + 1}</span>
                                                         <div className="flex-1">
                                                             <div className="flex justify-between items-center mb-1">
                                                                 <span className="text-sm font-medium truncate">{c.name}</span>
-                                                                <span className="text-sm font-semibold text-primary ml-2 shrink-0">{fmt(c.total_revenue)}</span>
+                                                                <span className="text-sm font-semibold text-primary ms-2 shrink-0">{fmt(c.total_revenue)}</span>
                                                             </div>
                                                             <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                                                                 <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
                                                             </div>
-                                                            <p className="text-xs text-muted-foreground mt-0.5">{c.invoice_count} invoices</p>
+                                                            <p className="text-xs text-muted-foreground mt-0.5">{t('revenueReport.ordersCount', { count: c.invoice_count })}</p>
                                                         </div>
                                                     </div>
                                                 );

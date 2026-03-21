@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { productApi } from '../../../api/productApi';
 import { CreateProductDto } from '../../../types/product.types';
 import { toast } from 'sonner';
+import { useTranslation } from "react-i18next";
 
 export const ProductCreateDemo: React.FC = () => {
+    const { t } = useTranslation();
     // 1. Setup loading state
     const [isLoading, setIsLoading] = useState(false);
 
@@ -44,14 +46,21 @@ export const ProductCreateDemo: React.FC = () => {
         setIsLoading(true);
 
         try {
+            // Convert to FormData as expected by API
+            const fd = new FormData();
+            Object.entries(formData).forEach(([key, value]) => {
+                if (value !== undefined && value !== null) {
+                    fd.append(key, String(value));
+                }
+            });
+
             // 4. API Call using the Service Layer
-            // Axios interceptors will handle 400/500 errors globally
-            const response = await productApi.create(formData);
+            const response = await productApi.create(fd);
 
             // 5. Connect response properly
             if (response.success) {
                 // Show success message
-                toast.success(`Product "${response.data.name}" created successfully!`);
+                toast.success(t('products.productCreated'));
 
                 // Update UI or emit event to refresh lists here
                 // e.g., onProductCreated(response.data)
@@ -84,16 +93,16 @@ export const ProductCreateDemo: React.FC = () => {
     return (
         <div className="p-6 max-w-2xl mx-auto bg-white rounded-xl shadow-md space-y-4">
             <div className="flex flex-col mb-6">
-                <h2 className="text-2xl font-bold text-gray-800">Create New Product Flow</h2>
+                <h2 className="text-2xl font-bold text-gray-800">{t('products.newProduct')}</h2>
                 <p className="text-sm text-gray-500">
-                    Demonstrates how the form submission, API service layer, and Axios instance work together.
+                    {t('sampleData.importProductsDesc')}
                 </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                     <div className="flex flex-col space-y-1">
-                        <label className="text-sm font-medium text-gray-700">Product Name *</label>
+                        <label className="text-sm font-medium text-gray-700">{t('products.productName')} *</label>
                         <input
                             type="text"
                             name="name"
@@ -101,12 +110,12 @@ export const ProductCreateDemo: React.FC = () => {
                             value={formData.name}
                             onChange={handleChange}
                             className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="E.g. Marble Tile"
+                            placeholder={t('sampleData.marbleTile')}
                         />
                     </div>
 
                     <div className="flex flex-col space-y-1">
-                        <label className="text-sm font-medium text-gray-700">Product Code *</label>
+                        <label className="text-sm font-medium text-gray-700">{t('products.productCode')} *</label>
                         <input
                             type="text"
                             name="code"
@@ -114,12 +123,12 @@ export const ProductCreateDemo: React.FC = () => {
                             value={formData.code}
                             onChange={handleChange}
                             className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="PRD-001"
+                            placeholder={t('sampleData.prd001')}
                         />
                     </div>
 
                     <div className="flex flex-col space-y-1">
-                        <label className="text-sm font-medium text-gray-700">Size Length (mm) *</label>
+                        <label className="text-sm font-medium text-gray-700">{t('products.lengthMm')} *</label>
                         <input
                             type="number"
                             name="sizeLengthMm"
@@ -131,7 +140,7 @@ export const ProductCreateDemo: React.FC = () => {
                     </div>
 
                     <div className="flex flex-col space-y-1">
-                        <label className="text-sm font-medium text-gray-700">Size Width (mm) *</label>
+                        <label className="text-sm font-medium text-gray-700">{t('products.widthMm')} *</label>
                         <input
                             type="number"
                             name="sizeWidthMm"
@@ -143,7 +152,7 @@ export const ProductCreateDemo: React.FC = () => {
                     </div>
 
                     <div className="flex flex-col space-y-1">
-                        <label className="text-sm font-medium text-gray-700">Size Label *</label>
+                        <label className="text-sm font-medium text-gray-700">{t('products.sizeLabel')} *</label>
                         <input
                             type="text"
                             name="sizeLabel"
@@ -156,7 +165,7 @@ export const ProductCreateDemo: React.FC = () => {
                     </div>
 
                     <div className="flex flex-col space-y-1">
-                        <label className="text-sm font-medium text-gray-700">Pieces Per Box *</label>
+                        <label className="text-sm font-medium text-gray-700">{t('products.piecesPerBox')} *</label>
                         <input
                             type="number"
                             name="piecesPerBox"
@@ -168,7 +177,7 @@ export const ProductCreateDemo: React.FC = () => {
                     </div>
 
                     <div className="flex flex-col space-y-1">
-                        <label className="text-sm font-medium text-gray-700">SqFt per Box *</label>
+                        <label className="text-sm font-medium text-gray-700">{t('products.sqftPerBox')} *</label>
                         <input
                             type="number"
                             name="sqftPerBox"
@@ -186,10 +195,11 @@ export const ProductCreateDemo: React.FC = () => {
                         disabled={isLoading}
                         className="px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
-                        {isLoading ? 'Creating...' : 'Create Product'}
+                        {isLoading ? t('common.saving') : t('products.addProduct')}
                     </button>
                 </div>
             </form>
         </div>
     );
 };
+

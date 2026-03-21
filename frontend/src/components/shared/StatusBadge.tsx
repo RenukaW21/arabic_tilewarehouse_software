@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { useTranslation } from "react-i18next";
 
 type StatusVariant = 'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'primary';
 
@@ -42,8 +43,13 @@ interface StatusBadgeProps {
 }
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
+  const { t } = useTranslation();
   const variant = statusMap[status] || 'neutral';
-  const label = status.replace(/_/g, ' ');
+  
+  // Try to find translation in common.xxx
+  // Convert under_score to camelCase for key
+  const tKey = status.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+  const translatedLabel = t(`common.${tKey}`, { defaultValue: status.replace(/_/g, ' ') });
 
   return (
     <span className={cn(
@@ -51,7 +57,7 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
       variantStyles[variant],
       className
     )}>
-      {label}
+      {translatedLabel}
     </span>
   );
 }

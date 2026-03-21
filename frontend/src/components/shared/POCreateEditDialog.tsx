@@ -43,15 +43,17 @@ interface POCreateEditDialogProps {
   initial?: PurchaseOrder | null;
 }
 
+import { useTranslation } from 'react-i18next';
+
 const emptyLine = (): LineItem => ({
-  product_id:    '',
-  product_name:  '',
-  shade_id:      null,
+  product_id: '',
+  product_name: '',
+  shade_id: null,
   ordered_boxes: 1,
-  unit_price:    0,
-  discount_pct:  0,
-  tax_pct:       18,
-  line_total:    0,
+  unit_price: 0,
+  discount_pct: 0,
+  tax_pct: 18,
+  line_total: 0,
 });
 
 // ─── Helper: single totals row ────────────────────────────────────────────────
@@ -72,11 +74,10 @@ function TotalRow({
   });
   return (
     <div
-      className={`flex justify-between text-sm ${
-        bold
+      className={`flex justify-between text-sm ${bold
           ? 'font-semibold text-base border-t pt-2 mt-1'
           : 'text-muted-foreground'
-      }`}
+        }`}
     >
       <span>{label}</span>
       <span className={negative && value > 0 ? 'text-red-600' : ''}>
@@ -97,37 +98,38 @@ export function POCreateEditDialog({
   products,
   initial,
 }: POCreateEditDialogProps) {
+  const { t } = useTranslation();
   // Header fields
-  const [vendor_id,          setVendorId]          = useState('');
-  const [warehouse_id,       setWarehouseId]        = useState('');
-  const [order_date,         setOrderDate]          = useState('');
-  const [expected_date,      setExpectedDate]       = useState('');
-  const [received_date,      setReceivedDate]       = useState('');
+  const [vendor_id, setVendorId] = useState('');
+  const [warehouse_id, setWarehouseId] = useState('');
+  const [order_date, setOrderDate] = useState('');
+  const [expected_date, setExpectedDate] = useState('');
+  const [received_date, setReceivedDate] = useState('');
   // FIX #2 — state name kept as `additionalDiscount` to avoid confusion with
   //           `discount_amount` which is a CALCULATED field returned by the API
   const [additionalDiscount, setAdditionalDiscount] = useState('0');
-  const [notes,              setNotes]              = useState('');
-  const [items,              setItems]              = useState<LineItem[]>([emptyLine()]);
+  const [notes, setNotes] = useState('');
+  const [items, setItems] = useState<LineItem[]>([emptyLine()]);
 
-  const isEditMode  = !!initial;
-  const isDraft     = !initial || initial.status === 'draft';
+  const isEditMode = !!initial;
+  const isDraft = !initial || initial.status === 'draft';
   // limitedEdit: PO exists but is no longer a draft — only received_date + notes can be saved
   const limitedEdit = isEditMode && !isDraft;
 
   // Fetch shades
   const { data: shadesData } = useQuery({
     queryKey: ['shades', { limit: 1000 }],
-    queryFn:  () => shadeApi.getAll({ limit: 1000 }),
-    enabled:  open,
+    queryFn: () => shadeApi.getAll({ limit: 1000 }),
+    enabled: open,
     staleTime: 5 * 60 * 1000,
   });
 
   const shades: Shade[] = (shadesData?.data ?? []).map((s) => ({
-    id:         s.id,
+    id: s.id,
     product_id: s.product_id,
     shade_code: s.shade_code,
     shade_name: s.shade_name ?? null,
-    hex_color:  s.hex_color  ?? null,
+    hex_color: s.hex_color ?? null,
   }));
 
   // Populate form on open
@@ -146,16 +148,16 @@ export function POCreateEditDialog({
       setItems(
         initial.items?.length
           ? initial.items.map((i) => ({
-              product_id:     i.product_id,
-              product_name:   i.product_name,
-              shade_id:       i.shade_id       ?? null,
-              ordered_boxes:  Number(i.ordered_boxes)  || 1,
-              ordered_pieces: Number(i.ordered_pieces) || 0,
-              unit_price:     Number(i.unit_price)     || 0,
-              discount_pct:   Number(i.discount_pct)   || 0,
-              tax_pct:        Number(i.tax_pct)         || 18,
-              line_total:     Number(i.line_total)      || 0,
-            }))
+            product_id: i.product_id,
+            product_name: i.product_name,
+            shade_id: i.shade_id ?? null,
+            ordered_boxes: Number(i.ordered_boxes) || 1,
+            ordered_pieces: Number(i.ordered_pieces) || 0,
+            unit_price: Number(i.unit_price) || 0,
+            discount_pct: Number(i.discount_pct) || 0,
+            tax_pct: Number(i.tax_pct) || 18,
+            line_total: Number(i.line_total) || 0,
+          }))
           : [emptyLine()]
       );
     } else {
@@ -192,8 +194,8 @@ export function POCreateEditDialog({
     // Tax is applied per-item AFTER per-item discount only.
     // Backend does NOT include additional_discount when computing tax_amount.
     const tax_total = valid.reduce((acc, i) => {
-      const base         = i.ordered_boxes * i.unit_price;
-      const after_disc   = base * (1 - (i.discount_pct ?? 0) / 100);
+      const base = i.ordered_boxes * i.unit_price;
+      const after_disc = base * (1 - (i.discount_pct ?? 0) / 100);
       return acc + after_disc * ((i.tax_pct ?? 0) / 100);
     }, 0);
 
@@ -201,7 +203,7 @@ export function POCreateEditDialog({
 
     // sum of line totals = sub_total - line_discount + tax_total
     const line_totals_sum = sub_total - line_discount + tax_total;
-    const grand_total     = Math.max(0, line_totals_sum - header_discount);
+    const grand_total = Math.max(0, line_totals_sum - header_discount);
 
     return { sub_total, line_discount, tax_total, header_discount, grand_total };
   }, [items, additionalDiscount]);
@@ -214,7 +216,7 @@ export function POCreateEditDialog({
     if (limitedEdit) {
       await onSubmit({
         received_date: received_date || null,
-        notes:         notes         || null,
+        notes: notes || null,
       } as CreatePODto);
       onClose();
       return;
@@ -238,23 +240,23 @@ export function POCreateEditDialog({
       vendor_id,
       warehouse_id,
       order_date,
-      expected_date:       expected_date || null,
+      expected_date: expected_date || null,
       // FIX #3 — received_date excluded from create/draft-update payload.
       //           Creating a PO must not set received_date (backend schema rejects it).
       //           For draft updates, backend strips it via stripUnknown anyway.
       //           received_date is only set via the limitedEdit path above (non-draft).
-      notes:               notes         || null,
+      notes: notes || null,
       // FIX #1 — correct field name: additional_discount (not discount_amount)
       additional_discount: parseFloat(additionalDiscount) || 0,
       items: validItems.map((i) => ({
-        product_id:     i.product_id ? i.product_id : undefined,
-        product_name:   i.product_id ? undefined : i.product_name,
-        shade_id:       i.shade_id      ?? null,
-        ordered_boxes:  i.ordered_boxes,
+        product_id: i.product_id ? i.product_id : undefined,
+        product_name: i.product_id ? undefined : i.product_name,
+        shade_id: i.shade_id ?? null,
+        ordered_boxes: i.ordered_boxes,
         ordered_pieces: i.ordered_pieces ?? 0,
-        unit_price:     i.unit_price,
-        discount_pct:   i.discount_pct  ?? 0,
-        tax_pct:        i.tax_pct        ?? 18,
+        unit_price: i.unit_price,
+        discount_pct: i.discount_pct ?? 0,
+        tax_pct: i.tax_pct ?? 18,
       })),
     };
     await onSubmit(payload);
@@ -267,10 +269,10 @@ export function POCreateEditDialog({
         <DialogHeader>
           <DialogTitle>
             {limitedEdit
-              ? `Purchase Order — ${initial?.po_number} (edit received date / notes)`
+              ? t('purchaseOrders.poNumberTitle', { number: initial?.po_number }) + ' ' + t('purchaseOrders.editReceivedMsg')
               : initial
-              ? 'Edit Purchase Order'
-              : 'New Purchase Order'}
+                ? t('purchaseOrders.editOrder')
+                : t('purchaseOrders.newOrder')}
           </DialogTitle>
         </DialogHeader>
 
@@ -278,8 +280,7 @@ export function POCreateEditDialog({
         {limitedEdit && (
           <div className="flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
             <AlertTriangle className="h-4 w-4 shrink-0" />
-            This PO is <strong className="mx-1">{initial?.status}</strong>. You can only edit
-            <strong className="mx-1">Received Date</strong> and <strong>Notes</strong>.
+            {t('purchaseOrders.bannerNonDraft', { status: initial?.status })}
           </div>
         )}
 
@@ -289,10 +290,10 @@ export function POCreateEditDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>
-                Vendor <span className="text-destructive">*</span>
+                {t('purchaseOrders.vendor')} <span className="text-destructive">*</span>
               </Label>
               <Select value={vendor_id} onValueChange={setVendorId} disabled={limitedEdit} required>
-                <SelectTrigger><SelectValue placeholder="Select vendor" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t('purchaseOrders.selectVendor')} /></SelectTrigger>
                 <SelectContent>
                   {vendors.map((v) => (
                     <SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>
@@ -303,10 +304,10 @@ export function POCreateEditDialog({
 
             <div className="space-y-2">
               <Label>
-                Warehouse <span className="text-destructive">*</span>
+                {t('purchaseOrders.warehouse')} <span className="text-destructive">*</span>
               </Label>
               <Select value={warehouse_id} onValueChange={setWarehouseId} disabled={limitedEdit} required>
-                <SelectTrigger><SelectValue placeholder="Select warehouse" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t('purchaseOrders.selectWarehouse')} /></SelectTrigger>
                 <SelectContent>
                   {warehouses.map((w) => (
                     <SelectItem key={w.value} value={w.value}>{w.label}</SelectItem>
@@ -320,7 +321,7 @@ export function POCreateEditDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>
-                Order Date <span className="text-destructive">*</span>
+                {t('purchaseOrders.orderDate')} <span className="text-destructive">*</span>
               </Label>
               <Input
                 type="date"
@@ -332,7 +333,7 @@ export function POCreateEditDialog({
             </div>
 
             <div className="space-y-2">
-              <Label>Expected Date</Label>
+              <Label>{t('purchaseOrders.expectedDate')}</Label>
               <Input
                 type="date"
                 value={expected_date}
@@ -346,14 +347,10 @@ export function POCreateEditDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="flex items-center gap-1.5">
-                Received Date
-                {/* FIX #5 — disabled during creation (no initial) AND during draft editing.
-                    Per spec: "During order creation → received date must be disabled.
-                               Only editable when receiving items (i.e. non-draft)."
-                    For non-draft the limitedEdit path is active so the field IS enabled there. */}
+                {t('purchaseOrders.receivedDate')}
                 {!limitedEdit && (
                   <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground uppercase tracking-wide">
-                    set automatically via GRN
+                    {t('purchaseOrders.setAutomaticallyMsg')}
                   </span>
                 )}
               </Label>
@@ -361,17 +358,15 @@ export function POCreateEditDialog({
                 type="date"
                 value={received_date}
                 onChange={(e) => setReceivedDate(e.target.value)}
-                // FIX #5 — disabled when creating new PO (!isEditMode) OR editing a draft
-                // Only enabled when limitedEdit=true (i.e. PO is confirmed/partial/received)
                 disabled={!limitedEdit}
               />
             </div>
 
             <div className="space-y-2">
               <Label className="flex items-center gap-1.5">
-                Additional Discount (₹)
+                {t('purchaseOrders.additionalDiscount')}
                 <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground uppercase tracking-wide">
-                  header level
+                  {t('purchaseOrders.headerLevel')}
                 </span>
               </Label>
               <Input
@@ -388,11 +383,11 @@ export function POCreateEditDialog({
 
           {/* ── Notes ── */}
           <div className="space-y-2">
-            <Label>Notes</Label>
+            <Label>{t('purchaseOrders.notes')}</Label>
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Optional notes…"
+              placeholder={t('common.placeholderNotes', 'Optional notes…')}
               rows={2}
             />
           </div>
@@ -410,24 +405,24 @@ export function POCreateEditDialog({
           {/* ── Live totals summary ── */}
           <div className="flex justify-end">
             <div className="rounded-md border bg-muted/30 px-5 py-3 space-y-1 min-w-[280px]">
-              <TotalRow label="Sub Total"             value={totals.sub_total} />
+              <TotalRow label={t('purchaseOrders.subtotal')} value={totals.sub_total} />
               {totals.line_discount > 0 && (
-                <TotalRow label="Item Discount"       value={totals.line_discount}   negative />
+                <TotalRow label={t('purchaseOrders.itemDiscount')} value={totals.line_discount} negative />
               )}
-              <TotalRow label="Tax (GST)"             value={totals.tax_total} />
+              <TotalRow label={t('purchaseOrders.taxGst')} value={totals.tax_total} />
               {totals.header_discount > 0 && (
-                <TotalRow label="Additional Discount" value={totals.header_discount} negative />
+                <TotalRow label={t('purchaseOrders.additionalDiscount')} value={totals.header_discount} negative />
               )}
-              <TotalRow label="Grand Total"           value={totals.grand_total} bold />
+              <TotalRow label={t('purchaseOrders.grandTotal')} value={totals.grand_total} bold />
             </div>
           </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? 'Saving…' : initial ? 'Update' : 'Create'}
+              {loading ? t('purchaseOrders.saving') : initial ? t('purchaseOrders.update') : t('purchaseOrders.create')}
             </Button>
           </DialogFooter>
         </form>

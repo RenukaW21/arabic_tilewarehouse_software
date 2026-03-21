@@ -3,9 +3,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+
+// Pages
 import AuthPage from "@/pages/AuthPage";
 import DashboardPage from "@/pages/DashboardPage";
 import ProductsPage from "@/pages/ProductsPage";
@@ -20,7 +22,6 @@ import PurchaseOrderDetailsPage from "@/pages/PurchaseOrderDetailsPage";
 import GRNPage from "@/pages/GRNPage";
 import GRNDetailPage from "@/pages/GRNDetailPage";
 import SalesOrdersPage from "@/pages/SalesOrdersPage";
-import StockPage from "@/pages/StockPage";
 import InventoryStockPage from "@/pages/InventoryStockPage";
 import ProductInventoryPage from "@/pages/ProductInventoryPage";
 import StockTransfersPage from "@/pages/StockTransfersPage";
@@ -37,17 +38,15 @@ import PaymentsMadePage from "@/pages/PaymentsMadePage";
 import CreditNotesPage from "@/pages/CreditNotesPage";
 import DebitNotesPage from "@/pages/DebitNotesPage";
 import SettingsPage from "@/pages/SettingsPage";
-import PlaceholderPage from "@/pages/PlaceholderPage";
 import UsersPage from "@/pages/UsersPage";
 import GstConfigurationPage from "@/pages/setup/GstConfigurationPage";
-import StockCountsPage from "@/pages/StockCountsPage";
-import { StockCountDetailPage } from "@/pages/StockCountsPage";
+import StockCountsPage, { StockCountDetailPage } from "@/pages/StockCountsPage";
 import StockLedgerPage from "@/pages/StockLedgerPage";
-import NotFound from "@/pages/NotFound";
 import GSTReportPage from "@/pages/GSTReportPage";
 import RevenueReportPage from "@/pages/RevenueReportPage";
 import AgingReportPage from "@/pages/AgingReportPage";
 import WarehouseDetailPage from "@/pages/WarehouseDetailPage";
+import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
 
@@ -55,16 +54,22 @@ function AppRoutes() {
   const { user, loading } = useAuth();
   const { t } = useTranslation();
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-screen text-muted-foreground">
-      {t('app.loading')}
-    </div>
-  );
-  if (!user) return <AuthPage />;
+  // 🔄 Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen text-muted-foreground">
+        {t("app.loading")}
+      </div>
+    );
+  }
 
   return (
     <Routes>
-      <Route element={<DashboardLayout />}>
+      {/* Public Route */}
+      <Route path="/login" element={<AuthPage />} />
+      
+      {/* Protected Routes */}
+      <Route element={user ? <DashboardLayout /> : <Navigate to="/login" />}>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/master/products" element={<ProductsPage />} />
         <Route path="/master/products/:id" element={<ProductDetailsPage />} />
@@ -104,7 +109,9 @@ function AppRoutes() {
         <Route path="/setup/racks" element={<RacksPage />} />
         <Route path="/setup/users" element={<UsersPage />} />
       </Route>
-      <Route path="*" element={<NotFound />} />
+
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to={user ? "/" : "/login"} />} />
     </Routes>
   );
 }

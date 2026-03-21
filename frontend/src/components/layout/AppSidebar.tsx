@@ -266,7 +266,7 @@ export function AppSidebar({ collapsed }: AppSidebarProps) {
   return (
     <aside
       className={cn(
-        "h-svh shrink-0 overflow-hidden bg-sidebar text-sidebar-foreground flex flex-col transition-all duration-300 border-r border-sidebar-border",
+        "h-svh shrink-0 overflow-hidden bg-sidebar text-sidebar-foreground flex flex-col transition-all duration-300 border-e border-sidebar-border",
         collapsed ? "w-16" : "w-64"
       )}
     >
@@ -275,7 +275,7 @@ export function AppSidebar({ collapsed }: AppSidebarProps) {
         <Boxes className="h-7 w-7 text-sidebar-primary shrink-0" />
 
         {!collapsed && (
-          <div className="ml-3 overflow-hidden">
+          <div className="ms-3 overflow-hidden">
             <h1 className="font-display font-bold text-sm text-sidebar-primary-foreground leading-tight">
               {t('app.name')}
             </h1>
@@ -335,7 +335,7 @@ export function AppSidebar({ collapsed }: AppSidebarProps) {
 
                   {!collapsed && (
                     <>
-                      <span className="truncate flex-1 text-left">
+                      <span className="truncate flex-1 text-start">
                         {t(item.labelKey)}
                       </span>
 
@@ -349,7 +349,7 @@ export function AppSidebar({ collapsed }: AppSidebarProps) {
                 </button>
 
                 {!collapsed && openGroups[item.labelKey] && item.children && (
-                  <div className="ml-4 pl-3 border-l border-sidebar-border/40 mt-0.5 space-y-0.5">
+                  <div className="ms-4 ps-3 border-s border-sidebar-border/40 mt-0.5 space-y-0.5">
                     {item.children.map((child) => (
                       <Link
                         key={child.path}

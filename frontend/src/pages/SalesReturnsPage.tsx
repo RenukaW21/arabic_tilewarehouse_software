@@ -95,20 +95,20 @@ export default function SalesReturnsPage() {
   const createMutation = useMutation({
     mutationFn: () => {
       if (!formCustomerId.trim()) {
-        toast.error('Customer is required');
+        toast.error(t('salesReturns.customerRequired'));
         return Promise.reject(new Error('Validation'));
       }
       if (!formWarehouseId.trim()) {
-        toast.error('Warehouse is required');
+        toast.error(t('salesReturns.warehouseRequired'));
         return Promise.reject(new Error('Validation'));
       }
       if (!formReturnReason.trim()) {
-        toast.error('Return reason is required');
+        toast.error(t('salesReturns.reasonRequired'));
         return Promise.reject(new Error('Validation'));
       }
       const validItems = formItems.filter((i) => i.product_id && Number(i.returned_boxes) > 0);
       if (validItems.length === 0) {
-        toast.error('Add at least one item with product and quantity greater than 0');
+        toast.error(t('salesReturns.addAtLeastOneItem'));
         return Promise.reject(new Error('Validation'));
       }
       const payload: CreateSalesReturnDto = {
@@ -132,7 +132,7 @@ export default function SalesReturnsPage() {
       setFormReturnReason('');
       setFormNotes('');
       setFormItems([{ product_id: '', returned_boxes: 1, unit_price: 0 }]);
-      toast.success('Sales return created');
+      toast.success(t('salesReturns.created'));
     },
     onError: (e: { response?: { data?: { error?: { message?: string } } } }) =>
       toast.error(e?.response?.data?.error?.message ?? 'Create failed'),
@@ -146,7 +146,7 @@ export default function SalesReturnsPage() {
     if (detailId) {
       qc.invalidateQueries({ queryKey: ['sales-returns', detailId] });
     }
-    toast.success('Return received; credit note created');
+    toast.success(t('salesReturns.received'));
   },
 
   onError: (e: any) => {
@@ -162,7 +162,7 @@ export default function SalesReturnsPage() {
       qc.invalidateQueries({ queryKey: ['sales-returns'] });
       if (detailId) qc.invalidateQueries({ queryKey: ['sales-returns', detailId] });
       setDeleting(null);
-      toast.success('Sales return deleted');
+      toast.success(t('salesReturns.deleted'));
     },
     onError: (e: { response?: { data?: { error?: { message?: string } } } }) =>
       toast.error(e?.response?.data?.error?.message ?? 'Delete failed'),
@@ -181,7 +181,7 @@ export default function SalesReturnsPage() {
       qc.invalidateQueries({ queryKey: ['sales-returns'] });
       if (detailId) qc.invalidateQueries({ queryKey: ['sales-returns', detailId] });
       setEditingReturn(null);
-      toast.success('Return updated');
+      toast.success(t('salesReturns.updated'));
     },
     onError: (e: { response?: { data?: { error?: { message?: string } } } }) =>
       toast.error(e?.response?.data?.error?.message ?? 'Update failed'),
@@ -270,7 +270,7 @@ export default function SalesReturnsPage() {
       <DataTableShell<SalesReturn>
         data={returns}
         columns={columns}
-        searchPlaceholder="Search return # or customer..."
+        searchPlaceholder={t('salesReturns.searchPlaceholder')}
         serverSide
         searchValue={searchInput}
         onSearchChange={(v) => { setSearchInput(v); applySearch(v); }}
@@ -406,16 +406,16 @@ export default function SalesReturnsPage() {
               <DialogTitle>{detail.return_number}</DialogTitle>
             </DialogHeader>
             <p className="text-sm text-muted-foreground">
-              Customer: {detail.customer_name} · Warehouse: {detail.warehouse_name} · Status: {detail.status} · Reason: {detail.return_reason}
+              {t('salesReturns.customer')}: {detail.customer_name} · {t('salesReturns.warehouse')}: {detail.warehouse_name} · {t('common.status')}: {detail.status} · {t('salesReturns.reason')}: {detail.return_reason}
             </p>
             <div className="rounded-md border">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="px-4 py-2 text-left font-medium">Product</th>
-                    <th className="px-4 py-2 text-right font-medium">Boxes</th>
-                    <th className="px-4 py-2 text-right font-medium">Unit price</th>
-                    <th className="px-4 py-2 text-right font-medium">Line total</th>
+                    <th className="px-4 py-2 text-left font-medium">{t('common.product')}</th>
+                    <th className="px-4 py-2 text-right font-medium">{t('salesReturns.boxes')}</th>
+                    <th className="px-4 py-2 text-right font-medium">{t('salesReturns.unitPrice')}</th>
+                    <th className="px-4 py-2 text-right font-medium">{t('salesReturns.lineTotal')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -439,14 +439,14 @@ export default function SalesReturnsPage() {
         onClose={() => setDeleting(null)}
         onConfirm={async () => { if (deleting) await deleteMutation.mutateAsync(deleting.id); }}
         loading={deleteMutation.isPending}
-        title="Delete sales return"
-        description="Only draft returns can be deleted. Are you sure?"
+        title={t('salesReturns.deleteTitle')}
+        description={t('salesReturns.deleteDesc')}
       />
 
       <Dialog open={!!editingReturn} onOpenChange={(open) => !open && setEditingReturn(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit return (draft)</DialogTitle>
+            <DialogTitle>{t('salesReturns.editTitle')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
