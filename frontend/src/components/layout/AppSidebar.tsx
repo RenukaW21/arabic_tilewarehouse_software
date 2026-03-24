@@ -1,7 +1,5 @@
 import { useMemo, useState } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import axiosInstance from "@/api/axios";
 import {
   LayoutDashboard,
   Building2,
@@ -36,6 +34,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import type { UserRole } from "@/api/usersApi";
 import { useTranslation } from "react-i18next";
+import { useLowStockAlerts } from "@/hooks/useLowStockAlerts";
 
 interface NavChild {
   labelKey: string;
@@ -85,15 +84,7 @@ export function AppSidebar({ collapsed }: AppSidebarProps) {
   const { user } = useAuth();
   const { t } = useTranslation();
 
-  const { data: alerts = [] } = useQuery({
-    queryKey: ["dashboard_low_stock_alerts"],
-    queryFn: async () => {
-      const res = await axiosInstance.get("/alerts/low-stock");
-      const data = res.data.data;
-      if (!data) return [];
-      return Array.isArray(data) ? data : [data];
-    },
-  });
+  const { data: alerts = [] } = useLowStockAlerts();
 
   const navItems = useMemo<NavItem[]>(
     () => [
@@ -227,7 +218,7 @@ export function AppSidebar({ collapsed }: AppSidebarProps) {
 
       { labelKey: "nav.logout", icon: LogOut },
     ],
-    [alerts.length]
+    [alerts.length, t]
   );
 
   const navFiltered = useMemo(

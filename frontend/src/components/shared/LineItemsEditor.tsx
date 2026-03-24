@@ -350,6 +350,7 @@ interface ProductComboboxProps {
 
 function ProductCombobox({ products, value, onChange, disabled }: ProductComboboxProps) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState(""); 
   const { t } = useTranslation();
 
   const selectedProduct = products.find(
@@ -393,7 +394,7 @@ function ProductCombobox({ products, value, onChange, disabled }: ProductCombobo
             autoFocus
           />
           <CommandList className="max-h-[200px]">
-            {search && !products.find(p => p.name.toLowerCase() === search.toLowerCase()) && (
+{search?.trim() && !products.find(p => p.name.toLowerCase() === search.toLowerCase()) && (
               <CommandGroup>
                 <CommandItem
                   value={search}

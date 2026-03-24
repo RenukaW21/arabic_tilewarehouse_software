@@ -33,9 +33,8 @@ import type {
   DashboardRecentTransfer,
 } from "@/types/stock.types";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import api from "@/lib/api";
 import { useTranslation } from "react-i18next";
+import { useLowStockAlerts } from "@/hooks/useLowStockAlerts";
 
 const CHART_COLORS = [
   "hsl(217, 91%, 53%)",
@@ -64,15 +63,7 @@ function formatDate(dateStr: string): string {
 export default function DashboardPage() {
   const { t } = useTranslation();
 
-  const { data: alerts = [] } = useQuery({
-    queryKey: ["dashboard_low_stock_alerts"],
-    queryFn: async () => {
-      const res = await api.get(`/alerts/low-stock`);
-      const data = res.data.data;
-      if (!data) return [];
-      return Array.isArray(data) ? data : [data];
-    },
-  });
+  const { data: alerts = [] } = useLowStockAlerts();
 
   const navigate = useNavigate();
   const { data, isLoading, isError, error } = useDashboard();

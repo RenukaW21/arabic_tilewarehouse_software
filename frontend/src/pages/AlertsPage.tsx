@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { alertApi } from '@/api/miscApi';
 import { LowStockAlert as Alert } from '@/types/misc.types';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -7,25 +7,20 @@ import { StatusBadge } from '@/components/shared/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
+import { LOW_STOCK_ALERTS_QUERY_KEY, useLowStockAlerts } from '@/hooks/useLowStockAlerts';
 
 export default function AlertsPage() {
   const { t } = useTranslation();
   const qc = useQueryClient();
 
-  const { data: alerts = [], isLoading } = useQuery({
-    queryKey: ['low_stock_alerts'],
-    queryFn: async () => {
-      const res = await alertApi.getLowStock();
-      return res.data ?? [];
-    },
-  });
+  const { data: alerts = [], isLoading } = useLowStockAlerts();
 
   const ackMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       await alertApi.update(id, status);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['low_stock_alerts'] });
+      qc.invalidateQueries({ queryKey: LOW_STOCK_ALERTS_QUERY_KEY });
       toast.success(t('alertsPage.alertUpdated'));
     },
     onError: () => toast.error(t('alertsPage.failedToUpdateAlert')),
@@ -79,6 +74,7 @@ export default function AlertsPage() {
             <Button
               size="sm"
               variant="outline"
+              disabled={ackMutation.isPending}
               onClick={() =>
                 ackMutation.mutate({ id: r.id, status: 'acknowledged' })
               }
@@ -91,6 +87,7 @@ export default function AlertsPage() {
             <Button
               size="sm"
               variant="outline"
+              disabled={ackMutation.isPending}
               onClick={() =>
                 ackMutation.mutate({ id: r.id, status: 'resolved' })
               }

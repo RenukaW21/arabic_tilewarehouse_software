@@ -32,6 +32,7 @@ exports.updateAlertStatus = async (req, res, next) => {
 
     const { id } = req.params;
     const { status } = req.body;
+    const allowedStatuses = ['open', 'acknowledged', 'resolved'];
 
     if (!status) {
       return res.status(400).json({
@@ -40,7 +41,21 @@ exports.updateAlertStatus = async (req, res, next) => {
       });
     }
 
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status"
+      });
+    }
+
     const alert = await service.updateAlertStatus(id, status, req.tenantId);
+
+    if (!alert) {
+      return res.status(404).json({
+        success: false,
+        message: "Alert not found"
+      });
+    }
 
     return res.json({
       success: true,
