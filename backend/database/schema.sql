@@ -24,6 +24,17 @@ CREATE TABLE IF NOT EXISTS tenants (
   UNIQUE KEY uq_tenants_slug (slug)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS ai_chat_history (
+  id         INT           NOT NULL AUTO_INCREMENT,
+  question   TEXT          NOT NULL,
+  answer     TEXT          NOT NULL,
+  hit_count  INT           NOT NULL DEFAULT 1,
+  created_at DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  FULLTEXT KEY ft_question (question)          -- enables faster LIKE searches
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ─── USERS ────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS users (
   id            VARCHAR(36)  NOT NULL,

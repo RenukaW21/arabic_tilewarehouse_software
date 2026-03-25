@@ -260,7 +260,8 @@
     "categoryName": "اسم الفئة",
     "categoryUpdated": "تم تحديث الفئة",
     "categoryCreated": "تم إنشاء الفئة",
-    "categoryDeleted": "تم حذف الفئة"
+    "categoryDeleted": "تم حذف الفئة",
+    "parentCategory": "الفئة الرئيسية"
   },
   "vendors": {
     "title": "الموردون",
@@ -588,14 +589,20 @@
     "newEntry": "قيد تلف جديد",
     "editEntry": "تعديل قيد التلف",
     "entryNumber": "رقم القيد",
+     "product": "المنتج",
     "warehouse": "المستودع",
     "entryDate": "تاريخ القيد",
+    "boxes": "الصناديق",
     "reason": "السبب",
     "status": "الحالة",
     "notes": "ملاحظات",
     "entryUpdated": "تم تحديث القيد",
     "entryCreated": "تم إنشاء القيد",
-    "entryDeleted": "تم حذف القيد"
+    "entryDeleted": "تم حذف القيد",
+    "searchPlaceholder": "بحث...",
+    "loss":"الخسارة",
+    "date":"التاريخ",
+    "actions":"إجراءات"
   },
   "stockCounts": {
     "title": "جرد المخزون",
@@ -1027,6 +1034,12 @@
     "warehouseOptional": "المستودع (اختياري)",
     "phoneOptional": "الهاتف (اختياري)",
     "isActive": "نشط (يمكنه تسجيل الدخول)",
+    "roleSuperAdmin": "مشرف عام",
+    "roleAdmin": "مسؤول",
+    "roleWarehouseManager": "مدير المستودع",
+    "roleSales": "مبيعات",
+    "roleAccountant": "محاسب",
+    "roleUser": "مستخدم",
     "userUpdated": "تم تحديث المستخدم",
     "userCreated": "تم إنشاء المستخدم",
     "userDeleted": "تم تعطيل المستخدم",
@@ -1191,7 +1204,8 @@
     "statusDraft": "مسودة",
     "statusIssued": "صادر",
     "statusAcknowledged": "تم الإقرار",
-    "statusSettled": "تمت التسوية"
+    "statusSettled": "تمت التسوية",
+    "order": "الطلب"
   },
   "paymentsReceived": {
     "title": "المدفوعات المستلمة",
@@ -1227,7 +1241,8 @@
     "searchPlaceholder": "...ابحث في رقم الدفعة",
     "created": "تم إنشاء الدفعة",
     "updated": "تم تحديث الدفعة",
-    "deleted": "تم حذف الدفعة"
+    "deleted": "تم حذف الدفعة",
+    "orderId": "رقم الطلب"
   },
   "damageEntriesPage": {
     "title": "قيود التلف",
@@ -1376,5 +1391,22 @@
     "importing": "جاري الاستيراد...",
     "importData": "استيراد البيانات",
     "template": "النموذج"
+  },
+  "aiChatbot": {
+    "title": "مساعد المستودع الذكي",
+    "subtitle": "متصل · مدعوم بـ GPT-4o mini",
+    "toggleTitle": "مساعد المستودع الذكي",
+    "welcome": "👋 أهلاً! أنا **مساعد المستودع الذكي**. يمكنني مساعدتك في:\n- 📦 مستويات المخزون ومواقع المنتجات\n- 📋 إنشاء الطلبات وإشعارات الاستلام\n- ⚠️ تنبيهات المخزون المنخفض\n- 🏭 كيفية استخدام النظام\n\nماذا تريد أن تعرف؟",
+    "placeholder": "اسأل عن المخزون أو المواقع أو الطلبات…",
+    "send": "إرسال",
+    "typing": "يكتب…",
+    "errorMessage": "⚠️ عذراً، تعذّر الاتصال بالخادم. يرجى المحاولة مجدداً.",
+    "suggestions": [
+      "ما المنتجات ذات المخزون المنخفض؟",
+      "كيف أضيف منتجاً جديداً؟",
+      "أين يتم تخزين البلاط الخزفي؟",
+      "كيف أنشئ أمر شراء؟",
+      "أرني أعلى المنتجات مخزوناً"
+    ]
   }
 }

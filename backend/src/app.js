@@ -1,6 +1,7 @@
 'use strict';
 require('express-async-errors');
 const express = require('express');
+const OpenAI = require("openai");
 const helmet = require('helmet');
 const cors = require('cors');
 const morgan = require('morgan');
@@ -21,6 +22,7 @@ const stockTransferRoutes = require('./modules/stock-transfers/transfer.routes')
 
 // ─── Route Imports ────────────────────────────────────────────────────────────
 const alertsRoutes = require('./modules/alerts/routes');
+const aiRoutes = require('./modules/ai/ai.routes');
 const authRoutes = require('./modules/auth/routes');
 const productRoutes = require('./modules/products/routes');
 const grnRoutes = require('./modules/grn/routes');
@@ -130,6 +132,9 @@ const buildCrudRouter = (tableName, allowedSortFields = ['created_at']) => {
 };
 
 const app = express();
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 const API = `/api/${env.API_VERSION}`;
 
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
@@ -170,6 +175,9 @@ app.get('/health', async (req, res) => {
 });
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
+
+
+app.use(`${API}/ai`, aiRoutes);
 app.use(`${API}/auth`, authRoutes);
 app.use(`${API}/products`, productRoutes);
 app.use(`${API}/grn`, grnRoutes);
@@ -187,7 +195,7 @@ app.use(`${API}/delivery-challans`, deliveryChallansRoutes);
 app.use(`${API}/sales-returns`, salesReturnsRoutes);
 app.use(`${API}/users`, usersRoutes);
 app.use(`${API}/setup/gst`, gstConfigRoutes);
-app.use(`${API}/alerts`, alertsRoutes);app.use(`${API}/rack-inventory`, rackInventoryRoutes);
+app.use(`${API}/alerts`, alertsRoutes); app.use(`${API}/rack-inventory`, rackInventoryRoutes);
 
 // Full CRUD modules (GET, POST, PUT, DELETE) — Vendors uses full module (pagination, search, soft delete)
 app.use(`${API}/vendors`, vendorRoutes);

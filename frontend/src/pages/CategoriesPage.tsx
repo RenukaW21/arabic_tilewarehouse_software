@@ -48,10 +48,10 @@ export default function CategoriesPage() {
     },
     {
       key: "parentId",
-      label: t('common.none'),
+      label: t('categories.parentCategory'),
       type: "select",
       options: [
-        { value: "__none__", label: t('common.none') },
+        // { value: "__none__", label: t('common.none') },
         ...categories
           .filter((c) => c.id !== editing?.id)
           .map((c) => ({

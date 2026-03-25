@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { AppSidebar } from './AppSidebar';
 import { TopBar } from './TopBar';
+import { AIChatbot } from '@/components/features/AIChatbot';
 
 const pageTitles: Record<string, string> = {
   '/': 'Dashboard',
@@ -45,6 +46,7 @@ export function DashboardLayout() {
           <Outlet />
         </main>
       </div>
+      <AIChatbot />
     </div>
   );
 }

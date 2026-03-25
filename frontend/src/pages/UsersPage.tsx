@@ -34,6 +34,16 @@ import { useTranslation } from "react-i18next";
 
 // roleLabels will now use t() directly in render — see below
 
+export function formatRoleToTranslationKey(role: string): string {
+  if (!role) return 'users.roleUser';
+  // "super_admin" -> "SuperAdmin", "warehouse_manager" -> "WarehouseManager"
+  const formatted = role
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join('');
+  return `users.role${formatted}`;
+}
+
 interface WarehouseOption {
   value: string;
   label: string;
@@ -42,14 +52,6 @@ interface WarehouseOption {
 export default function UsersPage() {
   const { t } = useTranslation();
 
-  const roleLabels: Record<string, string> = {
-    super_admin: t('users.roleSuperAdmin'),
-    admin: t('users.roleAdmin'),
-    warehouse_manager: t('users.roleWarehouseManager'),
-    sales: t('users.roleSales'),
-    accountant: t('users.roleAccountant'),
-    user: t('users.roleUser'),
-  };
   const qc = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
@@ -139,7 +141,7 @@ export default function UsersPage() {
     {
       key: "role",
       label: t('users.role'),
-      render: (r: User) => roleLabels[r.role] ?? r.role,
+      render: (r: User) => t(formatRoleToTranslationKey(r.role)),
     },
     {
       key: "warehouse",
@@ -211,7 +213,7 @@ export default function UsersPage() {
           <option value="">{t('common.allRoles')}</option>
           {ROLES.map((r) => (
             <option key={r} value={r}>
-              {roleLabels[r]}
+              {t(formatRoleToTranslationKey(r))}
             </option>
           ))}
         </select>
@@ -317,14 +319,6 @@ function CreateUserDialog({
   warehouseOptions: WarehouseOption[];
 }) {
   const { t } = useTranslation();
-  const roleLabels: Record<string, string> = {
-    super_admin: t('users.roleSuperAdmin'),
-    admin: t('users.roleAdmin'),
-    warehouse_manager: t('users.roleWarehouseManager'),
-    sales: t('users.roleSales'),
-    accountant: t('users.roleAccountant'),
-    user: t('users.roleUser'),
-  };
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -408,7 +402,7 @@ function CreateUserDialog({
               <SelectContent>
                 {ROLES.map((r) => (
                   <SelectItem key={r} value={r}>
-                    {roleLabels[r]}
+                    {t(formatRoleToTranslationKey(r))}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -472,14 +466,6 @@ function EditUserDialog({
   warehouseOptions: WarehouseOption[];
 }) {
   const { t } = useTranslation();
-  const roleLabels: Record<string, string> = {
-    super_admin: t('users.roleSuperAdmin'),
-    admin: t('users.roleAdmin'),
-    warehouse_manager: t('users.roleWarehouseManager'),
-    sales: t('users.roleSales'),
-    accountant: t('users.roleAccountant'),
-    user: t('users.roleUser'),
-  };
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<User["role"]>("user");
@@ -573,7 +559,7 @@ function EditUserDialog({
               <SelectContent>
                 {ROLES.map((r) => (
                   <SelectItem key={r} value={r}>
-                    {roleLabels[r]}
+                    {t(formatRoleToTranslationKey(r))}
                   </SelectItem>
                 ))}
               </SelectContent>
