@@ -99,7 +99,9 @@ const postGRN = async (id, tenantId, userId) => {
       // but if bad data exists we must not post negative stock.
       const netBoxes = Math.max(0, received - damaged);
 
-      if (netBoxes > 0 && item.quality_status === 'pass') {
+      // Post stock for all received items except explicitly failed quality.
+      // 'pending' quality items are treated as accepted until marked 'fail'.
+      if (netBoxes > 0 && item.quality_status !== 'fail') {
         const productRows = await trx.query(
           'SELECT sqft_per_box FROM products WHERE id = ? AND tenant_id = ?',
           [item.product_id, tenantId]

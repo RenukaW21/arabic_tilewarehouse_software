@@ -14,6 +14,7 @@ i18n
       ar: { translation: ar },
     },
     fallbackLng: 'en',
+    debug: import.meta.env.DEV,
     interpolation: {
       escapeValue: false,
     },

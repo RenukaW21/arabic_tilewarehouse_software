@@ -31,10 +31,22 @@ const findAll = async (tenantId, queryParams) => {
     SELECT ss.id, ss.tenant_id, ss.warehouse_id, ss.rack_id, ss.product_id, ss.shade_id, ss.batch_id,
            ss.total_boxes, ss.total_pieces, ss.total_sqft, ss.avg_cost_per_box, ss.updated_at,
            p.code, p.name AS product_name, p.sqft_per_box,
-           w.name AS warehouse_name
+           w.name AS warehouse_name,
+           COALESCE(res.reserved_boxes, 0) AS reserved_boxes,
+           GREATEST(0, ss.total_boxes - COALESCE(res.reserved_boxes, 0)) AS available_boxes
     FROM stock_summary ss
     JOIN products p ON ss.product_id = p.id AND p.tenant_id = ss.tenant_id
     JOIN warehouses w ON ss.warehouse_id = w.id AND w.tenant_id = ss.tenant_id
+    LEFT JOIN (
+      SELECT tenant_id, warehouse_id, product_id, shade_id, batch_id,
+             SUM(boxes_reserved) AS reserved_boxes
+      FROM stock_reservations
+      GROUP BY tenant_id, warehouse_id, product_id, shade_id, batch_id
+    ) res ON res.tenant_id = ss.tenant_id
+          AND res.warehouse_id = ss.warehouse_id
+          AND res.product_id = ss.product_id
+          AND (res.shade_id <=> ss.shade_id)
+          AND (res.batch_id <=> ss.batch_id)
     WHERE ${whereSql}
   `;
 
@@ -49,10 +61,22 @@ const findAll = async (tenantId, queryParams) => {
 const findById = async (id, tenantId) => {
   const rows = await query(
     `SELECT ss.*, p.code, p.name AS product_name, p.sqft_per_box,
-            w.name AS warehouse_name
+            w.name AS warehouse_name,
+            COALESCE(res.reserved_boxes, 0) AS reserved_boxes,
+            GREATEST(0, ss.total_boxes - COALESCE(res.reserved_boxes, 0)) AS available_boxes
      FROM stock_summary ss
      JOIN products p ON ss.product_id = p.id AND p.tenant_id = ss.tenant_id
      JOIN warehouses w ON ss.warehouse_id = w.id AND w.tenant_id = ss.tenant_id
+     LEFT JOIN (
+       SELECT tenant_id, warehouse_id, product_id, shade_id, batch_id,
+              SUM(boxes_reserved) AS reserved_boxes
+       FROM stock_reservations
+       GROUP BY tenant_id, warehouse_id, product_id, shade_id, batch_id
+     ) res ON res.tenant_id = ss.tenant_id
+           AND res.warehouse_id = ss.warehouse_id
+           AND res.product_id = ss.product_id
+           AND (res.shade_id <=> ss.shade_id)
+           AND (res.batch_id <=> ss.batch_id)
      WHERE ss.id = ? AND ss.tenant_id = ?`,
     [id, tenantId]
   );

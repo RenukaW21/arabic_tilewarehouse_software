@@ -347,12 +347,15 @@ const updateStatus = async (id, tenantId, status, userId) => {
         await grnRepo.recalcGrandTotal(grnId, tenantId, trx);
         await grnRepo.updatePOReceivedBoxes(trx, id, tenantId);
 
-        // ── 3. Activate auto-created products ───────────────────────────────
+        await trx.commit();
+
+        // ── 3. Activate auto-created products (AFTER commit) ────────────────
+        // Must run outside the transaction: grn_items INSERT holds a shared FK
+        // lock on products rows; productService.update opens its own transaction
+        // and would deadlock waiting for an exclusive lock on the same rows.
         for (const item of poItems) {
           await productService.update(item.product_id, tenantId, { isActive: true });
         }
-
-        await trx.commit();
       } catch (err) {
         await trx.rollback();
         throw err;

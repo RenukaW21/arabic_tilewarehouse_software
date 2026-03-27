@@ -120,6 +120,109 @@ const adjustStock = async (id, tenantId, userId, data) => {
 };
 
 /**
+ * Rack assignment: move qty boxes from an unassigned (or source) stock_summary bin into a rack.
+ * Total stock does NOT change — this is purely a location transfer within the same warehouse.
+ *
+ * Body: { stock_summary_id, rack_id, boxes, notes }
+ *   stock_summary_id — the source stock_summary row (usually rack_id = null, i.e. unassigned)
+ *   rack_id          — the target rack to move stock into
+ *   boxes            — qty to move
+ */
+const assignToRack = async (tenantId, userId, data) => {
+  const { query } = require('../../config/db');
+  const source = await repo.findById(data.stock_summary_id, tenantId);
+  if (!source) throw new AppError('Stock record not found', 404, 'NOT_FOUND');
+
+  const boxes = parseFloat(data.boxes) || 0;
+  if (boxes <= 0) throw new AppError('boxes must be greater than zero', 400, 'VALIDATION_ERROR');
+  if (parseFloat(source.total_boxes) < boxes) {
+    throw new AppError(
+      `Insufficient stock: ${source.total_boxes} boxes available, ${boxes} requested`,
+      400,
+      'INSUFFICIENT_STOCK'
+    );
+  }
+
+  const targetRackId = data.rack_id;
+  if (!targetRackId) throw new AppError('rack_id is required', 400, 'VALIDATION_ERROR');
+
+  // Prevent assigning to the same rack (no-op)
+  if (source.rack_id === targetRackId) {
+    throw new AppError('Source and target rack are the same', 400, 'VALIDATION_ERROR');
+  }
+
+  const rackRows = await query(
+    `SELECT id, capacity_boxes, occupied_boxes, available_boxes, rack_status
+     FROM racks WHERE id = ? AND tenant_id = ?`,
+    [targetRackId, tenantId]
+  );
+  if (!rackRows.length) throw new AppError('Target rack not found', 404, 'NOT_FOUND');
+  const rack = rackRows[0];
+  if (rack.rack_status === 'BLOCKED' || rack.rack_status === 'MAINTENANCE') {
+    throw new AppError(`Rack is not available (status: ${rack.rack_status})`, 400, 'RACK_UNAVAILABLE');
+  }
+  if (rack.capacity_boxes !== null && rack.available_boxes !== null && parseFloat(rack.available_boxes) < boxes) {
+    throw new AppError(
+      `Rack capacity exceeded: ${rack.available_boxes} boxes available, ${boxes} requested`,
+      400,
+      'RACK_FULL'
+    );
+  }
+
+  const sqftPerBox = parseFloat(source.sqft_per_box) || 0;
+  const trx = await beginTransaction();
+  try {
+    // 1 — Deduct from source bin
+    await postStockMovement(trx, {
+      tenantId,
+      warehouseId: source.warehouse_id,
+      rackId: source.rack_id || null,
+      productId: source.product_id,
+      shadeId: source.shade_id || null,
+      batchId: source.batch_id || null,
+      transactionType: 'rack_assignment',
+      referenceId: targetRackId,
+      referenceType: 'rack',
+      boxesIn: 0,
+      boxesOut: boxes,
+      piecesIn: 0,
+      piecesOut: 0,
+      sqftPerBox,
+      notes: data.notes || `Rack assignment to ${targetRackId}`,
+      createdBy: userId,
+    });
+
+    // 2 — Add to target rack bin
+    await postStockMovement(trx, {
+      tenantId,
+      warehouseId: source.warehouse_id,
+      rackId: targetRackId,
+      productId: source.product_id,
+      shadeId: source.shade_id || null,
+      batchId: source.batch_id || null,
+      transactionType: 'rack_assignment',
+      referenceId: source.id,
+      referenceType: 'stock_summary',
+      boxesIn: boxes,
+      boxesOut: 0,
+      piecesIn: 0,
+      piecesOut: 0,
+      sqftPerBox,
+      notes: data.notes || `Rack assignment from ${source.rack_id || 'unassigned'}`,
+      createdBy: userId,
+    });
+
+    await trx.commit();
+    return repo.findById(data.stock_summary_id, tenantId);
+  } catch (err) {
+    await trx.rollback();
+    throw err;
+  } finally {
+    trx.release();
+  }
+};
+
+/**
  * Stock summary rows cannot be deleted (no status flag; ledger history must be preserved).
  * Return 400 with clear message.
  */
@@ -138,5 +241,6 @@ module.exports = {
   getById,
   createOpeningStock,
   adjustStock,
+  assignToRack,
   remove,
 };

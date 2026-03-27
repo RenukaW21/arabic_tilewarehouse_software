@@ -27,6 +27,7 @@ const assign = async (id, tenantId, assignedTo) => {
   return getById(id, tenantId);
 };
 
+/** Updates pick_list_items only — never posts stock movements (deduction is on challan dispatch). */
 const updateItemPicked = async (pickListId, itemId, tenantId, pickedBoxes) => {
   const pick = await getById(pickListId, tenantId);
   if (!['pending', 'in_progress'].includes(pick.status)) {

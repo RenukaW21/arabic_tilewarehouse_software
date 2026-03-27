@@ -12,6 +12,10 @@ export interface StockSummaryRow {
   total_boxes: number;
   total_pieces: number;
   total_sqft: number;
+  /** Boxes soft-reserved by confirmed Sales Orders (not yet dispatched) */
+  reserved_boxes: number;
+  /** total_boxes minus reserved_boxes — actual quantity available for new orders */
+  available_boxes: number;
   avg_cost_per_box: number | null;
   updated_at: string;
   code: string;

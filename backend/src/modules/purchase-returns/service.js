@@ -104,25 +104,64 @@ const dispatch = async (id, tenantId, userId) => {
       }
 
       const sqftPerBox = await repo.getProductSqftPerBox(trx, it.product_id, tenantId);
-      await postStockMovement(trx, {
-        tenantId,
-        warehouseId:     existing.warehouse_id,
-        rackId:          null,
-        productId:       it.product_id,
-        shadeId:         it.shade_id       || null,
-        batchId:         it.batch_id       || null,
-        transactionType: 'return',
-        referenceId:     id,
-        referenceType:   'purchase_return',
-        boxesIn:         0,
-        boxesOut:        returned,
-        piecesIn:        0,
-        piecesOut:       parseFloat(it.returned_pieces) || 0,
-        sqftPerBox,
-        unitPrice:       parseFloat(it.unit_price) || null,
-        notes:           existing.reason || null,
-        createdBy:       userId,
-      });
+
+      // Rack-aware deduction: drain rack rows in order (non-null racks first, then largest)
+      // so that racks.occupied_boxes / available_boxes stay in sync after the return.
+      const stockRows = await trx.query(
+        `SELECT id, rack_id, total_boxes FROM stock_summary
+         WHERE tenant_id = ? AND warehouse_id = ? AND product_id = ?
+           AND (shade_id <=> ?) AND (batch_id <=> ?)
+           AND total_boxes > 0
+         ORDER BY rack_id IS NULL ASC, total_boxes DESC
+         FOR UPDATE`,
+        [tenantId, existing.warehouse_id, it.product_id, it.shade_id || null, it.batch_id || null]
+      );
+
+      const totalReturnedPieces = parseFloat(it.returned_pieces) || 0;
+      let piecesDeducted = 0;
+      let remaining = returned;
+
+      for (const stockRow of stockRows) {
+        if (remaining <= 0) break;
+        const deductBoxes = Math.min(remaining, parseFloat(stockRow.total_boxes || 0));
+        if (deductBoxes <= 0) continue;
+
+        remaining -= deductBoxes;
+        // Last slice gets any rounding remainder so total pieces always match exactly
+        const deductPieces = remaining <= 0
+          ? totalReturnedPieces - piecesDeducted
+          : Math.floor(totalReturnedPieces * deductBoxes / returned);
+
+        await postStockMovement(trx, {
+          tenantId,
+          warehouseId:     existing.warehouse_id,
+          rackId:          stockRow.rack_id || null,
+          productId:       it.product_id,
+          shadeId:         it.shade_id       || null,
+          batchId:         it.batch_id       || null,
+          transactionType: 'return',
+          referenceId:     id,
+          referenceType:   'purchase_return',
+          boxesIn:         0,
+          boxesOut:        deductBoxes,
+          piecesIn:        0,
+          piecesOut:       deductPieces,
+          sqftPerBox,
+          unitPrice:       parseFloat(it.unit_price) || null,
+          notes:           existing.reason || null,
+          createdBy:       userId,
+        });
+
+        piecesDeducted += deductPieces;
+      }
+
+      if (remaining > 0) {
+        throw new AppError(
+          `Insufficient stock while returning product ${it.product_id}`,
+          400,
+          'INSUFFICIENT_STOCK'
+        );
+      }
     }
 
     await repo.updateReturnStatus(trx, id, tenantId, 'dispatched');

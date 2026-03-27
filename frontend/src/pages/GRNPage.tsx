@@ -1,13 +1,14 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { grnApi } from '@/api/grnApi';
 import { vendorApi } from '@/api/vendorApi';
-import { warehouseApi } from '@/api/warehouseApi';
+import { warehouseApi, rackApi } from '@/api/warehouseApi';
 import { purchaseOrderApi } from '@/api/miscApi';
 import { productApi } from '@/api/productApi';
 import type { GRN } from '@/types/grn.types';
+import type { PurchaseOrderItem } from '@/types/misc.types';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTableShell } from '@/components/shared/DataTableShell';
 import { StatusBadge } from '@/components/shared/StatusBadge';
@@ -52,6 +53,8 @@ interface GRNItemRow {
   product_label: string;
   shade_id: string;
   shade_label: string;
+  rack_id?: string;
+  rack_label?: string;
   received_boxes: number;
   received_pieces: number;
   damaged_boxes: number;
@@ -59,8 +62,30 @@ interface GRNItemRow {
   ordered_boxes?: number;
 }
 
+interface GRNDetailItem {
+  id?: string;
+  product_name?: string;
+  product_code?: string;
+  shade_name?: string | null;
+  quality_status?: string;
+  received_boxes?: number;
+  damaged_boxes?: number;
+  unit_price?: number;
+}
+
+interface MutationErrorPayload {
+  response?: {
+    data?: {
+      error?: {
+        message?: string;
+        details?: unknown;
+      };
+      message?: string;
+    };
+  };
+}
+
 // ─── ProductCombobox ──────────────────────────────────────────────────────────
-// Searches products by name/code — no UUID entry needed by the user
 function ProductCombobox({
   value, label, onChange, disabled = false,
 }: {
@@ -171,14 +196,62 @@ function ShadeSelect({
   );
 }
 
+// ─── RackSelect ───────────────────────────────────────────────────────────────
+function RackSelect({
+  warehouseId, value, onChange,
+}: {
+  warehouseId: string; value: string;
+  onChange: (id: string, label: string) => void;
+}) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['racks-for-warehouse', warehouseId],
+    queryFn: () => rackApi.getAll({ warehouse_id: warehouseId, limit: 500 }),
+    enabled: !!warehouseId,
+  });
+  const racks = (data?.data ?? []) as Array<{ id: string; name: string }>;
+
+  const placeholder = !warehouseId
+    ? 'Select warehouse first'
+    : isLoading ? 'Loading…' : 'Select rack (optional)';
+
+  return (
+    <Select
+      value={value || '__none__'}
+      onValueChange={(v) => {
+        if (v === '__none__') { onChange('', ''); return; }
+        const r = racks.find((rk) => rk.id === v);
+        onChange(v, r?.name ?? v);
+      }}
+      disabled={!warehouseId || isLoading}
+    >
+      <SelectTrigger className="h-9">
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="__none__">— No rack —</SelectItem>
+        {racks.map((r) => (
+          <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 // ─── ItemsEditor ──────────────────────────────────────────────────────────────
-function ItemsEditor({ items, onChange }: { items: GRNItemRow[]; onChange: (items: GRNItemRow[]) => void }) {
+function ItemsEditor({
+  items, onChange, warehouseId,
+}: {
+  items: GRNItemRow[];
+  onChange: (items: GRNItemRow[]) => void;
+  warehouseId: string;
+}) {
   const { t } = useTranslation();
   const addRow = () =>
     onChange([...items, {
       _key: crypto.randomUUID(),
       product_id: '', product_label: '',
       shade_id: '', shade_label: '',
+      rack_id: '', rack_label: '',
       received_boxes: 0, received_pieces: 0,
       damaged_boxes: 0, unit_price: 0,
     }]);
@@ -234,6 +307,19 @@ function ItemsEditor({ items, onChange }: { items: GRNItemRow[]; onChange: (item
                   product_id: id, product_label: lbl,
                   shade_id: '', shade_label: '',
                 })}
+              />
+            </div>
+
+            {/* Rack (optional) */}
+            <div className="space-y-1">
+              <Label className="text-xs flex items-center gap-1.5">
+                Rack
+                <Badge variant="secondary" className="text-[10px] px-1.5 font-normal">Optional</Badge>
+              </Label>
+              <RackSelect
+                warehouseId={warehouseId}
+                value={row.rack_id ?? ''}
+                onChange={(id, lbl) => update(row._key, { rack_id: id, rack_label: lbl })}
               />
             </div>
 
@@ -326,7 +412,7 @@ function CreateGRNDialog({
     enabled: open,
     select: (d) => (d?.data ?? []).filter((p: { status: string }) => ['confirmed', 'partial'].includes(p.status)),
   });
-  const availablePOs = posData ?? [];
+  const availablePOs = useMemo(() => posData ?? [], [posData]);
 
   const { data: poDetails } = useQuery({
     queryKey: ['po-details', po_id],
@@ -360,13 +446,15 @@ function CreateGRNDialog({
   // Auto-fill items from selected PO
   useEffect(() => {
     if (!po_id) {
-      if (items.some((it) => it.ordered_boxes !== undefined)) {
-        setItems([{ _key: crypto.randomUUID(), product_id: '', product_label: '', shade_id: '', shade_label: '', received_boxes: 0, received_pieces: 0, damaged_boxes: 0, unit_price: 0 }]);
-      }
+      setItems((prev) =>
+        prev.some((it) => it.ordered_boxes !== undefined)
+          ? [{ _key: crypto.randomUUID(), product_id: '', product_label: '', shade_id: '', shade_label: '', received_boxes: 0, received_pieces: 0, damaged_boxes: 0, unit_price: 0 }]
+          : prev
+      );
       return;
     }
     if (poDetails?.data?.items) {
-      const newItems = poDetails.data.items.map((item: any) => {
+      const newItems = poDetails.data.items.map((item: PurchaseOrderItem) => {
         const remaining = Math.max(0, (item.ordered_boxes || 0) - (item.received_boxes || 0));
         return {
           _key: crypto.randomUUID(),
@@ -414,7 +502,7 @@ function CreateGRNDialog({
 
     if (po_id && poDetails?.data?.items) {
       const hasWarning = items.some(it => {
-        const poItem = poDetails.data.items.find((pi: any) => pi.product_id === it.product_id);
+        const poItem = poDetails.data.items.find((pi: PurchaseOrderItem) => pi.product_id === it.product_id);
         return poItem && it.received_boxes > poItem.ordered_boxes;
       });
       if (hasWarning) {
@@ -433,6 +521,7 @@ function CreateGRNDialog({
       items: items.map((it) => ({
         product_id: it.product_id,
         shade_id: it.shade_id || undefined,
+        rack_id: it.rack_id || undefined,
         received_boxes: it.received_boxes,
         received_pieces: it.received_pieces,
         damaged_boxes: it.damaged_boxes,
@@ -529,7 +618,7 @@ function CreateGRNDialog({
 
           <Separator />
 
-          <ItemsEditor items={items} onChange={setItems} />
+          <ItemsEditor items={items} onChange={setItems} warehouseId={warehouse_id} />
 
           <div className="space-y-2">
             <Label>{t('grn.notes')}</Label>
@@ -657,6 +746,7 @@ function EditGRNDialog({
 // ─── GRN Quick-View Sheet ─────────────────────────────────────────────────────
 function GRNDetailSheet({ id, open, onClose }: { id: string | null; open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const { data, isLoading } = useQuery({
     queryKey: ['grn-detail', id],
@@ -664,31 +754,35 @@ function GRNDetailSheet({ id, open, onClose }: { id: string | null; open: boolea
     enabled: !!id && open,
     select: (d) => d.data,
   });
-  const grn = data as (GRN & { items?: Array<Record<string, unknown>>; vehicle_number?: string }) | undefined;
+  const grn = data as (GRN & { items?: GRNDetailItem[]; vehicle_number?: string }) | undefined;
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent className="w-[560px] sm:max-w-[560px] overflow-y-auto">
+        {/* FIX 1: Removed asChild from SheetDescription — fixes React rendering error */}
         <SheetHeader className="mb-4">
           <SheetTitle className="font-mono text-lg">{grn?.grn_number ?? 'Loading…'}</SheetTitle>
-          <SheetDescription asChild>
-            <div>{grn && <StatusBadge status={grn.status} />}</div>
-          </SheetDescription>
+          <SheetDescription>GRN Details</SheetDescription>
+          {grn && (
+            <div className="mt-1">
+              <StatusBadge status={grn.status} />
+            </div>
+          )}
         </SheetHeader>
 
         {isLoading && <p className="text-sm text-muted-foreground animate-pulse">Loading…</p>}
 
         {grn && (
           <div className="space-y-5">
-            {/* Header grid */}
+            {/* FIX 2: All keys are now unique — no duplicate "Receipt Date" key */}
             <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
               {([
                 [t('grn.vendor'), grn.vendor_name],
                 [t('grn.warehouse'), grn.warehouse_name],
                 ['PO #', grn.po_number ?? '—'],
                 [t('grn.receiptDate'), grn.receipt_date ? new Date(String(grn.receipt_date)).toLocaleDateString('en-IN') : '—'],
-                [t('grn.grnNumber'), grn.invoice_number ?? '—'],
-                [t('grn.receiptDate'), grn.invoice_date ? new Date(String(grn.invoice_date)).toLocaleDateString('en-IN') : '—'],
+                ['Invoice #', grn.invoice_number ?? '—'],
+                ['Invoice Date', grn.invoice_date ? new Date(String(grn.invoice_date)).toLocaleDateString('en-IN') : '—'],
                 [t('purchaseReturns.vehicleNumber'), grn.vehicle_number ?? '—'],
                 [t('purchaseOrders.grandTotal'), grn.grand_total != null ? `₹${Number(grn.grand_total).toLocaleString('en-IN')}` : '—'],
               ] as [string, string | null | undefined][]).map(([k, v]) => (
@@ -726,10 +820,11 @@ function GRNDetailSheet({ id, open, onClose }: { id: string | null; open: boolea
                             {item.shade_name ? ` · ${item.shade_name}` : ''}
                           </p>
                         </div>
+                        {/* FIX 3: String() cast on quality_status — fixes TypeScript red lines */}
                         <Badge
                           variant={
-                            item.quality_status === 'pass' ? 'default' :
-                              item.quality_status === 'fail' ? 'destructive' : 'secondary'
+                            String(item.quality_status) === 'pass' ? 'default' :
+                              String(item.quality_status) === 'fail' ? 'destructive' : 'secondary'
                           }
                           className="ms-2 shrink-0"
                         >
@@ -855,10 +950,10 @@ export default function GRNPage() {
       qc.invalidateQueries({ queryKey: ['grns'] });
       setCreateOpen(false);
       toast.success('GRN created');
-      const newId = (res as { data?: { id?: string } })?.data?.id;
+      const newId = res.data?.id;
       if (newId) navigate(`/purchase/grn/${newId}`);
     },
-    onError: (e: any) => {
+    onError: (e: MutationErrorPayload) => {
       console.error('Validation Error Details:', e?.response?.data?.error?.details || e?.response?.data);
       toast.error(e?.response?.data?.error?.message ?? e?.response?.data?.message ?? 'Create failed');
     },

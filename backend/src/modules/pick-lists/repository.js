@@ -101,17 +101,18 @@ const updateItemPicked = async (itemId, pickListId, tenantId, pickedBoxes, trx =
   );
 };
 
-/** Lock and return total available boxes for product/warehouse/shade/batch (any rack) */
-const getAvailableStock = async (trx, tenantId, warehouseId, productId, shadeId, batchId) => {
+/**
+ * Physical boxes in warehouse for this product (all shade/batch/rack rows).
+ * Picking does not deduct stock — this is only a sanity check; dispatch uses the same warehouse-wide view when shade/batch keys differ from GRN.
+ */
+const getAvailableStock = async (trx, tenantId, warehouseId, productId, _shadeId, _batchId) => {
   const rows = await trx.query(
     `SELECT id, total_boxes FROM stock_summary
      WHERE tenant_id = ? AND warehouse_id = ? AND product_id = ?
-       AND (shade_id <=> ?) AND (batch_id <=> ?)
      FOR UPDATE`,
-    [tenantId, warehouseId, productId, shadeId || null, batchId || null]
+    [tenantId, warehouseId, productId]
   );
-  const totalBoxes = rows.reduce((sum, r) => sum + parseFloat(r.total_boxes || 0), 0);
-  return totalBoxes;
+  return rows.reduce((sum, r) => sum + parseFloat(r.total_boxes || 0), 0);
 };
 
 module.exports = {

@@ -1,7 +1,8 @@
 'use strict';
 
-const { getPool, query } = require('../../config/db');
+const { getPool, query, beginTransaction } = require('../../config/db');
 const { parsePagination, buildSearchClause, buildFilterClauses } = require('../../utils/pagination');
+const { syncRackProductInventory } = require('../../utils/stockHelper');
 
 const SELECT_COLUMNS = [
   'id',
@@ -239,98 +240,189 @@ const deleteRack = async (id, tenantId) => {
 };
 
 // ─────────────────────────────────────────────────────────────
+// INTERNAL: Move stock_summary rows between rack slots
+// ─────────────────────────────────────────────────────────────
+
+const moveStockBetweenRacks = async (trx, tenantId, warehouseId, productId, fromRackId, toRackId, boxes) => {
+  if (!boxes || boxes <= 0) return;
+
+  // Lock source rows FOR UPDATE so no concurrent movement races
+  const sourceRows = await trx.query(
+    `SELECT id, shade_id, batch_id, total_boxes, total_pieces, total_sqft, avg_cost_per_box
+     FROM stock_summary
+     WHERE tenant_id = ? AND warehouse_id = ? AND product_id = ?
+       AND (rack_id <=> ?) AND total_boxes > 0
+     ORDER BY total_boxes DESC
+     FOR UPDATE`,
+    [tenantId, warehouseId, productId, fromRackId]
+  );
+
+  const totalAvailable = sourceRows.reduce((sum, row) => {
+    return sum + (parseFloat(row.total_boxes || 0));
+  }, 0);
+
+  if (totalAvailable + 1e-9 < boxes) {
+    throw new Error(
+      `Insufficient source stock to move ${boxes} boxes (available: ${totalAvailable})`
+    );
+  }
+
+  let remaining = boxes;
+
+  for (const row of sourceRows) {
+    if (remaining <= 0) break;
+
+    const take      = Math.min(remaining, parseFloat(row.total_boxes || 0));
+    if (take <= 0) continue;
+
+    const srcBoxes  = parseFloat(row.total_boxes  || 0);
+    const ratio     = srcBoxes > 0 ? take / srcBoxes : 0;
+    const takePcs   = Math.floor(parseFloat(row.total_pieces || 0) * ratio);
+    const takeSqft  = parseFloat(row.total_sqft   || 0) * ratio;
+
+    // 1. Reduce source row
+    await trx.query(
+      `UPDATE stock_summary
+       SET total_boxes = total_boxes - ?, total_pieces = total_pieces - ?,
+           total_sqft  = total_sqft  - ?, updated_at = NOW()
+       WHERE id = ?`,
+      [take, takePcs, takeSqft, row.id]
+    );
+
+    // 2. Upsert target row (same shade/batch, different rack_id)
+    const targetRows = await trx.query(
+      `SELECT id FROM stock_summary
+       WHERE tenant_id = ? AND warehouse_id = ? AND product_id = ?
+         AND (shade_id <=> ?) AND (batch_id <=> ?) AND (rack_id <=> ?)
+       FOR UPDATE`,
+      [tenantId, warehouseId, productId, row.shade_id, row.batch_id, toRackId]
+    );
+
+    if (targetRows.length > 0) {
+      await trx.query(
+        `UPDATE stock_summary
+         SET total_boxes = total_boxes + ?, total_pieces = total_pieces + ?,
+             total_sqft  = total_sqft  + ?, updated_at = NOW()
+         WHERE id = ?`,
+        [take, takePcs, takeSqft, targetRows[0].id]
+      );
+    } else {
+      await trx.query(
+        `INSERT INTO stock_summary
+           (id, tenant_id, warehouse_id, rack_id, product_id, shade_id, batch_id,
+            total_boxes, total_pieces, total_sqft, avg_cost_per_box, updated_at)
+         VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+        [tenantId, warehouseId, toRackId, productId,
+          row.shade_id, row.batch_id, take, takePcs, takeSqft, row.avg_cost_per_box]
+      );
+    }
+
+    remaining -= take;
+  }
+};
+
+// ─────────────────────────────────────────────────────────────
 // PRODUCT RACK MAPPING
 // ─────────────────────────────────────────────────────────────
 
 const assignProductToRack = async (tenantId, data) => {
-  const { v4: uuidv4 } = require('uuid');
-
-  // 1. Get target rack info
-  const rack = await getRackById(data.rack_id, tenantId);
-  if (!rack) throw new Error('Rack not found');
-
   const isEditing = !!data.id;
   const boxesInput = Number(data.boxes_stored);
-
-  // ── 2. Validate against PRODUCT AVAILABLE STOCK ──────────────────────────
-  // Total stock across all warehouses for this product (from stock_summary)
-  const stockRows = await query(
-    `SELECT COALESCE(SUM(total_boxes), 0) AS total_stock
-     FROM stock_summary
-     WHERE tenant_id = ? AND product_id = ?`,
-    [tenantId, data.product_id]
-  );
-  const totalStock = parseFloat(stockRows[0]?.total_stock) || 0;
-
-  // Total already assigned to racks (excluding current entry if editing)
-  const assignedRows = await query(
-    `SELECT COALESCE(SUM(boxes_stored), 0) AS already_stored
-     FROM product_racks
-     WHERE tenant_id = ? AND product_id = ? ${isEditing ? 'AND id != ?' : ''}`,
-    isEditing ? [tenantId, data.product_id, data.id] : [tenantId, data.product_id]
-  );
-  const alreadyStored = parseFloat(assignedRows[0]?.already_stored) || 0;
-
-  const availableToStore = totalStock - alreadyStored;
-
-  if (boxesInput > availableToStore) {
-    throw new Error(
-      `Cannot store more than available stock. ` +
-      `Available: ${availableToStore} boxes (Total stock: ${totalStock}, Already stored in other racks: ${alreadyStored}).`
-    );
+  if (!Number.isFinite(boxesInput) || boxesInput < 0) {
+    throw new Error('boxes_stored must be a non-negative number');
   }
 
-  if (isEditing) {
-    // EDIT MODE: Replacing existing record values
-    const currentEntryRows = await query(
-      'SELECT boxes_stored, rack_id FROM product_racks WHERE id = ? AND tenant_id = ?',
-      [data.id, tenantId]
+  const trx = await beginTransaction();
+  try {
+    const rackRows = await trx.query(
+      `SELECT id, warehouse_id, capacity_boxes
+       FROM racks
+       WHERE id = ? AND tenant_id = ?
+       FOR UPDATE`,
+      [data.rack_id, tenantId]
     );
-    if (currentEntryRows.length === 0) throw new Error('Assignment entry not found');
-    
-    const oldEntry = currentEntryRows[0];
-    const oldRackId = oldEntry.rack_id;
-    const oldBoxes = Number(oldEntry.boxes_stored) || 0;
+    const rack = rackRows[0];
+    if (!rack) throw new Error('Rack not found');
+    const rackOccupancyRows = await trx.query(
+      `SELECT COALESCE(SUM(CASE WHEN p.is_active = 1 THEN pr.boxes_stored ELSE 0 END), 0) AS occupied_boxes
+       FROM product_racks pr
+       LEFT JOIN products p ON p.id = pr.product_id
+       WHERE pr.rack_id = ? AND pr.tenant_id = ?`,
+      [data.rack_id, tenantId]
+    );
+    rack.occupied_boxes = parseFloat(rackOccupancyRows[0]?.occupied_boxes) || 0;
 
-    // Calculate diff for the target rack
-    const diffForTarget = (oldRackId === data.rack_id) ? (boxesInput - oldBoxes) : boxesInput;
+    let oldRackId = null;
+    let oldBoxes = 0;
+    let oldWarehouseId = null;
+    let oldProductId = data.product_id;
 
+    if (isEditing) {
+      const currentEntryRows = await trx.query(
+        'SELECT boxes_stored, rack_id, product_id FROM product_racks WHERE id = ? AND tenant_id = ? FOR UPDATE',
+        [data.id, tenantId]
+      );
+      if (!currentEntryRows.length) throw new Error('Assignment entry not found');
+      const oldEntry = currentEntryRows[0];
+      oldRackId = oldEntry.rack_id;
+      oldBoxes = Number(oldEntry.boxes_stored) || 0;
+      oldProductId = oldEntry.product_id;
+
+      if (oldRackId) {
+        const oldRackRows = await trx.query(
+          'SELECT warehouse_id FROM racks WHERE id = ? AND tenant_id = ? FOR UPDATE',
+          [oldRackId, tenantId]
+        );
+        oldWarehouseId = oldRackRows[0]?.warehouse_id || rack.warehouse_id;
+      }
+    }
+
+    // Capacity check (same semantics as before, but under lock)
+    const diffForTarget = isEditing && oldRackId === data.rack_id
+      ? boxesInput - oldBoxes
+      : boxesInput;
     if (rack.capacity_boxes !== null && (Number(rack.occupied_boxes) || 0) + diffForTarget > rack.capacity_boxes) {
-      const avail = rack.capacity_boxes - (Number(rack.occupied_boxes) || 0) + (oldRackId === data.rack_id ? oldBoxes : 0);
+      const avail = rack.capacity_boxes - (Number(rack.occupied_boxes) || 0) + (isEditing && oldRackId === data.rack_id ? oldBoxes : 0);
       throw new Error(`Insufficient capacity in target rack. Max available: ${avail} boxes.`);
     }
 
-    // Update the record
-    await query(
-      'UPDATE product_racks SET product_id = ?, rack_id = ?, boxes_stored = ? WHERE id = ? AND tenant_id = ?',
-      [data.product_id, data.rack_id, boxesInput, data.id, tenantId]
-    );
-
-    // Sync target rack
-    await syncRackOccupancy(data.rack_id, tenantId);
-    // Sync old rack if it changed
-    if (oldRackId !== data.rack_id) {
-      await syncRackOccupancy(oldRackId, tenantId);
+    // Move stock_summary to keep it as source of truth.
+    if (isEditing) {
+      if (oldProductId !== data.product_id) {
+        await moveStockBetweenRacks(trx, tenantId, oldWarehouseId || rack.warehouse_id, oldProductId, oldRackId, null, oldBoxes);
+        await moveStockBetweenRacks(trx, tenantId, rack.warehouse_id, data.product_id, null, data.rack_id, boxesInput);
+      } else if (oldRackId === data.rack_id) {
+        const diff = boxesInput - oldBoxes;
+        if (diff > 0) {
+          await moveStockBetweenRacks(trx, tenantId, rack.warehouse_id, data.product_id, null, data.rack_id, diff);
+        } else if (diff < 0) {
+          await moveStockBetweenRacks(trx, tenantId, rack.warehouse_id, data.product_id, data.rack_id, null, -diff);
+        }
+      } else {
+        await moveStockBetweenRacks(trx, tenantId, oldWarehouseId || rack.warehouse_id, data.product_id, oldRackId, null, oldBoxes);
+        await moveStockBetweenRacks(trx, tenantId, rack.warehouse_id, data.product_id, null, data.rack_id, boxesInput);
+      }
+    } else {
+      await moveStockBetweenRacks(trx, tenantId, rack.warehouse_id, data.product_id, null, data.rack_id, boxesInput);
     }
-  } else {
-    // ALLOCATION MODE: Incremental addition
-    if (rack.capacity_boxes !== null && (Number(rack.occupied_boxes) || 0) + boxesInput > rack.capacity_boxes) {
-      const avail = rack.capacity_boxes - (Number(rack.occupied_boxes) || 0);
-      throw new Error(`Rack capacity exceeded. Only ${avail} boxes available.`);
+
+    // Derive product_racks from stock_summary for all touched racks.
+    if (isEditing && oldRackId && oldRackId !== data.rack_id) {
+      await syncRackProductInventory(trx, { tenantId, rackId: oldRackId, productId: oldProductId });
     }
+    if (isEditing && oldProductId !== data.product_id && oldRackId === data.rack_id) {
+      await syncRackProductInventory(trx, { tenantId, rackId: data.rack_id, productId: oldProductId });
+    }
+    await syncRackProductInventory(trx, { tenantId, rackId: data.rack_id, productId: data.product_id });
 
-    const sql = `
-      INSERT INTO product_racks (id, tenant_id, product_id, rack_id, boxes_stored)
-      VALUES (?, ?, ?, ?, ?)
-      ON DUPLICATE KEY UPDATE boxes_stored = VALUES(boxes_stored)
-    `;
-    await query(sql, [uuidv4(), tenantId, data.product_id, data.rack_id, boxesInput]);
-
-    // Sync rack
-    await syncRackOccupancy(data.rack_id, tenantId);
+    await trx.commit();
+    return { success: true };
+  } catch (err) {
+    await trx.rollback();
+    throw err;
+  } finally {
+    trx.release();
   }
-
-  return { success: true };
 };
 
 const syncRackOccupancy = async (rackId, tenantId) => {

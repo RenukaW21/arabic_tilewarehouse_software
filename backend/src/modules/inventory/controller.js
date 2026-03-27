@@ -68,11 +68,21 @@ const deleteStock = async (req, res, next) => {
   }
 };
 
+const assignToRack = async (req, res, next) => {
+  try {
+    const data = await service.assignToRack(req.tenantId, req.user.id, req.body);
+    return success(res, data, 'Stock assigned to rack');
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   listStock,
   getStockById,
   createOpeningStock,
   adjustStock,
+  assignToRack,
   deleteStock,
   validate,
 };

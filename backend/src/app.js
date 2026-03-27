@@ -217,6 +217,75 @@ app.use(`${API}/alerts`, buildCrudRouter('low_stock_alerts', ['alerted_at']));
 app.use(`${API}/notifications`, buildCrudRouter('notifications', ['created_at']));
 app.use(`${API}/audit-logs`, buildCrudRouter('audit_logs', ['created_at']));
 
+// ─── Debug Stock Endpoint ─────────────────────────────────────────────────────
+// GET /api/v1/debug/stock?product_id=X[&warehouse_id=Y]
+// Returns total / reserved / available / per-bin / recent-ledger for a product.
+app.get(`${API}/debug/stock`, require('./middlewares/auth.middleware').authenticate, async (req, res) => {
+  const { query: dbQuery } = require('./config/db');
+  const { success: okResp } = require('./utils/response');
+  const tenantId = req.tenantId;
+  const productId = req.query.product_id;
+  if (!productId) {
+    return res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: 'product_id is required' } });
+  }
+  const conditions = ['ss.tenant_id = ?', 'ss.product_id = ?'];
+  const params = [tenantId, productId];
+  if (req.query.warehouse_id) { conditions.push('ss.warehouse_id = ?'); params.push(req.query.warehouse_id); }
+
+  const [bins, reservations, ledger] = await Promise.all([
+    dbQuery(
+      `SELECT ss.warehouse_id, ss.rack_id, ss.shade_id, ss.batch_id,
+              ss.total_boxes, ss.total_pieces, ss.total_sqft,
+              COALESCE(res.reserved_boxes, 0) AS reserved_boxes,
+              GREATEST(0, ss.total_boxes - COALESCE(res.reserved_boxes, 0)) AS available_boxes,
+              w.name AS warehouse_name, r.name AS rack_name
+       FROM stock_summary ss
+       JOIN warehouses w ON ss.warehouse_id = w.id
+       LEFT JOIN racks r ON ss.rack_id = r.id
+       LEFT JOIN (
+         SELECT tenant_id, warehouse_id, product_id, shade_id, batch_id,
+                SUM(boxes_reserved) AS reserved_boxes
+         FROM stock_reservations
+         GROUP BY tenant_id, warehouse_id, product_id, shade_id, batch_id
+       ) res ON res.tenant_id = ss.tenant_id AND res.warehouse_id = ss.warehouse_id
+             AND res.product_id = ss.product_id
+             AND (res.shade_id <=> ss.shade_id) AND (res.batch_id <=> ss.batch_id)
+       WHERE ${conditions.join(' AND ')}
+       ORDER BY w.name, r.name`,
+      params
+    ),
+    dbQuery(
+      `SELECT sr.sales_order_id, so.so_number, sr.warehouse_id, sr.shade_id, sr.batch_id,
+              sr.boxes_reserved, sr.created_at
+       FROM stock_reservations sr
+       LEFT JOIN sales_orders so ON sr.sales_order_id = so.id
+       WHERE sr.tenant_id = ? AND sr.product_id = ?`,
+      [tenantId, productId]
+    ),
+    dbQuery(
+      `SELECT sl.transaction_type, sl.rack_id, sl.shade_id, sl.batch_id,
+              sl.boxes_in, sl.boxes_out, sl.balance_boxes,
+              sl.reference_type, sl.reference_id, sl.notes, sl.created_at
+       FROM stock_ledger sl
+       WHERE sl.tenant_id = ? AND sl.product_id = ?
+       ORDER BY sl.created_at DESC LIMIT 20`,
+      [tenantId, productId]
+    ),
+  ]);
+
+  const total_boxes    = bins.reduce((s, r) => s + parseFloat(r.total_boxes    || 0), 0);
+  const reserved_boxes = bins.reduce((s, r) => s + parseFloat(r.reserved_boxes || 0), 0);
+  const available_boxes = bins.reduce((s, r) => s + parseFloat(r.available_boxes || 0), 0);
+
+  return okResp(res, {
+    product_id: productId,
+    summary: { total_boxes, reserved_boxes, available_boxes },
+    bins,
+    active_reservations: reservations,
+    recent_ledger: ledger,
+  }, 'Stock debug info');
+});
+
 // ─── Error Handling ───────────────────────────────────────────────────────────
 app.use(notFoundHandler);
 app.use(errorHandler);

@@ -150,7 +150,19 @@
     "rejected": "مرفوض",
     "inProgress": "قيد التنفيذ",
     "inspected": "تم الفحص",
-    "completed": "مكتمل"
+    "completed": "مكتمل",
+    "notes": "ملاحظات",
+    "shade": "الظل",
+    "taxGst": "الضريبة (القيمة المضافة)",
+    "discountPct": "% الخصم",
+    "referenceHash": "رقم مرجعي",
+    "placeholderNotes": "أضف ملاحظات...",
+    "loadFailed": "فشل التحميل",
+    "createFailed": "فشل الإنشاء",
+    "updateFailed": "فشل التحديث",
+    "deleteFailed": "فشل الحذف",
+    "approveFailed": "فشل الاعتماد",
+    "operationFailed": "فشلت العملية"
   },
   "deleteDialog": {
     "title": "حذف السجل",
@@ -429,7 +441,41 @@
     "selectOrType": "اختر أو اكتب جديداً...",
     "searchProduct": "البحث عن منتج...",
     "addNew": "إضافة \"{{name}}\"",
-    "noProductsFound": "لم يتم العثور على منتجات."
+    "noProductsFound": "لم يتم العثور على منتجات.",
+    "invoice": "رقم الفاتورة",
+    "invoiceHash": "# الفاتورة",
+    "grnHash": "# إشعار الاستلام",
+    "vehicleHash": "# المركبة",
+    "shade": "الظل",
+    "subTotal": "المجموع الفرعي",
+    "discPct": "% خصم",
+    "taxPct": "% الضريبة",
+    "lineTotal": "إجمالي البند",
+    "ordered": "مطلوب",
+    "received": "مستلم",
+    "receiptDate": "تاريخ الاستلام",
+    "linkedGRNs": "إشعارات الاستلام المرتبطة",
+    "noGRNsLinked": "لا توجد إشعارات استلام مرتبطة",
+    "noLineItems": "لا توجد بنود",
+    "fullyReceived": "مستلم بالكامل",
+    "partiallyReceived": "مستلم جزئياً",
+    "createGRN": "إنشاء إشعار استلام",
+    "createOneNow": "أنشئ واحداً الآن",
+    "markReceivedAutoGRN": "تحديد كمستلم (إشعار استلام تلقائي)",
+    "markingAsReceived": "جار التحديد كمستلم...",
+    "generatingGRN": "جار إنشاء إشعار الاستلام...",
+    "autoGrnWillBeGenerated": "سيتم إنشاء إشعار استلام تلقائياً",
+    "approveConfirm": "اعتماد أمر الشراء هذا؟",
+    "cancelPO": "إلغاء أمر الشراء",
+    "changeStatus": "تغيير الحالة",
+    "changeStatusTitle": "تغيير الحالة",
+    "currentStatus": "الحالة الحالية",
+    "newStatus": "الحالة الجديدة",
+    "updateStatus": "تحديث الحالة",
+    "editDateNotes": "تعديل التاريخ / الملاحظات",
+    "editable": "قابل للتعديل",
+    "clickQtyToEdit": "انقر على الكمية للتعديل",
+    "theWarehouse": "المستودع"
   },
   "grn": {
     "title": "إشعارات استلام البضائع",
@@ -602,7 +648,15 @@
     "searchPlaceholder": "بحث...",
     "loss":"الخسارة",
     "date":"التاريخ",
-    "actions":"إجراءات"
+    "actions":"إجراءات",
+    "created": "تم إنشاء قيد التلف",
+    "updated": "تم تحديث قيد التلف",
+    "deleted": "تم حذف قيد التلف",
+    "damageDate": "تاريخ التلف",
+    "damageReason": "سبب التلف",
+    "damagedBoxes": "الصناديق التالفة",
+    "damagedPieces": "القطع التالفة",
+    "estimatedLoss": "الخسارة المقدرة"
   },
   "stockCounts": {
     "title": "جرد المخزون",
@@ -783,7 +837,8 @@
     "deleteDesc": "يمكن حذف فواتير المسودة فقط. هل أنت متأكد؟",
     "editInvoice": "تعديل الفاتورة",
     "billingAddr": "عنوان الفواتير",
-    "shippingAddr": "عنوان الشحن"
+    "shippingAddr": "عنوان الشحن",
+    "gst": "ضريبة القيمة المضافة"
   },
   "invoices": {
     "title": "الفواتير",
@@ -829,7 +884,20 @@
     "placeholderOptional": "اختياري",
     "returnUpdated": "تم تحديث المرتجع",
     "returnCreated": "تم إنشاء المرتجع",
-    "returnDeleted": "تم حذف المرتجع"
+    "returnDeleted": "تم حذف المرتجع",
+    "searchPlaceholder": "ابحث برقم المرتجع أو العميل...",
+    "lineTotal": "إجمالي البند",
+    "deleteTitle": "حذف مرتجع المبيعات",
+    "deleteDesc": "يمكن حذف المرتجعات المسودة فقط. هل أنت متأكد؟",
+    "editTitle": "تعديل المرتجع (مسودة)",
+    "customerRequired": "العميل مطلوب",
+    "warehouseRequired": "المستودع مطلوب",
+    "reasonRequired": "سبب الإرجاع مطلوب",
+    "addAtLeastOneItem": "أضف عنصراً واحداً على الأقل بمنتج وكمية أكبر من صفر",
+    "created": "تم إنشاء مرتجع المبيعات",
+    "received": "تم استلام المرتجع؛ تم إنشاء إشعار دائن",
+    "deleted": "تم حذف مرتجع المبيعات",
+    "updated": "تم تحديث المرتجع"
   },
 
   "settings": {
@@ -1047,7 +1115,9 @@
     "placeholderFullName": "الاسم الكامل",
     "placeholderEmail": "user@example.com",
     "placeholderPassword": "6 أحرف على الأقل",
-    "placeholderNoWarehouse": "لم يُحدد مستودع"
+    "placeholderNoWarehouse": "لم يُحدد مستودع",
+    "emailLabel": "البريد الإلكتروني",
+    "searchPlaceholder": "ابحث عن مستخدمين..."
   },
   "productDetails": {
     "title": "تفاصيل المنتج",
@@ -1077,6 +1147,12 @@
     "boxes": "صناديق",
     "pieces": "قطع",
     "noStock": "لم يتم العثور على مخزون لهذا المنتج",
+    "viewing": "عرض التفاصيل الكاملة لـ",
+    "loading": "جار تحميل تفاصيل المنتج...",
+    "loadFailed": "فشل تحميل المنتج.",
+    "noRackLocations": "لا توجد مواقع رفوف مخصصة لهذا المنتج.",
+    "vendorsFrom": "الموردون (المشتراة منهم)",
+    "customersTo": "العملاء (المباعة لهم)",
     "productName": "اسم المنتج",
     "productCode": "رمز المنتج",
     "pcsPerBox": "قطعة/صندوق",
@@ -1181,7 +1257,14 @@
     "statusDraft": "مسودة",
     "statusIssued": "صادر",
     "statusAdjusted": "تم التسوية",
-    "statusCancelled": "ملغى"
+    "statusCancelled": "ملغى",
+    "addCreditNote": "إضافة إشعار دائن",
+    "creditNoteNumber": "رقم إشعار الدائن",
+    "creditDate": "تاريخ الإشعار",
+    "reason": "السبب",
+    "creditNoteUpdated": "تم تحديث إشعار الدائن",
+    "creditNoteCreated": "تم إنشاء إشعار الدائن",
+    "creditNoteDeleted": "تم حذف إشعار الدائن"
   },
   "debitNotes": {
     "title": "إشعارات المدين",
@@ -1205,7 +1288,14 @@
     "statusIssued": "صادر",
     "statusAcknowledged": "تم الإقرار",
     "statusSettled": "تمت التسوية",
-    "order": "الطلب"
+    "order": "الطلب",
+    "addDebitNote": "إضافة إشعار مدين",
+    "debitNoteNumber": "رقم إشعار المدين",
+    "debitDate": "تاريخ الإشعار",
+    "reason": "السبب",
+    "debitNoteUpdated": "تم تحديث إشعار المدين",
+    "debitNoteCreated": "تم إنشاء إشعار المدين",
+    "debitNoteDeleted": "تم حذف إشعار المدين"
   },
   "paymentsReceived": {
     "title": "المدفوعات المستلمة",
@@ -1223,7 +1313,15 @@
     "searchPlaceholder": "...ابحث في رقم الدفعة",
     "created": "تم إنشاء الدفعة",
     "updated": "تم تحديث الدفعة",
-    "deleted": "تم حذف الدفعة"
+    "deleted": "تم حذف الدفعة",
+    "addPayment": "إضافة دفعة",
+    "paymentNumber": "رقم الدفعة",
+    "paymentDate": "تاريخ الدفعة",
+    "reference": "المرجع",
+    "notes": "ملاحظات",
+    "paymentUpdated": "تم تحديث الدفعة",
+    "paymentCreated": "تم إنشاء الدفعة",
+    "paymentDeleted": "تم حذف الدفعة"
   },
   "paymentsMade": {
     "title": "المدفوعات الصادرة",
@@ -1242,7 +1340,15 @@
     "created": "تم إنشاء الدفعة",
     "updated": "تم تحديث الدفعة",
     "deleted": "تم حذف الدفعة",
-    "orderId": "رقم الطلب"
+    "orderId": "رقم الطلب",
+    "addPayment": "إضافة دفعة",
+    "paymentNumber": "رقم الدفعة",
+    "paymentDate": "تاريخ الدفعة",
+    "reference": "المرجع",
+    "notes": "ملاحظات",
+    "paymentUpdated": "تم تحديث الدفعة",
+    "paymentCreated": "تم إنشاء الدفعة",
+    "paymentDeleted": "تم حذف الدفعة"
   },
   "damageEntriesPage": {
     "title": "قيود التلف",
@@ -1339,7 +1445,8 @@
     "boxesSold": "تم بيع {{count}} صندوق",
     "top10Customers": "أفضل 10 عملاء حسب الإيرادات",
     "noCustomerData": "لا توجد بيانات عملاء",
-    "ordersCount": "{{count}} فواتير"
+    "ordersCount": "{{count}} فواتير",
+    "grandTotal": "الإجمالي الكلي"
   },
   "sampleData": {
     "acmeCorp": "شركة أكمي",

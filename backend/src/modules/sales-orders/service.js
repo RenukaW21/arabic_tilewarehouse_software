@@ -4,6 +4,10 @@ const { generateDocNumber } = require('../../utils/docNumber');
 const { parsePagination } = require('../../utils/pagination');
 const { v4: uuidv4 } = require('uuid');
 const { AppError } = require('../../middlewares/error.middleware');
+const {
+  deleteReservationsForSalesOrder,
+  replaceReservationsForSalesOrder,
+} = require('../../utils/stockReservation');
 
 const getAll = async (tenantId, queryParams) => {
   const { page, limit, offset, sortBy, sortOrder, search } = parsePagination(queryParams, ['order_date', 'created_at', 'so_number']);
@@ -186,11 +190,22 @@ const remove = async (id, tenantId) => {
   if (dispatched.length > 0) {
     throw new AppError('Cannot delete order: stock already dispatched', 400, 'DISPATCHED');
   }
-  await query(`UPDATE sales_orders SET status = 'cancelled', updated_at = NOW() WHERE id = ? AND tenant_id = ?`, [id, tenantId]);
+  const trx = await beginTransaction();
+  try {
+    await deleteReservationsForSalesOrder(trx, tenantId, id);
+    await trx.query(`UPDATE sales_orders SET status = 'cancelled', updated_at = NOW() WHERE id = ? AND tenant_id = ?`, [id, tenantId]);
+    await trx.commit();
+  } catch (err) {
+    await trx.rollback();
+    throw err;
+  } finally {
+    trx.release();
+  }
 };
 
 /**
- * Confirm SO → auto-creates a PickList
+ * Confirm SO → create pick list + soft-reserve stock.
+ * Does NOT reduce stock_summary (physical deduction is on DC dispatch only).
  */
 const confirmOrder = async (id, tenantId, userId) => {
   const so = await getById(id, tenantId);
@@ -215,6 +230,9 @@ const confirmOrder = async (id, tenantId, userId) => {
         [tenantId, pickId, item.id, item.product_id, item.shade_id, item.batch_id, item.ordered_boxes]
       );
     }
+
+    // Soft-reserve stock for this SO — does NOT touch stock_summary
+    await replaceReservationsForSalesOrder(trx, tenantId, id, so.warehouse_id, so.items);
 
     await trx.query(`UPDATE sales_orders SET status = 'pick_ready', updated_at = NOW() WHERE id = ? AND tenant_id = ?`, [id, tenantId]);
     await trx.commit();

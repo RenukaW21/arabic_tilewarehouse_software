@@ -46,7 +46,8 @@ const findAll = async (tenantId, queryParams) => {
 
 const findById = async (id, tenantId) => {
   const rows = await query(
-    `SELECT dc.*, so.so_number, so.warehouse_id,
+    `SELECT dc.*, so.so_number,
+            COALESCE(dc.warehouse_id, so.warehouse_id) AS warehouse_id,
             c.name AS customer_name
      FROM delivery_challans dc
      JOIN sales_orders so ON dc.sales_order_id = so.id AND so.tenant_id = dc.tenant_id
@@ -71,9 +72,9 @@ const create = async (trx, data) => {
   const id = data.id;
   await trx.query(
     `INSERT INTO delivery_challans
-       (id, tenant_id, dc_number, sales_order_id, pick_list_id, customer_id,
+       (id, tenant_id, dc_number, sales_order_id, pick_list_id, customer_id, warehouse_id,
         dispatch_date, vehicle_number, transporter_name, lr_number, status, created_by, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, NOW())`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, NOW())`,
     [
       id,
       data.tenant_id,
@@ -81,6 +82,7 @@ const create = async (trx, data) => {
       data.sales_order_id,
       data.pick_list_id,
       data.customer_id,
+      data.warehouse_id || null,
       data.dispatch_date || new Date(),
       data.vehicle_number || null,
       data.transporter_name || null,
@@ -94,15 +96,17 @@ const create = async (trx, data) => {
 const createItem = async (trx, data) => {
   await trx.query(
     `INSERT INTO delivery_challan_items
-       (id, tenant_id, delivery_challan_id, product_id, shade_id, batch_id,
+       (id, tenant_id, delivery_challan_id, sales_order_item_id, product_id, shade_id, batch_id, rack_id,
         dispatched_boxes, dispatched_pieces, dispatched_sqft, unit_price)
-     VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.tenant_id,
       data.delivery_challan_id,
+      data.sales_order_item_id || null,
       data.product_id,
       data.shade_id || null,
       data.batch_id || null,
+      data.rack_id || null,
       data.dispatched_boxes,
       data.dispatched_pieces || 0,
       data.dispatched_sqft || 0,
@@ -113,7 +117,7 @@ const createItem = async (trx, data) => {
 
 const setDispatched = async (executor, id, tenantId) => {
   await executor.query(
-    `UPDATE delivery_challans SET status = 'dispatched', created_at = created_at WHERE id = ? AND tenant_id = ?`,
+    `UPDATE delivery_challans SET status = 'dispatched', updated_at = NOW() WHERE id = ? AND tenant_id = ?`,
     [id, tenantId]
   );
 };

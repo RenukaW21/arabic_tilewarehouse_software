@@ -11,6 +11,8 @@ router.get('/stock', ctrl.listStock);
 router.get('/stock/:id', ctrl.getStockById);
 router.post('/opening-stock', requireMinRole('warehouse_manager'), ctrl.validate(openingStockSchema), ctrl.createOpeningStock);
 router.put('/adjust/:id', requireMinRole('warehouse_manager'), ctrl.validate(adjustStockSchema), ctrl.adjustStock);
+// Rack assignment: move unassigned GRN stock into a physical rack (Step 3 of inbound flow)
+router.post('/assign-rack', requireMinRole('warehouse_manager'), ctrl.assignToRack);
 router.delete('/stock/:id', ctrl.deleteStock);
 
 module.exports = router;

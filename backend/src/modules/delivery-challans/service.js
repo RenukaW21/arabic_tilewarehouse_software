@@ -4,19 +4,55 @@ const repo = require('./repository');
 const { query, beginTransaction } = require('../../config/db');
 const { generateDocNumber } = require('../../utils/docNumber');
 const { postStockMovement } = require('../../utils/stockHelper');
+const { releaseReservationForDispatchLine, deleteReservationsForSalesOrder } = require('../../utils/stockReservation');
+const invoiceService = require('../invoices/service');
 const { v4: uuidv4 } = require('uuid');
 const { AppError } = require('../../middlewares/error.middleware');
 
-const getAvailableStock = async (trx, tenantId, warehouseId, productId, shadeId, batchId) => {
-  const rows = await trx.query(
-    `SELECT COALESCE(SUM(total_boxes), 0) AS total_boxes
+const sumBoxes = (rows) =>
+  rows.reduce((s, r) => s + parseFloat(r.total_boxes || 0), 0);
+
+/**
+ * Lock stock_summary rows for dispatch. Prefer exact shade/batch match when enough
+ * qty exists; otherwise use any rows for this product in the warehouse (common when
+ * GRN stored NULL shade/batch but SO line has shade, or vice versa).
+ * Returns rows including shade_id/batch_id per bin for correct ledger/summary deduction.
+ */
+const fetchStockRowsForDispatch = async (
+  trx,
+  tenantId,
+  warehouseId,
+  productId,
+  shadeId,
+  batchId,
+  boxesNeeded
+) => {
+  const exactRows = await trx.query(
+    `SELECT id, rack_id, shade_id, batch_id, total_boxes
      FROM stock_summary
      WHERE tenant_id = ? AND warehouse_id = ? AND product_id = ?
-       AND (shade_id <=> ?) AND (batch_id <=> ?)`,
+       AND (shade_id <=> ?) AND (batch_id <=> ?)
+       AND total_boxes > 0
+     ORDER BY rack_id IS NULL ASC, total_boxes DESC
+     FOR UPDATE`,
     [tenantId, warehouseId, productId, shadeId || null, batchId || null]
   );
 
-  return parseFloat(rows[0]?.total_boxes) || 0;
+  if (sumBoxes(exactRows) >= boxesNeeded) {
+    return { rows: exactRows, match: 'exact' };
+  }
+
+  const whRows = await trx.query(
+    `SELECT id, rack_id, shade_id, batch_id, total_boxes
+     FROM stock_summary
+     WHERE tenant_id = ? AND warehouse_id = ? AND product_id = ?
+       AND total_boxes > 0
+     ORDER BY rack_id IS NULL ASC, total_boxes DESC
+     FOR UPDATE`,
+    [tenantId, warehouseId, productId]
+  );
+
+  return { rows: whRows, match: 'warehouse' };
 };
 
 const getAll = async (tenantId, queryParams) => repo.findAll(tenantId, queryParams);
@@ -166,28 +202,6 @@ const dispatch = async (id, tenantId, userId) => {
   const trx = await beginTransaction();
 
   try{
-    for (const item of dc.items) {
-      const boxesOut = parseFloat(item.dispatched_boxes) || 0;
-      if (boxesOut <= 0) continue;
-
-      const available = await getAvailableStock(
-        trx,
-        tenantId,
-        warehouseId,
-        item.product_id,
-        item.shade_id,
-        item.batch_id
-      );
-
-      if (boxesOut > available) {
-        throw new AppError(
-          `Insufficient stock: available ${available} boxes for product ${item.product_code || item.product_id}`,
-          400,
-          'INSUFFICIENT_STOCK'
-        );
-      }
-    }
-
     for(const item of dc.items){
 
       const boxesOut = parseFloat(item.dispatched_boxes) || 0;
@@ -197,21 +211,29 @@ const dispatch = async (id, tenantId, userId) => {
       const sqftPerBox = sqftMap.get(item.product_id) || 0;
 
       // ── RACK-AWARE STOCK DEDUCTION ────────────────────────────────────────
-      // Stock may be stored in specific rack rows (e.g. from GRN with rack allocation).
-      // Dispatching with rackId=null would fail if no stock exists at rack_id IS NULL.
-      // Fix: find ALL stock_summary rows for this product/warehouse/shade/batch,
-      // then drain them proportionally in order (non-null racks first, then null rack).
-      const stockRows = await trx.query(
-        `SELECT id, rack_id, total_boxes FROM stock_summary
-         WHERE tenant_id = ? AND warehouse_id = ? AND product_id = ?
-           AND (shade_id <=> ?) AND (batch_id <=> ?)
-           AND total_boxes > 0
-         ORDER BY rack_id IS NULL ASC, total_boxes DESC
-         FOR UPDATE`,
-        [tenantId, warehouseId, item.product_id, item.shade_id || null, item.batch_id || null]
+      // Prefer exact shade/batch; if GRN/picks used different keys than SO line,
+      // fall back to all bins for this product in the warehouse. Deduct using each
+      // row's shade_id/batch_id so stock_summary stays consistent.
+      const { rows: stockRows, match } = await fetchStockRowsForDispatch(
+        trx,
+        tenantId,
+        warehouseId,
+        item.product_id,
+        item.shade_id,
+        item.batch_id,
+        boxesOut
       );
 
-      // Drain racks in order
+      const totalAvail = sumBoxes(stockRows);
+      if (boxesOut > totalAvail) {
+        throw new AppError(
+          `Insufficient stock: need ${boxesOut} boxes, ${totalAvail} available in warehouse for product ${item.product_code || item.product_id}. ` +
+          `Check warehouse, shade/batch on the order line vs GRN stock (match=${match}).`,
+          400,
+          'INSUFFICIENT_STOCK'
+        );
+      }
+
       let remaining = boxesOut;
       for (const stockRow of stockRows) {
         if (remaining <= 0) break;
@@ -223,8 +245,8 @@ const dispatch = async (id, tenantId, userId) => {
           warehouseId,
           rackId: stockRow.rack_id || null,
           productId: item.product_id,
-          shadeId: item.shade_id || null,
-          batchId: item.batch_id || null,
+          shadeId: stockRow.shade_id != null ? stockRow.shade_id : null,
+          batchId: stockRow.batch_id != null ? stockRow.batch_id : null,
           transactionType: 'sale',
           referenceId: id,
           referenceType: 'delivery_challan',
@@ -248,29 +270,23 @@ const dispatch = async (id, tenantId, userId) => {
           'INSUFFICIENT_STOCK'
         );
       }
+
     }
+
+    // Release all remaining reservations for this SO (stock has been physically deducted)
+    await deleteReservationsForSalesOrder(trx, tenantId, dc.sales_order_id);
 
     await repo.setDispatched(trx, id, tenantId);
 
-    // BUG-3 FIX: Update sales_order status to 'dispatched'
+    // Update sales_order status to 'dispatched'
     await trx.query(
       `UPDATE sales_orders SET status = 'dispatched', updated_at = NOW() WHERE id = ? AND tenant_id = ?`,
       [dc.sales_order_id, tenantId]
     );
 
+    await invoiceService.createFromSalesOrderInTrx(trx, tenantId, userId, dc.sales_order_id);
+
     await trx.commit();
-
-    const invoiceService = require('../invoices/service');
-
-    try{
-      await invoiceService.createFromSalesOrder(
-        tenantId,
-        userId,
-        dc.sales_order_id
-      );
-    }catch(err){
-      console.error('Auto Invoice creation failed:',err.message);
-    }
 
     return getById(id,tenantId);
 

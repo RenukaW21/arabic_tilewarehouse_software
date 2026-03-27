@@ -1,5 +1,8 @@
 'use strict';
 
+const { AppError } = require('../middlewares/error.middleware');
+const logger = require('./logger');
+
 const syncRackProductInventory = async (trx, { tenantId, rackId, productId }) => {
   if (!rackId || !productId) return;
 
@@ -65,7 +68,7 @@ const postStockMovement = async (trx, {
   productId,
   shadeId = null,
   batchId = null,
-  transactionType,    // grn|sale|transfer_in|transfer_out|damage|adjustment|return|opening
+  transactionType,    // grn|sale|transfer_in|transfer_out|damage|adjustment|return|opening|rack_assignment
   referenceId = null,
   referenceType = null,
   boxesIn = 0,
@@ -77,34 +80,6 @@ const postStockMovement = async (trx, {
   notes = null,
   createdBy,
 }) => {
-  // CREATE REQUIRED TABLES
-  await trx.query(
-    `CREATE TABLE IF NOT EXISTS inventory (
-        id VARCHAR(36) PRIMARY KEY,
-        tenant_id VARCHAR(36) NOT NULL,
-        product_id VARCHAR(36) NOT NULL,
-        shade_id VARCHAR(36),
-        rack_id VARCHAR(36),
-        batch_id VARCHAR(36),
-        boxes DECIMAL(10,2) NOT NULL DEFAULT 0,
-        pieces DECIMAL(10,2) NOT NULL DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    )`
-  );
-
-  await trx.query(
-    `CREATE TABLE IF NOT EXISTS stock_movements (
-        id VARCHAR(36) PRIMARY KEY,
-        tenant_id VARCHAR(36) NOT NULL,
-        product_id VARCHAR(36) NOT NULL,
-        rack_id VARCHAR(36),
-        movement_type VARCHAR(50) NOT NULL,
-        quantity DECIMAL(10,2) NOT NULL DEFAULT 0,
-        reference_id VARCHAR(36),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`
-  );
   // 1 — Get current balance from stock_summary (lock row for update)
   const summary = await trx.query(
     `SELECT id, total_boxes, total_pieces, total_sqft, avg_cost_per_box
@@ -116,10 +91,23 @@ const postStockMovement = async (trx, {
   );
 
   const prev = summary[0] || { total_boxes: 0, total_pieces: 0, total_sqft: 0, avg_cost_per_box: 0 };
-  const balanceBoxes = parseFloat(prev.total_boxes) + boxesIn - boxesOut;
+  const prevBoxesNum = parseFloat(prev.total_boxes) || 0;
+
+  logger.debug(`[STOCK] ${transactionType} | product:${productId} rack:${rackId ?? 'none'} ` +
+    `batch:${batchId ?? 'none'} | before:${prevBoxesNum} in:${boxesIn} out:${boxesOut} ref:${referenceId}`);
+
+  // Safety: prevent any deduction that would make stock negative
+  if (boxesOut > 0 && prevBoxesNum + 1e-9 < boxesOut) {
+    throw new AppError(
+      `Insufficient stock in bin: need ${boxesOut} boxes, have ${prevBoxesNum} ` +
+      `(product:${productId} rack:${rackId ?? 'unassigned'} batch:${batchId ?? 'none'} type:${transactionType}).`,
+      400,
+      'INSUFFICIENT_STOCK'
+    );
+  }
+
+  const balanceBoxes = Math.max(0, prevBoxesNum + boxesIn - boxesOut);
   const balancePieces = parseFloat(prev.total_pieces) + piecesIn - piecesOut;
-  
-  // Allowed to go negative to ensure dispatch and invoice can proceed. Low stock alert will catch this.
   const sqftIn = boxesIn * sqftPerBox;
   const sqftOut = boxesOut * sqftPerBox;
   const totalSqft = parseFloat(prev.total_sqft || 0) + sqftIn - sqftOut;
@@ -208,6 +196,8 @@ const postStockMovement = async (trx, {
     await syncRackProductInventory(trx, { tenantId, rackId, productId });
   }
 
+  logger.debug(`[STOCK] ${transactionType} | product:${productId} rack:${rackId ?? 'none'} | after:${balanceBoxes}`);
+
   return { balanceBoxes, balancePieces };
 };
 
@@ -226,7 +216,7 @@ const checkLowStockAlert = async (trx, { tenantId, warehouseId, productId, shade
 
   if (balanceBoxes <= reorderLevel) {
     // 1. Upsert low stock alert
-    const [result] = await trx.query(
+    await trx.query(
       `INSERT INTO low_stock_alerts
          (id, tenant_id, warehouse_id, product_id, shade_id,
           current_stock_boxes, reorder_level_boxes, status, alerted_at)

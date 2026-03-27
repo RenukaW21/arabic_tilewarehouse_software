@@ -117,8 +117,32 @@ export default function InventoryStockPage() {
     { key: 'warehouse_name', label: t('stockSummary.warehouse'), render: (r: StockSummaryRow) => r.warehouse_name ?? '—' },
     {
       key: 'total_boxes',
-      label: t('stockSummary.boxes'),
-      render: (r: StockSummaryRow) => Number(r.total_boxes ?? 0).toLocaleString(),
+      label: 'Total (boxes)',
+      render: (r: StockSummaryRow) => (
+        <span className="font-medium">{Number(r.total_boxes ?? 0).toLocaleString()}</span>
+      ),
+    },
+    {
+      key: 'reserved_boxes',
+      label: 'Reserved',
+      render: (r: StockSummaryRow) => {
+        const v = Number(r.reserved_boxes ?? 0);
+        return v > 0
+          ? <span className="text-amber-600 font-medium">{v.toLocaleString()}</span>
+          : <span className="text-muted-foreground">0</span>;
+      },
+    },
+    {
+      key: 'available_boxes',
+      label: 'Available',
+      render: (r: StockSummaryRow) => {
+        const v = Number(r.available_boxes ?? 0);
+        return (
+          <span className={v <= 0 ? 'text-destructive font-semibold' : 'text-green-600 font-semibold'}>
+            {v.toLocaleString()}
+          </span>
+        );
+      },
     },
     {
       key: 'total_pieces',

@@ -3,9 +3,10 @@ const { query } = require('./src/config/db');
 require('dotenv').config();
 
 const TABLES = [
-  'tenants', 'users', 'warehouses', 'racks', 'vendors', 'customers', 'products', 
-  'shades', 'product_categories', 'batches', 'purchase_orders', 'grn', 
-  'sales_orders', 'invoices', 'customer_payments', 'vendor_payments', 'notifications'
+  'tenants', 'users', 'warehouses', 'racks', 'vendors', 'customers', 'products',
+  'shades', 'product_categories', 'batches', 'purchase_orders', 'grn',
+  'sales_orders', 'invoices', 'customer_payments', 'vendor_payments', 'notifications',
+  'gst_configurations', 'stock_summary', 'stock_ledger'
 ];
 
 async function migrate() {

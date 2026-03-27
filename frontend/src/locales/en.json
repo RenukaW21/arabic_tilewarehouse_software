@@ -150,7 +150,19 @@
     "rejected": "Rejected",
     "inProgress": "In Progress",
     "inspected": "Inspected",
-    "completed": "Completed"
+    "completed": "Completed",
+    "notes": "Notes",
+    "shade": "Shade",
+    "taxGst": "Tax (GST)",
+    "discountPct": "Discount %",
+    "referenceHash": "Ref #",
+    "placeholderNotes": "Add notes...",
+    "loadFailed": "Failed to load",
+    "createFailed": "Failed to create",
+    "updateFailed": "Failed to update",
+    "deleteFailed": "Failed to delete",
+    "approveFailed": "Failed to approve",
+    "operationFailed": "Operation failed"
   },
   "deleteDialog": {
     "title": "Delete Record",
@@ -429,7 +441,41 @@
     "selectOrType": "Select or type new...",
     "searchProduct": "Search product...",
     "addNew": "Add \"{{name}}\"",
-    "noProductsFound": "No products found."
+    "noProductsFound": "No products found.",
+    "invoice": "Invoice Number",
+    "invoiceHash": "Invoice #",
+    "grnHash": "GRN #",
+    "vehicleHash": "Vehicle #",
+    "shade": "Shade",
+    "subTotal": "Sub Total",
+    "discPct": "Disc %",
+    "taxPct": "Tax %",
+    "lineTotal": "Line Total",
+    "ordered": "Ordered",
+    "received": "Received",
+    "receiptDate": "Receipt Date",
+    "linkedGRNs": "Linked GRNs",
+    "noGRNsLinked": "No GRNs linked",
+    "noLineItems": "No line items",
+    "fullyReceived": "Fully Received",
+    "partiallyReceived": "Partially Received",
+    "createGRN": "Create GRN",
+    "createOneNow": "Create one now",
+    "markReceivedAutoGRN": "Mark as Received (auto GRN)",
+    "markingAsReceived": "Marking as received...",
+    "generatingGRN": "Generating GRN...",
+    "autoGrnWillBeGenerated": "A GRN will be auto-generated",
+    "approveConfirm": "Approve this purchase order?",
+    "cancelPO": "Cancel Purchase Order",
+    "changeStatus": "Change Status",
+    "changeStatusTitle": "Change Status",
+    "currentStatus": "Current Status",
+    "newStatus": "New Status",
+    "updateStatus": "Update Status",
+    "editDateNotes": "Edit Date / Notes",
+    "editable": "Editable",
+    "clickQtyToEdit": "Click quantity to edit",
+    "theWarehouse": "the warehouse"
   },
   "grn": {
     "title": "Goods Receipt Notes",
@@ -602,7 +648,15 @@
      "searchPlaceholder": "Search...",
      "loss":"Loss",
      "date":"Date",
-     "actions":"Actions"
+     "actions":"Actions",
+     "created": "Damage entry created",
+     "updated": "Damage entry updated",
+     "deleted": "Damage entry deleted",
+     "damageDate": "Damage Date",
+     "damageReason": "Damage Reason",
+     "damagedBoxes": "Damaged Boxes",
+     "damagedPieces": "Damaged Pieces",
+     "estimatedLoss": "Estimated Loss"
   },
   "stockCounts": {
     "title": "Stock Counts",
@@ -800,7 +854,8 @@
     "deleteDesc": "Only draft invoices can be deleted. Are you sure?",
     "editInvoice": "Edit invoice",
     "billingAddr": "Billing address",
-    "shippingAddr": "Shipping address"
+    "shippingAddr": "Shipping address",
+    "gst": "GST"
   },
   "salesReturns": {
     "title": "Sales Returns",
@@ -1174,7 +1229,9 @@
     "placeholderFullName": "Full name",
     "placeholderEmail": "user@example.com",
     "placeholderPassword": "Min 6 characters",
-    "placeholderNoWarehouse": "No warehouse assigned"
+    "placeholderNoWarehouse": "No warehouse assigned",
+    "emailLabel": "Email",
+    "searchPlaceholder": "Search users..."
   },
   "productDetails": {
     "title": "Product Details",
@@ -1350,7 +1407,8 @@
     "boxesSold": "{{count}} boxes sold",
     "top10Customers": "Top 10 Customers by Revenue",
     "noCustomerData": "No customer data available",
-    "ordersCount": "{{count}} invoices"
+    "ordersCount": "{{count}} invoices",
+    "grandTotal": "Grand Total"
   },
   "sampleData": {
     "acmeCorp": "Acme Corp",

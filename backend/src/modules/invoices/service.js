@@ -46,19 +46,20 @@ const getById = async (id, tenantId) => {
 };
 
 /**
- * Generate a GST invoice from a confirmed Sales Order.
- * Calculates CGST/SGST (intrastate) or IGST (interstate) based on state codes.
+ * Generate a GST invoice from a Sales Order using an existing transaction (e.g. after dispatch).
+ * Idempotent: returns existing invoice id if already present.
+ * @returns {{ invoiceId: string, inserted: boolean }}
  */
-const createFromSalesOrder = async (tenantId, userId, salesOrderId) => {
-  const existingInvoice = await query(
+const createFromSalesOrderInTrx = async (trx, tenantId, userId, salesOrderId) => {
+  const existingInvoice = await trx.query(
     `SELECT id FROM invoices WHERE sales_order_id = ? AND tenant_id = ? AND status != 'cancelled' LIMIT 1`,
     [salesOrderId, tenantId]
   );
   if (existingInvoice.length > 0) {
-    return getById(existingInvoice[0].id, tenantId);
+    return { invoiceId: existingInvoice[0].id, inserted: false };
   }
 
-  const soRows = await query(
+  const soRows = await trx.query(
     `SELECT so.*, c.gstin AS customer_gstin, c.state_code AS customer_state,
             c.billing_address, c.shipping_address, c.name AS customer_name
      FROM sales_orders so JOIN customers c ON so.customer_id = c.id
@@ -67,18 +68,18 @@ const createFromSalesOrder = async (tenantId, userId, salesOrderId) => {
   );
   if (!soRows.length) throw new AppError('Sales order not found', 404, 'NOT_FOUND');
   const so = soRows[0];
-  if (!['confirmed','pick_ready','dispatched'].includes(so.status)) {
+  if (!['confirmed', 'pick_ready', 'dispatched'].includes(so.status)) {
     throw new AppError('Invoice can only be created for confirmed/dispatched orders', 400, 'INVALID_STATUS');
   }
 
-  const soItems = await query(
+  const soItems = await trx.query(
     `SELECT soi.*, p.hsn_code, p.gst_rate FROM sales_order_items soi
      JOIN products p ON soi.product_id = p.id
      WHERE soi.sales_order_id = ? AND soi.tenant_id = ?`,
     [salesOrderId, tenantId]
   );
 
-  const gstConfig = await query(`SELECT * FROM gst_configurations WHERE tenant_id = ?`, [tenantId]);
+  const gstConfig = await trx.query(`SELECT * FROM gst_configurations WHERE tenant_id = ?`, [tenantId]);
   const companyStateCode = gstConfig[0]?.state_code || '27';
   const customerStateCode = so.customer_gstin?.substring(0, 2) || companyStateCode;
   const isInterstate = companyStateCode !== customerStateCode;
@@ -86,7 +87,7 @@ const createFromSalesOrder = async (tenantId, userId, salesOrderId) => {
   const invoiceNumber = await generateDocNumber(tenantId, 'INV', gstConfig[0]?.invoice_prefix || 'INV');
   const id = uuidv4();
 
-  let totalCgst = 0, totalSgst = 0, totalIgst = 0, subTotal = 0, grandTotal = 0;
+  let totalCgst = 0; let totalSgst = 0; let totalIgst = 0; let subTotal = 0; let grandTotal = 0;
   const lineItems = soItems.map((item) => {
     const taxableAmt = (item.ordered_boxes * item.unit_price) * (1 - (item.discount_pct || 0) / 100);
     const gstRate = parseFloat(item.gst_rate || 18);
@@ -104,36 +105,44 @@ const createFromSalesOrder = async (tenantId, userId, salesOrderId) => {
     return { ...item, taxableAmt, cgstPct, sgstPct, igstPct, cgstAmt, sgstAmt, igstAmt, lineTotal };
   });
 
+  await trx.query(
+    `INSERT INTO invoices
+       (id, tenant_id, invoice_number, sales_order_id, customer_id, invoice_date, due_date,
+        billing_address, shipping_address, sub_total, discount_amount, cgst_amount, sgst_amount,
+        igst_amount, grand_total, payment_status, status, created_by, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 30 DAY), ?, ?, ?, 0, ?, ?, ?, ?, 'pending', 'draft', ?, NOW(), NOW())`,
+    [id, tenantId, invoiceNumber, salesOrderId, so.customer_id,
+      so.billing_address || null, so.shipping_address || null,
+      subTotal, totalCgst, totalSgst, totalIgst, grandTotal, userId]
+  );
+
+  for (const item of lineItems) {
+    await trx.query(
+      `INSERT INTO invoice_items
+         (id, tenant_id, invoice_id, product_id, shade_id, hsn_code, quantity_boxes,
+          unit_price, discount_pct, taxable_amount, gst_rate, cgst_pct, sgst_pct, igst_pct,
+          cgst_amount, sgst_amount, igst_amount, line_total)
+       VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [tenantId, id, item.product_id, item.shade_id || null, item.hsn_code || null,
+        item.ordered_boxes, item.unit_price, item.discount_pct || 0,
+        item.taxableAmt, item.gst_rate || 18, item.cgstPct, item.sgstPct, item.igstPct,
+        item.cgstAmt, item.sgstAmt, item.igstAmt, item.lineTotal]
+    );
+  }
+
+  return { invoiceId: id, inserted: true };
+};
+
+/**
+ * Generate a GST invoice from a confirmed Sales Order.
+ * Calculates CGST/SGST (intrastate) or IGST (interstate) based on state codes.
+ */
+const createFromSalesOrder = async (tenantId, userId, salesOrderId) => {
   const trx = await beginTransaction();
   try {
-    await trx.query(
-      `INSERT INTO invoices
-         (id, tenant_id, invoice_number, sales_order_id, customer_id, invoice_date, due_date,
-          billing_address, shipping_address, sub_total, discount_amount, cgst_amount, sgst_amount,
-          igst_amount, grand_total, payment_status, status, created_by, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 30 DAY), ?, ?, ?, 0, ?, ?, ?, ?, 'pending', 'draft', ?, NOW(), NOW())`,
-      [id, tenantId, invoiceNumber, salesOrderId, so.customer_id,
-       so.billing_address || null, so.shipping_address || null,
-       subTotal, totalCgst, totalSgst, totalIgst, grandTotal, userId]
-    );
-
-    for (const item of lineItems) {
-      await trx.query(
-        `INSERT INTO invoice_items
-           (id, tenant_id, invoice_id, product_id, shade_id, hsn_code, quantity_boxes,
-            unit_price, discount_pct, taxable_amount, gst_rate, cgst_pct, sgst_pct, igst_pct,
-            cgst_amount, sgst_amount, igst_amount, line_total)
-         VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [tenantId, id, item.product_id, item.shade_id || null, item.hsn_code || null,
-         item.ordered_boxes, item.unit_price, item.discount_pct || 0,
-         item.taxableAmt, item.gst_rate || 18, item.cgstPct, item.sgstPct, item.igstPct,
-         item.cgstAmt, item.sgstAmt, item.igstAmt, item.lineTotal]
-      );
-    }
-
-
+    const { invoiceId } = await createFromSalesOrderInTrx(trx, tenantId, userId, salesOrderId);
     await trx.commit();
-    return getById(id, tenantId);
+    return getById(invoiceId, tenantId);
   } catch (err) {
     await trx.rollback();
     throw err;
@@ -224,4 +233,13 @@ const remove = async (id, tenantId) => {
   await query('DELETE FROM invoices WHERE id = ? AND tenant_id = ?', [id, tenantId]);
 };
 
-module.exports = { getAll, getById, createFromSalesOrder, issueInvoice, updatePaymentStatus, update, remove };
+module.exports = {
+  getAll,
+  getById,
+  createFromSalesOrder,
+  createFromSalesOrderInTrx,
+  issueInvoice,
+  updatePaymentStatus,
+  update,
+  remove,
+};
