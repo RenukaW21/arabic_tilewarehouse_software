@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
+import type { StockTransfer } from '@/types/stock.types';
 
 export interface InvoiceData {
   invoice_number: string;
@@ -105,4 +106,94 @@ export const generateInvoicePDF = (data: InvoiceData) => {
   doc.text('Notes: This is a computer generated invoice and does not require a physical signature.', 14, finalY);
 
   doc.save(`${data.invoice_number}.pdf`);
+};
+
+// ─── Stock Transfer Challan ───────────────────────────────────────────────────
+
+export const generateTransferChallanPDF = ({
+  transfer,
+  fromWarehouseName,
+  toWarehouseName,
+}: {
+  transfer: StockTransfer;
+  fromWarehouseName: string;
+  toWarehouseName: string;
+}) => {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  // Header
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text('STOCK TRANSFER CHALLAN', pageWidth / 2, 18, { align: 'center' });
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Transfer No: ${transfer.transfer_number}`, 14, 30);
+  doc.text(
+    `Date: ${format(new Date(transfer.transfer_date), 'dd-MMM-yyyy')}`,
+    pageWidth - 14,
+    30,
+    { align: 'right' }
+  );
+  doc.text(`Status: ${transfer.status.replace('_', ' ').toUpperCase()}`, pageWidth - 14, 36, {
+    align: 'right',
+  });
+
+  doc.setLineWidth(0.4);
+  doc.line(14, 40, pageWidth - 14, 40);
+
+  // From / To warehouses
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text('From Warehouse:', 14, 50);
+  doc.text('To Warehouse:', pageWidth / 2 + 7, 50);
+
+  doc.setFont('helvetica', 'normal');
+  doc.text(fromWarehouseName, 14, 56);
+  doc.text(toWarehouseName, pageWidth / 2 + 7, 56);
+
+  if (transfer.vehicle_number) {
+    doc.text(`Vehicle No: ${transfer.vehicle_number}`, 14, 63);
+  }
+
+  // Items table
+  autoTable(doc, {
+    startY: transfer.vehicle_number ? 70 : 65,
+    head: [['#', 'Product Name', 'SKU / Code', 'Transferred (Boxes)', 'Received (Boxes)']],
+    body: (transfer.items ?? []).map((item, idx) => [
+      idx + 1,
+      item.product_name ?? item.product_id,
+      item.product_code ?? '—',
+      item.transferred_boxes,
+      transfer.status === 'received' ? (item.received_boxes ?? 0) : '—',
+    ]),
+    theme: 'striped',
+    headStyles: { fillColor: [30, 100, 180], textColor: 255 },
+    columnStyles: {
+      0: { cellWidth: 10 },
+      3: { halign: 'right' },
+      4: { halign: 'right' },
+    },
+  });
+
+  // Footer
+  const finalY = (doc as any).lastAutoTable.finalY + 10;
+  if (transfer.notes) {
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Notes:', 14, finalY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(transfer.notes, 14, finalY + 5, { maxWidth: pageWidth - 28 });
+  }
+
+  doc.setFontSize(8);
+  doc.setTextColor(150);
+  const signY = doc.internal.pageSize.getHeight() - 20;
+  doc.line(14, signY, 70, signY);
+  doc.line(pageWidth - 70, signY, pageWidth - 14, signY);
+  doc.text('Dispatched By', 14, signY + 5);
+  doc.text('Received By', pageWidth - 70, signY + 5);
+
+  doc.save(`${transfer.transfer_number}.pdf`);
 };

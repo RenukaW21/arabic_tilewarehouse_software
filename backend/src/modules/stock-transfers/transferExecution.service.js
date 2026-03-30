@@ -1,38 +1,52 @@
 'use strict';
 
 /**
- * Transfer execution — transaction-safe stock move.
- * Stock is NEVER directly edited; only postStockMovement (ledger + summary) is used.
- * Ledger entries are immutable (no delete).
+ * Two-step transfer execution.
+ *
+ * confirmTransfer  — Draft → In Transit
+ *   Immediately deducts stock from from_warehouse (TRANSFER_OUT).
+ *   Multi-bin spread when no from_rack_id specified (unracked bins first, then
+ *   descending stock).  Marks emptied racks as vacant (rack_status = 'ACTIVE').
+ *
+ * receiveTransfer  — In Transit → Received
+ *   Adds stock to to_warehouse (TRANSFER_IN).  Preserves avg_cost from source
+ *   by passing unitPrice: null (stockHelper keeps the existing avg).
+ *
+ * Rules:
+ *   - Stock is NEVER edited directly; only postStockMovement (ledger + summary).
+ *   - Ledger entries are immutable (no delete).
+ *   - Both functions are fully transactional.
  */
-const { beginTransaction } = require('../../config/db');
+
+const { beginTransaction, query } = require('../../config/db');
 const { postStockMovement } = require('../../utils/stockHelper');
 const { AppError } = require('../../middlewares/error.middleware');
 
-/**
- * Execute (dispatch) a stock transfer: move stock from from_warehouse to to_warehouse.
- * - TRANSFER_OUT at source warehouse
- * - TRANSFER_IN at destination warehouse
- * - Transfer status → in_transit
- * Rollback on any failure.
- *
- * @param {string} transferId - stock_transfers.id
- * @param {string} tenantId - from JWT
- * @param {string} userId - from JWT (created_by for ledger)
- */
-const executeTransfer = async (transferId, tenantId, userId) => {
-  const { query } = require('../../config/db');
+// ─── helpers ──────────────────────────────────────────────────────────────────
 
-  const transfers = await query(
+/** After a TRANSFER_OUT drains a rack to 0 occupied_boxes → mark it vacant. */
+const markRackIfEmpty = async (trx, tenantId, rackId) => {
+  if (!rackId) return;
+  await trx.query(
+    `UPDATE racks
+     SET rack_status = CASE WHEN occupied_boxes = 0 THEN 'ACTIVE' ELSE rack_status END,
+         updated_at  = NOW()
+     WHERE id = ? AND tenant_id = ?`,
+    [rackId, tenantId]
+  );
+};
+
+/**
+ * Fetch transfer + items in one place so both confirm and receive share logic.
+ * Returns { transfer, items }.
+ */
+const loadTransfer = async (transferId, tenantId) => {
+  const rows = await query(
     `SELECT id, from_warehouse_id, to_warehouse_id, status, transfer_number
      FROM stock_transfers WHERE id = ? AND tenant_id = ?`,
     [transferId, tenantId]
   );
-  if (!transfers.length) throw new AppError('Transfer not found', 404, 'NOT_FOUND');
-  const transfer = transfers[0];
-  if (transfer.status !== 'draft') {
-    throw new AppError(`Transfer cannot be executed in status: ${transfer.status}`, 400, 'INVALID_STATUS');
-  }
+  if (!rows.length) throw new AppError('Stock transfer not found.', 404, 'NOT_FOUND');
 
   const items = await query(
     `SELECT sti.*, p.sqft_per_box
@@ -41,79 +55,161 @@ const executeTransfer = async (transferId, tenantId, userId) => {
      WHERE sti.transfer_id = ? AND sti.tenant_id = ?`,
     [transferId, tenantId]
   );
-  if (!items.length) throw new AppError('Transfer has no items', 400, 'NO_ITEMS');
+  if (!items.length) throw new AppError('Transfer has no items.', 400, 'NO_ITEMS');
 
-  const trx = await beginTransaction();
-  try {
-    for (const item of items) {
-      const boxes = parseFloat(item.transferred_boxes) || 0;
-      const pieces = parseFloat(item.transferred_pieces) || 0;
-      const sqftPerBox = parseFloat(item.sqft_per_box) || 0;
-      if (boxes <= 0) continue;
+  return { transfer: rows[0], items };
+};
 
-      const fromWh = transfer.from_warehouse_id;
-      const toWh = transfer.to_warehouse_id;
-      const notes = `Transfer: ${transfer.transfer_number}`;
+/**
+ * Deduct one transfer-item's boxes from the source warehouse inside `trx`.
+ *
+ * When item.from_rack_id is set  → single-bin deduction from that exact bin.
+ * When item.from_rack_id is null → multi-bin spread: unracked bins first,
+ *   then bins by descending available stock, until the quantity is fulfilled.
+ *
+ * Calls markRackIfEmpty after each bin that was touched.
+ */
+const deductFromSource = async (trx, { tenantId, fromWh, item, transferId, transferNumber, sqftPerBox, userId }) => {
+  const boxes  = parseFloat(item.transferred_boxes)  || 0;
+  const pieces = parseFloat(item.transferred_pieces) || 0;
+  if (boxes <= 0) return;
 
-      // 1) Check source has enough stock (lock row)
-      const [sourceSummary] = await trx.query(
-        `SELECT id, total_boxes, avg_cost_per_box FROM stock_summary
-         WHERE tenant_id = ? AND warehouse_id = ? AND product_id = ?
-           AND (shade_id <=> ?) AND (batch_id <=> ?) AND (rack_id <=> ?)
-         FOR UPDATE`,
-        [tenantId, fromWh, item.product_id, item.shade_id || null, item.batch_id || null, item.from_rack_id || null]
+  const notes = `Transfer: ${transferNumber}`;
+
+  if (item.from_rack_id) {
+    // ── single-bin path ──────────────────────────────────────────────────────
+    const [bin] = await trx.query(
+      `SELECT id, total_boxes, avg_cost_per_box FROM stock_summary
+       WHERE tenant_id = ? AND warehouse_id = ? AND product_id = ?
+         AND (shade_id <=> ?) AND (batch_id <=> ?) AND (rack_id <=> ?)
+       FOR UPDATE`,
+      [tenantId, fromWh, item.product_id,
+       item.shade_id || null, item.batch_id || null, item.from_rack_id]
+    );
+
+    if (!bin || parseFloat(bin.total_boxes) < boxes) {
+      const available = bin ? parseFloat(bin.total_boxes) : 0;
+      throw new AppError(
+        `Insufficient stock for product ${item.product_id} in rack ${item.from_rack_id}: ` +
+        `need ${boxes}, available ${available}.`,
+        400, 'INSUFFICIENT_STOCK'
       );
-      if (!sourceSummary || parseFloat(sourceSummary.total_boxes) < boxes) {
-        await trx.rollback();
-        trx.release();
-        throw new AppError(
-          `Insufficient stock for product in source warehouse (transfer ${transfer.transfer_number})`,
-          400,
-          'INSUFFICIENT_STOCK'
-        );
-      }
-      const unitPriceForReceive = parseFloat(sourceSummary.avg_cost_per_box) || null;
+    }
 
-      // 2) TRANSFER_OUT at source
+    await postStockMovement(trx, {
+      tenantId,
+      warehouseId: fromWh,
+      rackId: item.from_rack_id,
+      productId: item.product_id,
+      shadeId: item.shade_id || null,
+      batchId: item.batch_id || null,
+      transactionType: 'transfer_out',
+      referenceId: transferId,
+      referenceType: 'stock_transfer',
+      boxesOut: boxes,
+      piecesOut: pieces,
+      sqftPerBox,
+      notes,
+      createdBy: userId,
+    });
+
+    await markRackIfEmpty(trx, tenantId, item.from_rack_id);
+
+  } else {
+    // ── multi-bin path ───────────────────────────────────────────────────────
+    // Unracked bins first (rack_id IS NULL = 0 sorts before 1), then desc stock.
+    const bins = await trx.query(
+      `SELECT id, rack_id, total_boxes, avg_cost_per_box FROM stock_summary
+       WHERE tenant_id = ? AND warehouse_id = ? AND product_id = ?
+         AND (shade_id <=> ?) AND (batch_id <=> ?) AND total_boxes > 0
+       ORDER BY (rack_id IS NOT NULL), total_boxes DESC
+       FOR UPDATE`,
+      [tenantId, fromWh, item.product_id,
+       item.shade_id || null, item.batch_id || null]
+    );
+
+    // Pre-flight: ensure aggregate stock covers the request
+    const totalAvail = bins.reduce((s, b) => s + parseFloat(b.total_boxes), 0);
+    if (totalAvail < boxes) {
+      throw new AppError(
+        `Insufficient stock for product ${item.product_id}: ` +
+        `need ${boxes} boxes, only ${totalAvail} available across all bins in source warehouse.`,
+        400, 'INSUFFICIENT_STOCK',
+        'Verify stock levels in the source warehouse before confirming this transfer.'
+      );
+    }
+
+    let remaining       = boxes;
+    let remainingPieces = pieces;
+
+    for (const bin of bins) {
+      if (remaining <= 0) break;
+      const binStock  = parseFloat(bin.total_boxes);
+      const take      = Math.min(remaining, binStock);
+      const takePieces = remaining > 0
+        ? Math.round(remainingPieces * (take / remaining))
+        : 0;
+
       await postStockMovement(trx, {
         tenantId,
         warehouseId: fromWh,
-        rackId: item.from_rack_id || null,
+        rackId: bin.rack_id || null,
         productId: item.product_id,
         shadeId: item.shade_id || null,
         batchId: item.batch_id || null,
         transactionType: 'transfer_out',
         referenceId: transferId,
         referenceType: 'stock_transfer',
-        boxesOut: boxes,
-        piecesOut: pieces,
+        boxesOut: take,
+        piecesOut: takePieces,
         sqftPerBox,
         notes,
         createdBy: userId,
       });
 
-      // 3) TRANSFER_IN at destination (preserve cost)
-      await postStockMovement(trx, {
+      if (bin.rack_id) await markRackIfEmpty(trx, tenantId, bin.rack_id);
+
+      remaining       -= take;
+      remainingPieces -= takePieces;
+    }
+  }
+};
+
+// ─── public functions ──────────────────────────────────────────────────────────
+
+/**
+ * Confirm a draft transfer → In Transit.
+ * Deducts stock from from_warehouse immediately.
+ */
+const confirmTransfer = async (transferId, tenantId, userId) => {
+  const { transfer, items } = await loadTransfer(transferId, tenantId);
+
+  if (transfer.status !== 'draft') {
+    throw new AppError(
+      `Transfer cannot be confirmed — current status is "${transfer.status}".`,
+      400, 'INVALID_STATUS',
+      'Only draft transfers can be confirmed.'
+    );
+  }
+
+  const trx = await beginTransaction();
+  try {
+    for (const item of items) {
+      const sqftPerBox = parseFloat(item.sqft_per_box) || 0;
+      await deductFromSource(trx, {
         tenantId,
-        warehouseId: toWh,
-        rackId: item.to_rack_id || null,
-        productId: item.product_id,
-        shadeId: item.shade_id || null,
-        batchId: item.batch_id || null,
-        transactionType: 'transfer_in',
-        referenceId: transferId,
-        referenceType: 'stock_transfer',
-        boxesIn: boxes,
-        piecesIn: pieces,
+        fromWh: transfer.from_warehouse_id,
+        item,
+        transferId,
+        transferNumber: transfer.transfer_number,
         sqftPerBox,
-        unitPrice: unitPriceForReceive,
-        notes,
-        createdBy: userId,
+        userId,
       });
     }
 
     await trx.query(
-      `UPDATE stock_transfers SET status = 'in_transit', updated_at = NOW() WHERE id = ? AND tenant_id = ?`,
+      `UPDATE stock_transfers SET status = 'in_transit'
+       WHERE id = ? AND tenant_id = ?`,
       [transferId, tenantId]
     );
 
@@ -125,14 +221,84 @@ const executeTransfer = async (transferId, tenantId, userId) => {
     trx.release();
   }
 
-  return query(
+  const [updated] = await query(
     `SELECT st.*, fw.name AS from_warehouse_name, tw.name AS to_warehouse_name
      FROM stock_transfers st
-     JOIN warehouses fw ON fw.id = st.from_warehouse_id AND fw.tenant_id = st.tenant_id
-     JOIN warehouses tw ON tw.id = st.to_warehouse_id AND tw.tenant_id = st.tenant_id
+     LEFT JOIN warehouses fw ON fw.id = st.from_warehouse_id AND fw.tenant_id = st.tenant_id
+     LEFT JOIN warehouses tw ON tw.id = st.to_warehouse_id AND tw.tenant_id = st.tenant_id
      WHERE st.id = ? AND st.tenant_id = ?`,
     [transferId, tenantId]
-  ).then((rows) => rows[0]);
+  );
+  return updated;
 };
 
-module.exports = { executeTransfer };
+/**
+ * Receive an in-transit transfer → Received.
+ * Adds stock to to_warehouse.  avg_cost is preserved (unitPrice: null).
+ */
+const receiveTransfer = async (transferId, tenantId, userId, notes = null) => {
+  const { transfer, items } = await loadTransfer(transferId, tenantId);
+
+  if (transfer.status !== 'in_transit') {
+    throw new AppError(
+      `Transfer cannot be received — current status is "${transfer.status}".`,
+      400, 'INVALID_STATUS',
+      'Only in-transit transfers can be marked as received.'
+    );
+  }
+
+  const trx = await beginTransaction();
+  try {
+    for (const item of items) {
+      const boxes      = parseFloat(item.transferred_boxes)  || 0;
+      const pieces     = parseFloat(item.transferred_pieces) || 0;
+      const sqftPerBox = parseFloat(item.sqft_per_box)       || 0;
+      if (boxes <= 0) continue;
+
+      await postStockMovement(trx, {
+        tenantId,
+        warehouseId: transfer.to_warehouse_id,
+        rackId: item.to_rack_id || null,
+        productId: item.product_id,
+        shadeId: item.shade_id || null,
+        batchId: item.batch_id || null,
+        transactionType: 'transfer_in',
+        referenceId: transferId,
+        referenceType: 'stock_transfer',
+        boxesIn: boxes,
+        piecesIn: pieces,
+        sqftPerBox,
+        unitPrice: null,   // preserves existing avg_cost at destination
+        notes: `Transfer: ${transfer.transfer_number}`,
+        createdBy: userId,
+      });
+    }
+
+    const notesPart = notes !== null ? ', notes = ?' : '';
+    const notesArg  = notes !== null ? [notes] : [];
+    await trx.query(
+      `UPDATE stock_transfers SET status = 'received', received_date = CURDATE()${notesPart}
+       WHERE id = ? AND tenant_id = ?`,
+      [...notesArg, transferId, tenantId]
+    );
+
+    await trx.commit();
+  } catch (err) {
+    await trx.rollback();
+    throw err;
+  } finally {
+    trx.release();
+  }
+
+  const [updated] = await query(
+    `SELECT st.*, fw.name AS from_warehouse_name, tw.name AS to_warehouse_name
+     FROM stock_transfers st
+     LEFT JOIN warehouses fw ON fw.id = st.from_warehouse_id AND fw.tenant_id = st.tenant_id
+     LEFT JOIN warehouses tw ON tw.id = st.to_warehouse_id AND tw.tenant_id = st.tenant_id
+     WHERE st.id = ? AND st.tenant_id = ?`,
+    [transferId, tenantId]
+  );
+  return updated;
+};
+
+module.exports = { confirmTransfer, receiveTransfer };

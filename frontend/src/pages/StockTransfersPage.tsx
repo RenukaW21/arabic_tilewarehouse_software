@@ -2,8 +2,11 @@ import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { stockTransferApi } from '@/api/stockTransferApi';
 import { warehouseApi } from '@/api/warehouseApi';
-import { productApi } from '@/api/productApi';
-import type { StockTransfer, StockTransferItem, CreateStockTransferDto } from '@/types/stock.types';
+import { inventoryApi } from '@/api/inventoryApi';
+
+// import type { StockTransfer, CreateStockTransferDto } from '@/types/stock.types';
+
+import type { StockTransfer, CreateStockTransferDto } from '@/types/stock.types';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTableShell } from '@/components/shared/DataTableShell';
 import { StatusBadge } from '@/components/shared/StatusBadge';
@@ -19,7 +22,8 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Pencil, Trash2, Plus } from 'lucide-react';
+import { Pencil, Trash2, Plus, Loader2, CheckCircle2, PackageCheck, Eye } from 'lucide-react';
+import { StockTransferViewModal } from '@/components/features/stock-transfers/StockTransferViewModal';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
@@ -36,12 +40,14 @@ export default function StockTransfersPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<StockTransfer | null>(null);
   const [deleting, setDeleting] = useState<StockTransfer | null>(null);
+  const [viewingId, setViewingId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [transferItems, setTransferItems] = useState<Array<{ product_id: string; transferred_boxes: number; transferred_pieces?: number }>>([
     { product_id: '', transferred_boxes: 1, transferred_pieces: 0 },
   ]);
+  // const [fetchingNumber, setFetchingNumber] = useState(false);
   const [formHeader, setFormHeader] = useState({
     transfer_number: '',
     from_warehouse_id: '',
@@ -71,11 +77,34 @@ export default function StockTransfersPage() {
   });
   const warehouses = warehousesData?.data ?? [];
 
-  const { data: productsData } = useQuery({
-    queryKey: ['products', { limit: 500 }],
-    queryFn: () => productApi.getAll({ limit: 500 }),
+  const { data: warehouseStockData, isFetching: stockFetching } = useQuery({
+    queryKey: ['inventory-stock', formHeader.from_warehouse_id],
+    queryFn: () =>
+      inventoryApi.getStockList({ warehouse_id: formHeader.from_warehouse_id, limit: 500 }),
+    enabled: !!formHeader.from_warehouse_id,
   });
-  const products = productsData?.data ?? [];
+
+  // Aggregate available_boxes per product across all rack/shade/batch bins
+  const productStockMap = new Map<string, { product_id: string; code: string; product_name: string; available_boxes: number }>();
+  for (const row of warehouseStockData?.data ?? []) {
+    const existing = productStockMap.get(row.product_id);
+    if (existing) {
+      existing.available_boxes += Number(row.available_boxes) || 0;
+    } else {
+      productStockMap.set(row.product_id, {
+        product_id: row.product_id,
+        code: row.code,
+        product_name: row.product_name,
+        available_boxes: Number(row.available_boxes) || 0,
+
+  
+  });
+  // const products = productsData?.data ?? [];
+
+   }
+  }
+  const productsWithStock = [...productStockMap.values()].filter((p) => p.available_boxes > 0);
+
 
   const { data, isLoading } = useQuery({
     queryKey: ['stock-transfers', listParams],
@@ -94,7 +123,8 @@ export default function StockTransfersPage() {
   );
 
   const warehouseOptions = warehouses.map((w) => ({ value: w.id, label: w.name }));
-  const productOptions = products.map((p) => ({ value: p.id, label: `${p.code} – ${p.name}` }));
+  const toWarehouseOptions = warehouseOptions.filter((w) => w.value !== formHeader.from_warehouse_id);
+  // const productOptions = products.map((p) => ({ value: p.id, label: `${p.code} – ${p.name}` }));
 
   const openCreate = () => {
     setEditing(null);
@@ -149,10 +179,23 @@ export default function StockTransfersPage() {
     setTransferItems((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // Validate each item against available stock before saving
+  const stockErrors: string[] = transferItems
+    .filter((i) => i.product_id)
+    .flatMap((i) => {
+      const avail = productStockMap.get(i.product_id)?.available_boxes ?? 0;
+      return i.transferred_boxes > avail
+        ? [`${productStockMap.get(i.product_id)?.code ?? i.product_id}: requested ${i.transferred_boxes}, available ${avail}`]
+        : [];
+    });
+
   const saveMutation = useMutation({
     mutationFn: async () => {
+      if (stockErrors.length > 0) {
+        throw new Error('Insufficient stock: ' + stockErrors.join('; '));
+      }
       const payload: CreateStockTransferDto = {
-        transfer_number: formHeader.transfer_number,
+
         from_warehouse_id: formHeader.from_warehouse_id,
         to_warehouse_id: formHeader.to_warehouse_id,
         status: formHeader.status,
@@ -178,11 +221,6 @@ export default function StockTransfersPage() {
       setEditing(null);
       toast.success(editing ? t('stockTransfers.transferUpdated') : t('stockTransfers.transferCreated'));
     },
-    onError: (e: { response?: { data?: { error?: { message?: string }; message?: string } } }) => {
-      const msg =
-        e?.response?.data?.error?.message ?? e?.response?.data?.message ?? 'Operation failed';
-      toast.error(msg);
-    },
   });
 
   const deleteMutation = useMutation({
@@ -192,10 +230,21 @@ export default function StockTransfersPage() {
       setDeleting(null);
       toast.success(t('stockTransfers.transferDeleted'));
     },
-    onError: (e: { response?: { data?: { error?: { message?: string }; message?: string } } }) => {
-      const msg =
-        e?.response?.data?.error?.message ?? e?.response?.data?.message ?? 'Delete failed';
-      toast.error(msg);
+  });
+
+  const confirmMutation = useMutation({
+    mutationFn: (id: string) => stockTransferApi.confirm(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['stock-transfers'] });
+      toast.success(t('stockTransfers.transferConfirmed'));
+    },
+  });
+
+  const receiveMutation = useMutation({
+    mutationFn: (id: string) => stockTransferApi.receive(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['stock-transfers'] });
+      toast.success(t('stockTransfers.transferReceived'));
     },
   });
 
@@ -228,22 +277,80 @@ export default function StockTransfersPage() {
       label: t('common.actions'),
       render: (r: StockTransfer) => (
         <div className="flex gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => openEdit(r)}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-destructive"
-            onClick={() => setDeleting(r)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          {r.status === 'draft' && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-green-600 hover:text-green-700"
+                title={t('stockTransfers.confirm')}
+                disabled={confirmMutation.isPending}
+                onClick={() => confirmMutation.mutate(r.id)}
+              >
+                {confirmMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4" />
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                title={t('common.edit')}
+                onClick={() => openEdit(r)}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-destructive"
+                title={t('common.delete')}
+                onClick={() => setDeleting(r)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+          {r.status === 'in_transit' && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-green-600 hover:text-green-700"
+                title={t('stockTransfers.markReceived')}
+                disabled={receiveMutation.isPending}
+                onClick={() => receiveMutation.mutate(r.id)}
+              >
+                {receiveMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <PackageCheck className="h-4 w-4" />
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-blue-600 hover:text-blue-700"
+                title={t('common.view')}
+                onClick={() => setViewingId(r.id)}
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+          {r.status === 'received' && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-blue-600 hover:text-blue-700"
+              title={t('common.view')}
+              onClick={() => setViewingId(r.id)}
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       ),
     },
@@ -280,11 +387,14 @@ export default function StockTransfersPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>{t('stockTransfers.transferNumber')}</Label>
-                <Input
-                  value={formHeader.transfer_number}
-                  onChange={(e) => setFormHeader((h) => ({ ...h, transfer_number: e.target.value }))}
+                
+                  <Input
+                    value={formHeader.transfer_number}
+                    readOnly
                   placeholder={t('stockTransfers.placeholderTransferNumber')}
+                  className="bg-muted text-muted-foreground"
                 />
+                    
               </div>
               <div className="space-y-2">
                 <Label>{t('stockTransfers.transferDate')}</Label>
@@ -318,7 +428,7 @@ export default function StockTransfersPage() {
                 >
                   <SelectTrigger><SelectValue placeholder={t('common.select')} /></SelectTrigger>
                   <SelectContent>
-                    {warehouseOptions.map((o) => (
+                    {toWarehouseOptions.map((o) => (
                       <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                     ))}
                   </SelectContent>
@@ -330,7 +440,12 @@ export default function StockTransfersPage() {
                 <Label>{t('common.status')}</Label>
                 <Select
                   value={formHeader.status}
-                  onValueChange={(v) => setFormHeader((h) => ({ ...h, status: v as 'draft' }))}
+  onValueChange={(v) =>
+                    setFormHeader((h) => ({
+                      ...h,
+                      status: v as typeof formHeader.status,
+                    }))
+                  }
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -376,30 +491,70 @@ export default function StockTransfersPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {transferItems.map((row, idx) => (
+                    {transferItems.map((row, idx) => {
+                      const availStock = row.product_id ? (productStockMap.get(row.product_id)?.available_boxes ?? 0) : null;
+                      const overStock = availStock !== null && row.transferred_boxes > availStock;
+                      return (
                       <tr key={idx} className="border-b">
                         <td className="px-4 py-2">
                           <Select
                             value={row.product_id}
-                            onValueChange={(v) => updateItem(idx, { product_id: v })}
+                            onValueChange={(v) => {
+                              const maxAvail = productStockMap.get(v)?.available_boxes ?? 0;
+                              updateItem(idx, {
+                                product_id: v,
+                                transferred_boxes: Math.min(row.transferred_boxes, maxAvail || row.transferred_boxes),
+                              });
+                            }}
+                             disabled={!formHeader.from_warehouse_id || stockFetching}
                           >
-                            <SelectTrigger className="h-9"><SelectValue placeholder={t('common.product')} /></SelectTrigger>
+                            <SelectTrigger className="h-9">
+                              <SelectValue placeholder={
+                                !formHeader.from_warehouse_id
+                                  ? t('stockTransfers.selectFromWarehouseFirst')
+                                  : stockFetching
+                                  ? t('common.loading')
+                                  : t('common.product')
+                              } />
+                            </SelectTrigger>
                             <SelectContent>
-                              {productOptions.map((o) => (
-                                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                              ))}
+                              {productsWithStock.length === 0 && !stockFetching ? (
+                                <div className="px-3 py-2 text-sm text-muted-foreground">
+                                  {t('stockTransfers.noStockInWarehouse')}
+                                </div>
+                              ) : (
+                                productsWithStock.map((p) => (
+                                  <SelectItem key={p.product_id} value={p.product_id}>
+                                    {p.code} – {p.product_name}
+                                    <span className="ml-2 text-muted-foreground">({p.available_boxes} {t('stockTransfers.boxes')})</span>
+                                  </SelectItem>
+                                ))
+                              )}
                             </SelectContent>
                           </Select>
                         </td>
                         <td className="px-4 py-2">
+                          <div className="space-y-0.5">
                           <Input
                             type="number"
                             min={0}
+                            max={availStock ?? undefined}
                             step={0.01}
-                            className="h-9 text-right"
+                            className={`h-9 text-right ${overStock ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                             value={row.transferred_boxes}
-                            onChange={(e) => updateItem(idx, { transferred_boxes: Number(e.target.value) || 0 })}
+                            onChange={(e) => {
+                              const val = Number(e.target.value) || 0;
+                              updateItem(idx, { transferred_boxes: val });
+                            }}
                           />
+                          {availStock !== null && (
+                            <p className={`text-[11px] text-right ${overStock ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+                              {overStock
+                                ? `Exceeds available (${availStock})`
+                                : `Max: ${availStock}`}
+                            </p>
+                          )}
+                          </div>
                         </td>
                         <td>
                           <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeItem(idx)}>
@@ -407,17 +562,23 @@ export default function StockTransfersPage() {
                           </Button>
                         </td>
                       </tr>
-                    ))}
+                    );
+                    })}
                   </tbody>
                 </table>
               </div>
             </div>
           </div>
+          {stockErrors.length > 0 && (
+            <p className="text-sm text-destructive px-1">
+              Insufficient stock: {stockErrors.join(' · ')}
+            </p>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => (setDialogOpen(false), setEditing(null))}>{t('common.cancel')}</Button>
             <Button
               onClick={() => saveMutation.mutate()}
-              disabled={!formHeader.transfer_number || !formHeader.from_warehouse_id || !formHeader.to_warehouse_id || !formHeader.transfer_date || saveMutation.isPending}
+              disabled={!formHeader.from_warehouse_id || !formHeader.to_warehouse_id || !formHeader.transfer_date || saveMutation.isPending || stockErrors.length > 0}
             >
               {saveMutation.isPending ? t('common.saving') : editing ? t('common.update') : t('common.create')}
             </Button>
@@ -430,6 +591,13 @@ export default function StockTransfersPage() {
         onClose={() => setDeleting(null)}
         onConfirm={() => deleting && deleteMutation.mutateAsync(deleting.id)}
         loading={deleteMutation.isPending}
+      />
+
+      <StockTransferViewModal
+        transferId={viewingId}
+        open={!!viewingId}
+        onClose={() => setViewingId(null)}
+        getWarehouseName={getWarehouseName}
       />
     </div>
   );

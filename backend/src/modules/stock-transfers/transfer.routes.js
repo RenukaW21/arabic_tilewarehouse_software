@@ -10,10 +10,13 @@ router.use(authenticate);
 
 router.post('/', transferController.createTransfer);
 router.get('/', transferController.getTransfers);
+router.get('/by-product/:productId', transferController.getTransfersByProduct);
 router.get('/:id', transferController.getTransferById);
 router.put('/:id', transferController.updateTransfer);
 router.delete('/:id', transferController.deleteTransfer);
-// Execute transfer (dispatch) — moves stock via ledger; transaction-safe
-router.post('/:id/execute', requireMinRole('warehouse_manager'), transferController.executeTransfer);
+
+// Two-step transfer lifecycle
+router.post('/:id/confirm', requireMinRole('warehouse_manager'), transferController.confirmTransfer);
+router.post('/:id/receive', requireMinRole('warehouse_manager'), transferController.receiveTransfer);
 
 module.exports = router;

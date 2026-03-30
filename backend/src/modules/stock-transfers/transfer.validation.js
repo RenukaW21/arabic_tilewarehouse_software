@@ -15,7 +15,6 @@ const transferItemSchema = Joi.object({
 });
 
 const createTransferSchema = Joi.object({
-  transfer_number: Joi.string().max(50).required(),
   from_warehouse_id: Joi.string().uuid().required(),
   to_warehouse_id: Joi.string().uuid().required(),
   status: Joi.string().valid(...statusEnum).default('draft'),

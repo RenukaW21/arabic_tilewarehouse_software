@@ -57,7 +57,6 @@ export default function StockCountsPage() {
       if (id) navigate(`/inventory/counts/${id}`);
       toast.success(t('stockCounts.created'));
     },
-    onError: (e: { response?: { data?: { error?: { message?: string } } } }) => toast.error(e?.response?.data?.error?.message ?? t('common.createFailed', 'فشل الإنشاء')),
   });
 
   const handleCreate = () => {
@@ -162,7 +161,6 @@ export function StockCountDetailPage() {
       qc.invalidateQueries({ queryKey: ['stock-counts', id] });
       toast.success(t('stockCounts.loadFromStock'));
     },
-    onError: (e: { response?: { data?: { error?: { message?: string } } } }) => toast.error(e?.response?.data?.error?.message ?? t('common.loadFailed', 'فشل التحميل')),
   });
 
   const updateItemMutation = useMutation({
@@ -171,10 +169,7 @@ export function StockCountDetailPage() {
       qc.invalidateQueries({ queryKey: ['stock-counts', id] });
       setUpdating(null);
     },
-    onError: (e: { response?: { data?: { error?: { message?: string } } } }) => {
-      toast.error(e?.response?.data?.error?.message ?? t('common.updateFailed', 'فشل التحديث'));
-      setUpdating(null);
-    },
+    onError: () => { setUpdating(null); },
   });
 
   const count = countData?.data;

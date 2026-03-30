@@ -28,6 +28,7 @@ const listQuerySchema = Joi.object({
   search: Joi.string().max(100).allow('').optional(),
   sortBy: Joi.string().valid('code', 'product_name', 'warehouse_name', 'total_boxes', 'total_pieces', 'total_sqft', 'updated_at').optional(),
   sortOrder: Joi.string().valid('asc', 'desc', 'ASC', 'DESC').optional(),
+  warehouse_id: Joi.string().uuid().optional(),
 });
 
 module.exports = {

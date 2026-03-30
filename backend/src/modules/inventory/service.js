@@ -23,7 +23,7 @@ const createOpeningStock = async (tenantId, userId, data) => {
     const boxesIn = parseFloat(data.boxes) || 0;
     const piecesIn = parseFloat(data.pieces) || 0;
     if (boxesIn <= 0 && piecesIn <= 0) {
-      throw new AppError('Opening stock must have boxes or pieces greater than zero', 400, 'VALIDATION_ERROR');
+      throw new AppError('Opening stock must have at least one box or piece greater than zero.', 400, 'VALIDATION_ERROR', 'Enter a valid quantity in the Boxes or Pieces field.');
     }
 
     let sqftPerBox = data.sqft_per_box != null ? parseFloat(data.sqft_per_box) : null;
@@ -83,7 +83,7 @@ const adjustStock = async (id, tenantId, userId, data) => {
   const piecesOut = Math.max(0, parseFloat(data.pieces_out) || 0);
 
   if (boxesIn === 0 && boxesOut === 0 && piecesIn === 0 && piecesOut === 0) {
-    throw new AppError('At least one of boxes_in, boxes_out, pieces_in, pieces_out must be non-zero', 400, 'VALIDATION_ERROR');
+    throw new AppError('Adjustment has no quantity — enter a value in at least one field.', 400, 'VALIDATION_ERROR', 'Fill in Boxes In, Boxes Out, Pieces In, or Pieces Out before saving.');
   }
 
   const trx = await beginTransaction();
@@ -134,21 +134,21 @@ const assignToRack = async (tenantId, userId, data) => {
   if (!source) throw new AppError('Stock record not found', 404, 'NOT_FOUND');
 
   const boxes = parseFloat(data.boxes) || 0;
-  if (boxes <= 0) throw new AppError('boxes must be greater than zero', 400, 'VALIDATION_ERROR');
+  if (boxes <= 0) throw new AppError('Quantity must be greater than zero.', 400, 'VALIDATION_ERROR', 'Enter a positive number in the Boxes field.');
   if (parseFloat(source.total_boxes) < boxes) {
     throw new AppError(
-      `Insufficient stock: ${source.total_boxes} boxes available, ${boxes} requested`,
+      `Insufficient stock: ${source.total_boxes} boxes available, ${boxes} requested.`,
       400,
-      'INSUFFICIENT_STOCK'
+      'INSUFFICIENT_STOCK',
+      'Reduce the quantity to move or check if stock was already assigned to another rack.'
     );
   }
 
   const targetRackId = data.rack_id;
-  if (!targetRackId) throw new AppError('rack_id is required', 400, 'VALIDATION_ERROR');
+  if (!targetRackId) throw new AppError('A target rack must be selected.', 400, 'VALIDATION_ERROR', 'Choose a rack from the dropdown before saving.');
 
-  // Prevent assigning to the same rack (no-op)
   if (source.rack_id === targetRackId) {
-    throw new AppError('Source and target rack are the same', 400, 'VALIDATION_ERROR');
+    throw new AppError('Source and target rack are the same — no movement needed.', 400, 'VALIDATION_ERROR', 'Select a different target rack.');
   }
 
   const rackRows = await query(
@@ -156,16 +156,17 @@ const assignToRack = async (tenantId, userId, data) => {
      FROM racks WHERE id = ? AND tenant_id = ?`,
     [targetRackId, tenantId]
   );
-  if (!rackRows.length) throw new AppError('Target rack not found', 404, 'NOT_FOUND');
+  if (!rackRows.length) throw new AppError('Target rack not found.', 404, 'NOT_FOUND', 'The selected rack may have been removed. Refresh and choose another.');
   const rack = rackRows[0];
   if (rack.rack_status === 'BLOCKED' || rack.rack_status === 'MAINTENANCE') {
-    throw new AppError(`Rack is not available (status: ${rack.rack_status})`, 400, 'RACK_UNAVAILABLE');
+    throw new AppError(`Rack is unavailable (status: ${rack.rack_status}).`, 400, 'RACK_UNAVAILABLE', 'Select a different rack with ACTIVE status.');
   }
   if (rack.capacity_boxes !== null && rack.available_boxes !== null && parseFloat(rack.available_boxes) < boxes) {
     throw new AppError(
-      `Rack capacity exceeded: ${rack.available_boxes} boxes available, ${boxes} requested`,
+      `Rack is at capacity: only ${rack.available_boxes} boxes of space remaining, ${boxes} requested.`,
       400,
-      'RACK_FULL'
+      'RACK_FULL',
+      'Choose a rack with sufficient capacity or reduce the quantity to assign.'
     );
   }
 

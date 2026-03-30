@@ -3,6 +3,60 @@
 const { query } = require('../../config/db');
 const { parsePagination, buildSearchClause } = require('../../utils/pagination');
 const { v4: uuidv4 } = require('uuid');
+const { AppError } = require('../../middlewares/error.middleware');
+
+/**
+ * Validate that each product in `items` has enough available stock in `fromWarehouseId`.
+ * Sums across all rack/shade/batch bins and subtracts active reservations.
+ */
+const validateItemsStock = async (tenantId, fromWarehouseId, items) => {
+  if (!items || !items.length || !fromWarehouseId) return;
+
+  // Aggregate requested boxes per product (a product can appear on multiple lines)
+  const requested = new Map();
+  for (const it of items) {
+    const boxes = parseFloat(it.transferred_boxes) || 0;
+    if (boxes <= 0) continue;
+    requested.set(it.product_id, (requested.get(it.product_id) || 0) + boxes);
+  }
+  if (!requested.size) return;
+
+  const productIds = [...requested.keys()];
+  const placeholders = productIds.map(() => '?').join(',');
+
+  const rows = await query(
+    `SELECT ss.product_id,
+            GREATEST(0, SUM(ss.total_boxes) - COALESCE(SUM(res.reserved_boxes), 0)) AS available_boxes,
+            p.code
+     FROM stock_summary ss
+     JOIN products p ON p.id = ss.product_id AND p.tenant_id = ss.tenant_id
+     LEFT JOIN (
+       SELECT product_id, SUM(boxes_reserved) AS reserved_boxes
+       FROM stock_reservations
+       WHERE tenant_id = ? AND warehouse_id = ?
+       GROUP BY product_id
+     ) res ON res.product_id = ss.product_id
+     WHERE ss.tenant_id = ? AND ss.warehouse_id = ? AND ss.product_id IN (${placeholders})
+     GROUP BY ss.product_id, p.code`,
+    [tenantId, fromWarehouseId, tenantId, fromWarehouseId, ...productIds]
+  );
+
+  const stockMap = new Map(rows.map((r) => [r.product_id, { available: parseFloat(r.available_boxes) || 0, code: r.code }]));
+
+  for (const [productId, need] of requested) {
+    const stock = stockMap.get(productId);
+    const available = stock ? stock.available : 0;
+    const code = stock ? stock.code : productId;
+    if (need > available) {
+      throw new AppError(
+        `Insufficient stock for ${code}: requested ${need} boxes but only ${available} available in source warehouse.`,
+        400,
+        'INSUFFICIENT_STOCK',
+        'Reduce the transfer quantity or verify stock levels in the source warehouse.'
+      );
+    }
+  }
+};
 
 const SELECT_COLUMNS = [
   'id', 'tenant_id', 'transfer_number', 'from_warehouse_id', 'to_warehouse_id',
@@ -106,7 +160,7 @@ const getTransferById = async (id, tenantId) => {
 
 const updateTransfer = async (id, tenantId, fields) => {
   const existing = await query(
-    'SELECT id, status FROM stock_transfers WHERE id = ? AND tenant_id = ?',
+    'SELECT id, status, from_warehouse_id FROM stock_transfers WHERE id = ? AND tenant_id = ?',
     [id, tenantId]
   );
   if (!existing.length) return null;
@@ -131,6 +185,9 @@ const updateTransfer = async (id, tenantId, fields) => {
   }
 
   if (isDraft && Array.isArray(fields.items)) {
+      const effectiveWarehouse = fields.from_warehouse_id ?? existing[0].from_warehouse_id;
+    await validateItemsStock(tenantId, effectiveWarehouse, fields.items);
+
     await query('DELETE FROM stock_transfer_items WHERE transfer_id = ? AND tenant_id = ?', [id, tenantId]);
     for (const it of fields.items) {
       const itemId = uuidv4();
@@ -166,10 +223,36 @@ const deleteTransfer = async (id, tenantId) => {
   return result.affectedRows > 0;
 };
 
+/**
+ * Fetch all transfers that contain a given product (for product detail page).
+ * Returns transfer header + warehouse names + per-item boxes for that product.
+ */
+const getTransfersByProduct = async (productId, tenantId) => {
+  const rows = await query(
+    `SELECT
+       st.id, st.transfer_number, st.status, st.transfer_date, st.received_date,
+       fw.name AS from_warehouse_name,
+       tw.name AS to_warehouse_name,
+       sti.transferred_boxes,
+       sti.received_boxes,
+       sti.discrepancy_boxes
+     FROM stock_transfer_items sti
+     JOIN stock_transfers st  ON st.id  = sti.transfer_id      AND st.tenant_id  = sti.tenant_id
+     JOIN warehouses fw       ON fw.id  = st.from_warehouse_id AND fw.tenant_id  = st.tenant_id
+     JOIN warehouses tw       ON tw.id  = st.to_warehouse_id   AND tw.tenant_id  = st.tenant_id
+     WHERE sti.product_id = ? AND sti.tenant_id = ?
+     ORDER BY st.created_at DESC
+     LIMIT 100`,
+    [productId, tenantId]
+  );
+  return rows;
+};
+
 module.exports = {
   createTransfer,
   getAllTransfers,
   getTransferById,
   updateTransfer,
   deleteTransfer,
+  getTransfersByProduct,
 };

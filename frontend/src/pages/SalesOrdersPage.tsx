@@ -146,8 +146,6 @@ export default function SalesOrdersPage() {
       setEditingItems([]);
       toast.success(editing ? t('salesOrders.orderUpdated') : t('salesOrders.orderCreated'));
     },
-    onError: (e: { response?: { data?: { error?: { message?: string } } } }) =>
-      toast.error(e?.response?.data?.error?.message ?? 'Operation failed'),
   });
 
   const confirmMutation = useMutation({
@@ -156,8 +154,6 @@ export default function SalesOrdersPage() {
       qc.invalidateQueries({ queryKey: ['sales-orders'] });
       toast.success(t('salesOrders.orderConfirmed'));
     },
-    onError: (e: { response?: { data?: { error?: { message?: string } } } }) =>
-      toast.error(e?.response?.data?.error?.message ?? 'Confirm failed'),
   });
 
   const deleteMutation = useMutation({
@@ -168,8 +164,6 @@ export default function SalesOrdersPage() {
       setDeleting(null);
       toast.success(status === 'draft' ? t('salesOrders.orderDeleted') : t('common.cancelled'));
     },
-    onError: (e: { response?: { data?: { error?: { message?: string } } } }) =>
-      toast.error(e?.response?.data?.error?.message ?? 'Delete failed'),
   });
 
   const columns = [

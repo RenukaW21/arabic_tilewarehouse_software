@@ -1,11 +1,13 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { productApi } from "@/api/productApi";
+import { stockTransferApi } from "@/api/stockTransferApi";
+import type { ProductTransferRow } from "@/types/stock.types";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Package, User, ShoppingCart, Info, MapPin, Maximize2 } from "lucide-react";
+import { ArrowLeft, Package, User, ShoppingCart, Info, MapPin, Maximize2, ArrowRight, Truck } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useTranslation } from "react-i18next";
 
@@ -20,6 +22,12 @@ export default function ProductDetailsPage() {
     const { data, isLoading, isError } = useQuery({
         queryKey: ["product", id],
         queryFn: () => productApi.getById(id!),
+        enabled: !!id,
+    });
+
+    const { data: transfers = [], isLoading: transfersLoading } = useQuery<ProductTransferRow[]>({
+        queryKey: ["product-transfers", id],
+        queryFn: () => stockTransferApi.getByProduct(id!),
         enabled: !!id,
     });
 
@@ -187,6 +195,88 @@ export default function ProductDetailsPage() {
                         ) : (
                             <div className="text-sm text-muted-foreground bg-muted/50 p-4 rounded text-center border border-dashed">
                                 {t('productDetails.noSalesHistory')}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* Transfer History — full width */}
+                <Card className="shadow-sm md:col-span-2">
+                    <CardHeader className="flex flex-row items-center gap-2 pb-4 border-b">
+                        <Truck className="h-5 w-5 text-primary" />
+                        <CardTitle className="text-lg">Warehouse Transfer History</CardTitle>
+                        {transfers.length > 0 && (
+                            <span className="ml-auto text-xs font-medium bg-muted px-2 py-0.5 rounded-full text-muted-foreground">
+                                {transfers.length} transfer{transfers.length !== 1 ? 's' : ''}
+                            </span>
+                        )}
+                    </CardHeader>
+                    <CardContent className="pt-4">
+                        {transfersLoading ? (
+                            <div className="text-sm text-muted-foreground text-center py-6">Loading…</div>
+                        ) : transfers.length === 0 ? (
+                            <div className="text-sm text-muted-foreground bg-muted/50 p-4 rounded text-center border border-dashed">
+                                No warehouse transfers found for this product.
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b bg-muted/40">
+                                            <th className="px-4 py-2.5 text-left font-medium">Transfer #</th>
+                                            <th className="px-4 py-2.5 text-left font-medium">Route</th>
+                                            <th className="px-4 py-2.5 text-left font-medium">Status</th>
+                                            <th className="px-4 py-2.5 text-right font-medium">Transferred</th>
+                                            <th className="px-4 py-2.5 text-right font-medium">Received</th>
+                                            <th className="px-4 py-2.5 text-right font-medium">Discrepancy</th>
+                                            <th className="px-4 py-2.5 text-right font-medium">Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {transfers.map((tr: ProductTransferRow) => {
+                                            const disc = Number(tr.discrepancy_boxes);
+                                            return (
+                                                <tr key={tr.id} className="border-b last:border-0 hover:bg-muted/20">
+                                                    <td className="px-4 py-3 font-mono font-medium text-xs">
+                                                        {tr.transfer_number}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <div className="flex items-center gap-1.5 text-xs">
+                                                            <span className="font-medium">{tr.from_warehouse_name}</span>
+                                                            <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                                                            <span className="font-medium">{tr.to_warehouse_name}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <StatusBadge status={tr.status} />
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right tabular-nums">
+                                                        {Number(tr.transferred_boxes)} boxes
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right tabular-nums">
+                                                        {tr.status === 'received'
+                                                            ? `${Number(tr.received_boxes)} boxes`
+                                                            : <span className="text-muted-foreground">—</span>}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right tabular-nums">
+                                                        {tr.status === 'received' ? (
+                                                            disc === 0
+                                                                ? <span className="text-muted-foreground">—</span>
+                                                                : <span className={disc < 0 ? 'text-destructive font-medium' : 'text-green-600 font-medium'}>
+                                                                    {disc > 0 ? `+${disc}` : disc}
+                                                                  </span>
+                                                        ) : <span className="text-muted-foreground">—</span>}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right text-muted-foreground text-xs">
+                                                        {new Date(tr.transfer_date).toLocaleDateString('en-IN', {
+                                                            day: '2-digit', month: 'short', year: 'numeric',
+                                                        })}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
                             </div>
                         )}
                     </CardContent>

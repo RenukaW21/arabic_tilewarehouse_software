@@ -9,6 +9,12 @@ const findAll = async (tenantId, queryParams) => {
   const conditions = ['ss.tenant_id = ?'];
   const params = [tenantId];
 
+  if (queryParams.warehouse_id) {
+    conditions.push('ss.warehouse_id = ?');
+    params.push(queryParams.warehouse_id);
+  }
+
+
   const { clause: searchClause, params: searchParams } = buildSearchClause(search, ['p.name', 'p.code']);
   if (searchClause) {
     conditions.push(searchClause);

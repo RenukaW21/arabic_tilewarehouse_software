@@ -75,7 +75,7 @@ const createFromPickList = async (pickListId, tenantId, userId, body = {}) => {
   `,[pickListId, tenantId]);
 
   if (!pickRows || pickRows.length === 0) {
-    throw new AppError('Pick list not found',404,'NOT_FOUND');
+    throw new AppError('Pick list not found.', 404, 'NOT_FOUND', 'Refresh the pick list page and try again.');
   }
 
   const pick = pickRows[0];
@@ -90,7 +90,7 @@ const createFromPickList = async (pickListId, tenantId, userId, body = {}) => {
   }
 
   if (pick.status !== 'completed') {
-    throw new AppError('Only completed pick lists can be used to create delivery challan',400,'INVALID_STATUS');
+    throw new AppError('Only completed pick lists can be converted to a delivery challan.', 400, 'INVALID_STATUS', 'Mark the pick list as completed before creating a challan.');
   }
 
   const items = await query(`
@@ -101,7 +101,7 @@ const createFromPickList = async (pickListId, tenantId, userId, body = {}) => {
   `,[pickListId, tenantId]);
 
   if (!items.length) {
-    throw new AppError('Pick list has no picked items',400,'NO_ITEMS');
+    throw new AppError('Pick list has no picked items.', 400, 'NO_ITEMS', 'Complete the picking process and add quantities before creating a challan.');
   }
 
   const soItemPrices = await query(`
@@ -174,17 +174,17 @@ const dispatch = async (id, tenantId, userId) => {
   const dc = await getById(id,tenantId);
 
   if (dc.status !== 'draft'){
-    throw new AppError('Only draft challans can be dispatched',400,'INVALID_STATUS');
+    throw new AppError('Only draft challans can be dispatched.', 400, 'INVALID_STATUS', 'Refresh the page — this challan may have already been dispatched.');
   }
 
   const warehouseId = dc.warehouse_id;
 
   if (!warehouseId){
-    throw new AppError('Warehouse not found for this challan',400,'MISSING_WAREHOUSE');
+    throw new AppError('No warehouse is associated with this challan.', 400, 'MISSING_WAREHOUSE', 'Edit the challan and assign a warehouse before dispatching.');
   }
 
   if (!dc.items || dc.items.length === 0){
-    throw new AppError('No items found in delivery challan',400,'NO_ITEMS');
+    throw new AppError('Delivery challan has no items to dispatch.', 400, 'NO_ITEMS', 'Add items to the challan before dispatching.');
   }
 
   const productIds = dc.items.map(i => i.product_id).filter(Boolean);
@@ -227,10 +227,10 @@ const dispatch = async (id, tenantId, userId) => {
       const totalAvail = sumBoxes(stockRows);
       if (boxesOut > totalAvail) {
         throw new AppError(
-          `Insufficient stock: need ${boxesOut} boxes, ${totalAvail} available in warehouse for product ${item.product_code || item.product_id}. ` +
-          `Check warehouse, shade/batch on the order line vs GRN stock (match=${match}).`,
+          `Insufficient stock for ${item.product_code || 'product'}: need ${boxesOut} boxes, only ${totalAvail} available in warehouse.`,
           400,
-          'INSUFFICIENT_STOCK'
+          'INSUFFICIENT_STOCK',
+          'Check that stock was received via GRN and matches the shade/batch on the order line. Use the stock debug tool if needed.'
         );
       }
 
@@ -265,9 +265,10 @@ const dispatch = async (id, tenantId, userId) => {
 
       if (remaining > 0) {
         throw new AppError(
-          `Insufficient stock while dispatching product ${item.product_code || item.product_id}`,
+          `Could not fulfil full dispatch quantity for ${item.product_code || 'product'} — stock ran out mid-deduction.`,
           400,
-          'INSUFFICIENT_STOCK'
+          'INSUFFICIENT_STOCK',
+          'Check stock levels across all racks for this product and correct any discrepancies.'
         );
       }
 
@@ -308,7 +309,7 @@ const update = async (id,tenantId,data) => {
   const dc = await getById(id,tenantId);
 
   if (dc.status !== 'draft'){
-    throw new AppError('Only draft challans can be updated',400,'INVALID_STATUS');
+    throw new AppError('Only draft challans can be edited.', 400, 'INVALID_STATUS', 'Refresh the page to see the latest challan status.');
   }
 
   await repo.updateDraft(id,tenantId,data);
@@ -322,11 +323,11 @@ const remove = async (id,tenantId) => {
   const dc = await repo.findById(id,tenantId);
 
   if (!dc){
-    throw new AppError('Delivery challan not found',404,'NOT_FOUND');
+    throw new AppError('Delivery challan not found.', 404, 'NOT_FOUND', 'It may have already been deleted. Refresh the list.');
   }
 
   if (dc.status !== 'draft'){
-    throw new AppError('Only draft challans can be deleted',400,'INVALID_STATUS');
+    throw new AppError('Only draft challans can be deleted.', 400, 'INVALID_STATUS', 'Dispatched challans cannot be deleted. Contact your supervisor if a reversal is needed.');
   }
 
   await repo.deleteById(id,tenantId);

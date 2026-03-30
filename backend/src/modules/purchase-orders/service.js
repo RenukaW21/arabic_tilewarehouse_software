@@ -297,17 +297,17 @@ const updateStatus = async (id, tenantId, status, userId) => {
             tenantId,
             grnId,
             purchase_order_item_id,
-            product_id: item.product_id,
-            shade_id: item.shade_id || null,
-            batch_id: null,
-            batch_number: null,
-            rack_id: null,
-            received_boxes: item.ordered_boxes,  // full ordered qty received
-            received_pieces: item.ordered_pieces || 0,
-            damaged_boxes: 0,
-            unit_price: item.unit_price,
-            quality_status: 'pass',             // auto-pass quality
-            quality_notes: null,
+            product_id:      item.product_id,
+            shade_id:        item.shade_id    || null,
+            batch_id:        null,
+            batch_number:    null,
+            rack_id:         null,
+            received_boxes:  parseFloat(item.ordered_boxes)  || 0,
+            received_pieces: parseFloat(item.ordered_pieces) || 0,
+            damaged_boxes:   0,
+            unit_price:      parseFloat(item.unit_price)     || 0,
+            quality_status:  'pass',
+            quality_notes:   null,
           });
         }
 
@@ -315,31 +315,36 @@ const updateStatus = async (id, tenantId, status, userId) => {
 
         // ── 2. Auto-post GRN (stock movements) ──────────────────────────────
         for (const item of poItems) {
-          const netBoxes = parseFloat(item.ordered_boxes) || 0;
-          if (netBoxes > 0) {
-            const productRows = await trx.query(
-              'SELECT sqft_per_box FROM products WHERE id = ? AND tenant_id = ?',
-              [item.product_id, tenantId]
-            );
-            const sqftPerBox = productRows[0] ? parseFloat(productRows[0].sqft_per_box) || 0 : 0;
+          const receivedBoxes  = parseFloat(item.ordered_boxes)  || 0;
+          const receivedPieces = parseFloat(item.ordered_pieces) || 0;
+          const unitPrice      = parseFloat(item.unit_price)     || null;
 
-            await postStockMovement(trx, {
-              tenantId,
-              warehouseId: existing.warehouse_id,
-              rackId: null,
-              productId: item.product_id,
-              shadeId: item.shade_id || null,
-              batchId: null,
-              transactionType: 'grn',
-              referenceId: grnId,
-              referenceType: 'grn',
-              boxesIn: netBoxes,
-              piecesIn: parseFloat(item.ordered_pieces || 0),
-              sqftPerBox,
-              notes: `Auto GRN: ${grnNumber}`,
-              createdBy: userId || null,
-            });
-          }
+          // damaged defaults to 0 for auto-GRN, so net = full received qty
+          if (receivedBoxes <= 0) continue;
+
+          const productRows = await trx.query(
+            'SELECT sqft_per_box FROM products WHERE id = ? AND tenant_id = ?',
+            [item.product_id, tenantId]
+          );
+          const sqftPerBox = productRows[0] ? parseFloat(productRows[0].sqft_per_box) || 0 : 0;
+
+          await postStockMovement(trx, {
+            tenantId,
+            warehouseId:     existing.warehouse_id,
+            rackId:          null,
+            productId:       item.product_id,
+            shadeId:         item.shade_id || null,
+            batchId:         null,
+            transactionType: 'grn',
+            referenceId:     grnId,
+            referenceType:   'grn',
+            boxesIn:         receivedBoxes,
+            piecesIn:        receivedPieces,
+            sqftPerBox,
+            unitPrice,
+            notes:           `Auto GRN: ${grnNumber}`,
+            createdBy:       userId || null,
+          });
         }
 
         // Mark GRN as posted

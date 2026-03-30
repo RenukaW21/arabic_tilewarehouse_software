@@ -1,9 +1,19 @@
 'use strict';
 const repo = require('./repository');
 const { generateDocNumber } = require('../../utils/docNumber');
-const { beginTransaction } = require('../../config/db');
+const { beginTransaction, query } = require('../../config/db');
 const { postStockMovement } = require('../../utils/stockHelper');
 const { AppError } = require('../../middlewares/error.middleware');
+
+/** Fetch a map of product_id → code for the given id list. */
+const fetchProductCodes = async (productIds) => {
+  if (!productIds.length) return new Map();
+  const rows = await query(
+    `SELECT id, code FROM products WHERE id IN (${productIds.map(() => '?').join(',')})`,
+    productIds
+  );
+  return new Map(rows.map((r) => [r.id, r.code]));
+};
 
 const getAll = async (tenantId, queryParams) => repo.findAll(tenantId, queryParams);
 
@@ -21,8 +31,33 @@ const create = async (tenantId, userId, data) => {
   const returnNumber = await generateDocNumber(tenantId, 'PR', 'PR');
   const totalBoxes = (data.items || []).reduce((sum, it) => sum + (parseFloat(it.returned_boxes) || 0), 0);
 
+  const productCodes = await fetchProductCodes((data.items || []).map((i) => i.product_id));
+
   const trx = await beginTransaction();
   try {
+  for (const it of data.items || []) {
+    const balance = await repo.getStockBalance(
+      trx,
+      tenantId,
+      data.warehouse_id,
+      it.product_id,
+      it.shade_id || null,
+      it.batch_id || null
+    );
+
+    const available = parseFloat(balance?.total_boxes) || 0;
+    const returning = parseFloat(it.returned_boxes) || 0;
+    const code = productCodes.get(it.product_id) || it.product_id;
+
+    if (returning > available) {
+      throw new AppError(
+        `Return quantity (${returning} boxes) exceeds available stock for ${code} (Available: ${available} boxes).`,
+        400,
+        'INVALID_RETURN_QTY',
+        'Reduce the return quantity or verify stock levels before submitting.'
+      );
+    }
+  }
     const returnId = await repo.createReturn(
       {
         tenant_id:         tenantId,
@@ -78,9 +113,10 @@ const dispatch = async (id, tenantId, userId) => {
   const existing = await repo.findById(id, tenantId);
   if (!existing) throw new AppError('Purchase return not found', 404, 'NOT_FOUND');
   if (existing.status !== 'draft') {
-    throw new AppError('Only draft returns can be dispatched', 400, 'INVALID_STATUS');
+    throw new AppError('Only draft returns can be dispatched.', 400, 'INVALID_STATUS', 'Refresh the page to see the latest return status.');
   }
   const items = await repo.findItemsByReturnId(id, tenantId);
+  const productCodes = await fetchProductCodes(items.map((i) => i.product_id));
 
   const trx = await beginTransaction();
   try {
@@ -93,13 +129,15 @@ const dispatch = async (id, tenantId, userId) => {
         it.shade_id || null,
         it.batch_id || null
       );
-      const available = parseFloat(balance.total_boxes) || 0;
+      const available = parseFloat(balance?.total_boxes) || 0;
       const returned  = parseFloat(it.returned_boxes)   || 0;
+      const code = productCodes.get(it.product_id) || it.product_id;
       if (returned > available) {
         throw new AppError(
-          `Return quantity (${returned}) exceeds available stock (${available}) for product ${it.product_id}`,
+          `Insufficient stock for ${code}: need ${returned} boxes but only ${available} available.`,
           400,
-          'INSUFFICIENT_STOCK'
+          'INSUFFICIENT_STOCK',
+          'Check current stock levels or reduce the return quantity.'
         );
       }
 
@@ -156,10 +194,12 @@ const dispatch = async (id, tenantId, userId) => {
       }
 
       if (remaining > 0) {
+        const code = productCodes.get(it.product_id) || it.product_id;
         throw new AppError(
-          `Insufficient stock while returning product ${it.product_id}`,
+          `Could not fulfil full return quantity for ${code} — stock ran out mid-dispatch.`,
           400,
-          'INSUFFICIENT_STOCK'
+          'INSUFFICIENT_STOCK',
+          'Check stock levels across racks and adjust the return quantity if needed.'
         );
       }
     }
@@ -185,9 +225,9 @@ const dispatch = async (id, tenantId, userId) => {
  */
 const update = async (id, tenantId, data) => {
   const existing = await repo.findById(id, tenantId);
-  if (!existing) throw new AppError('Purchase return not found', 404, 'NOT_FOUND');
+  if (!existing) throw new AppError('Purchase return not found.', 404, 'NOT_FOUND', 'It may have been deleted. Refresh the list and try again.');
   if (existing.status !== 'draft') {
-    throw new AppError('Only draft purchase returns can be updated', 400, 'INVALID_STATUS');
+    throw new AppError('Only draft purchase returns can be edited.', 400, 'INVALID_STATUS', 'Refresh the page to see the latest return status.');
   }
 
   const trx = await beginTransaction();
@@ -236,12 +276,12 @@ const update = async (id, tenantId, data) => {
 /** Delete draft return only. */
 const remove = async (id, tenantId) => {
   const existing = await repo.findById(id, tenantId);
-  if (!existing) throw new AppError('Purchase return not found', 404, 'NOT_FOUND');
+  if (!existing) throw new AppError('Purchase return not found.', 404, 'NOT_FOUND', 'It may have already been deleted. Refresh the list.');
   if (existing.status !== 'draft') {
-    throw new AppError('Only draft purchase returns can be deleted', 400, 'INVALID_STATUS');
+    throw new AppError('Only draft purchase returns can be deleted.', 400, 'INVALID_STATUS', 'Dispatched returns cannot be removed. Contact your warehouse manager if a reversal is needed.');
   }
   const deleted = await repo.deleteReturn(id, tenantId);
-  if (!deleted) throw new AppError('Return not found or not draft', 404, 'NOT_FOUND');
+  if (!deleted) throw new AppError('Return not found or not in draft status.', 404, 'NOT_FOUND', 'Refresh the list and try again.');
   return { id, deleted: true };
 };
 

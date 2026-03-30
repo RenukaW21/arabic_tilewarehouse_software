@@ -2,6 +2,17 @@
 const logger = require('../utils/logger');
 
 /**
+ * Build a flat, consistent error response body.
+ */
+const errBody = (code, message, suggestion = null, extra = {}) => ({
+  success: false,
+  code,
+  message,
+  ...(suggestion ? { suggestion } : {}),
+  ...extra,
+});
+
+/**
  * Centralized error handler — must be registered LAST in Express.
  */
 const errorHandler = (err, req, res, next) => {
@@ -17,68 +28,62 @@ const errorHandler = (err, req, res, next) => {
 
   // Joi validation errors
   if (err.isJoi || err.name === 'ValidationError') {
+    const msg = err.details?.[0]?.message || err.message;
     return res.status(422).json({
-      success: false,
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: err.details?.[0]?.message || err.message,
-        details: err.details?.map((d) => ({ field: d.path.join('.'), message: d.message })),
-      },
+      ...errBody('VALIDATION_ERROR', msg, 'Check all required fields and correct the highlighted errors.'),
+      details: err.details?.map((d) => ({ field: d.path.join('.'), message: d.message })),
     });
   }
 
   // MySQL duplicate entry
   if (err.code === 'ER_DUP_ENTRY') {
-    return res.status(409).json({
-      success: false,
-      error: { code: 'DUPLICATE_ENTRY', message: 'A record with this value already exists' },
-    });
+    return res.status(409).json(
+      errBody('DUPLICATE_ENTRY', 'A record with this value already exists.', 'Use a different value or edit the existing record.')
+    );
   }
 
   // MySQL foreign key constraint
   if (err.code === 'ER_ROW_IS_REFERENCED_2' || err.code === 'ER_NO_REFERENCED_ROW_2') {
-    return res.status(400).json({
-      success: false,
-      error: { code: 'FK_CONSTRAINT', message: 'Related record not found or record is in use' },
-    });
+    return res.status(400).json(
+      errBody('FK_CONSTRAINT', 'This record is referenced by other data and cannot be modified.', 'Remove linked records first before making this change.')
+    );
   }
 
   // Custom AppError
   if (err.statusCode) {
-    return res.status(err.statusCode).json({
-      success: false,
-      error: { code: err.code || 'APP_ERROR', message: err.message },
-    });
+    return res.status(err.statusCode).json(
+      errBody(err.code || 'APP_ERROR', err.message, err.suggestion || null)
+    );
   }
 
   // Generic 500
-  res.status(500).json({
-    success: false,
-    error: {
-      code: 'INTERNAL_ERROR',
-      message: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message,
-    },
-  });
+  res.status(500).json(
+    errBody('INTERNAL_ERROR', process.env.NODE_ENV === 'production' ? 'An unexpected error occurred. Please try again.' : err.message, 'If the problem persists, contact support.')
+  );
 };
 
 /**
  * 404 handler
  */
 const notFoundHandler = (req, res) => {
-  res.status(404).json({
-    success: false,
-    error: { code: 'NOT_FOUND', message: `Route ${req.method} ${req.originalUrl} not found` },
-  });
+  res.status(404).json(
+    errBody('NOT_FOUND', `Route ${req.method} ${req.originalUrl} not found.`, 'Check the URL and try again.')
+  );
 };
 
 /**
- * Custom error class for application errors
+ * Custom error class for application errors.
+ * @param {string} message   Human-readable message shown to the user.
+ * @param {number} statusCode HTTP status code (default 400).
+ * @param {string} code      Machine-readable error code.
+ * @param {string|null} suggestion  What the user should do to fix the problem.
  */
 class AppError extends Error {
-  constructor(message, statusCode = 400, code = 'APP_ERROR') {
+  constructor(message, statusCode = 400, code = 'APP_ERROR', suggestion = null) {
     super(message);
     this.statusCode = statusCode;
     this.code = code;
+    this.suggestion = suggestion;
   }
 }
 

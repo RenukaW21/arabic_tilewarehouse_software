@@ -136,11 +136,16 @@ const deleteReturnItems = async (returnId, tenantId, trx) => {
 };
 
 const getStockBalance = async (trx, tenantId, warehouseId, productId, shadeId, batchId) => {
+  // SUM across all rack bins — stock may be spread across multiple racks.
+  // The old query filtered rack_id IS NULL which returned 0 whenever stock
+  // had been assigned to a rack, falsely blocking valid returns.
   const rows = await trx.query(
-    `SELECT total_boxes, total_pieces FROM stock_summary
+    `SELECT COALESCE(SUM(total_boxes), 0)  AS total_boxes,
+            COALESCE(SUM(total_pieces), 0) AS total_pieces
+     FROM stock_summary
      WHERE tenant_id = ? AND warehouse_id = ? AND product_id = ?
-       AND (shade_id <=> ?) AND (batch_id <=> ?) AND (rack_id <=> ?)`,
-    [tenantId, warehouseId, productId, shadeId || null, batchId || null, null]
+       AND (shade_id <=> ?) AND (batch_id <=> ?)`,
+    [tenantId, warehouseId, productId, shadeId || null, batchId || null]
   );
   return rows[0] || { total_boxes: 0, total_pieces: 0 };
 };

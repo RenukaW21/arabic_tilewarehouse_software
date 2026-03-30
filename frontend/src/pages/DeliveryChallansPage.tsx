@@ -99,8 +99,6 @@ export default function DeliveryChallansPage() {
       setLrNumber('');
       toast.success(t('deliveryChallans.created'));
     },
-    onError: (e: { response?: { data?: { error?: { message?: string } } } }) =>
-      toast.error(e?.response?.data?.error?.message ?? t('deliveryChallans.createFailed')),
   });
 
   const dispatchMutation = useMutation({
@@ -111,8 +109,6 @@ export default function DeliveryChallansPage() {
       if (detailId) qc.invalidateQueries({ queryKey: ['delivery-challans', detailId] });
       toast.success(t('deliveryChallans.dispatchedSuccess'));
     },
-    onError: (e: { response?: { data?: { error?: { message?: string } } } }) =>
-      toast.error(e?.response?.data?.error?.message ?? t('deliveryChallans.dispatchFailed')),
   });
 
   const deleteMutation = useMutation({
@@ -123,8 +119,6 @@ export default function DeliveryChallansPage() {
       setDeleting(null);
       toast.success(t('deliveryChallans.deleted'));
     },
-    onError: (e: { response?: { data?: { error?: { message?: string } } } }) =>
-      toast.error(e?.response?.data?.error?.message ?? t('deliveryChallans.deleteFailed')),
   });
 
   const updateMutation = useMutation({
@@ -141,8 +135,6 @@ export default function DeliveryChallansPage() {
       setEditing(null);
       toast.success(t('deliveryChallans.updated'));
     },
-    onError: (e: { response?: { data?: { error?: { message?: string } } } }) =>
-      toast.error(e?.response?.data?.error?.message ?? t('deliveryChallans.updateFailed')),
   });
 
   const openEdit = (c: DeliveryChallan) => {

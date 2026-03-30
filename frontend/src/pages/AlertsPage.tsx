@@ -23,7 +23,6 @@ export default function AlertsPage() {
       qc.invalidateQueries({ queryKey: LOW_STOCK_ALERTS_QUERY_KEY });
       toast.success(t('alertsPage.alertUpdated'));
     },
-    onError: () => toast.error(t('alertsPage.failedToUpdateAlert')),
   });
 
   const columns = [

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -349,7 +349,7 @@ function ItemsEditor({
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">{t('purchaseOrders.unitPrice')} (₹) <span className="text-destructive">*</span></Label>
+                <Label className="text-xs">{t('grn.unitPrice')} (₹) <span className="text-destructive">*</span></Label>
                 <Input
                   type="number" min={0} step="0.01" className="h-9"
                   value={row.unit_price}
@@ -475,7 +475,7 @@ function CreateGRNDialog({
     }
   }, [po_id, poDetails?.data]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!vendor_id || !warehouse_id || !receipt_date) {
       toast.error('Vendor, warehouse and receipt date are required.');
@@ -676,7 +676,7 @@ function EditGRNDialog({
 
   const editable = grn?.status === 'draft' || grn?.status === 'verified';
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!grn) return;
     await onSubmit(grn.id, {

@@ -34,18 +34,17 @@ const findAll = async (tenantId, queryParams) => {
     query(
       `SELECT g.*, v.name AS vendor_name, w.name AS warehouse_name, po.po_number AS po_number
        FROM grn g
-       JOIN vendors   v  ON g.vendor_id    = v.id
-       JOIN warehouses w  ON g.warehouse_id = w.id   /* FIX: also in rows query */
+       LEFT JOIN vendors   v  ON g.vendor_id    = v.id
+       LEFT JOIN warehouses w  ON g.warehouse_id = w.id
        LEFT JOIN purchase_orders po ON g.purchase_order_id = po.id AND po.tenant_id = g.tenant_id
        WHERE ${where} ORDER BY g.${sortBy} ${sortOrder} LIMIT ${limit} OFFSET ${offset}`,
       params
     ),
     query(
-      // FIX BUG-3: added JOIN warehouses w so count and rows use the same JOIN set
       `SELECT COUNT(*) AS total
        FROM grn g
-       JOIN vendors    v ON g.vendor_id    = v.id
-       JOIN warehouses w ON g.warehouse_id = w.id
+       LEFT JOIN vendors    v ON g.vendor_id    = v.id
+       LEFT JOIN warehouses w ON g.warehouse_id = w.id
        LEFT JOIN purchase_orders po ON g.purchase_order_id = po.id AND po.tenant_id = g.tenant_id
        WHERE ${where}`,
       params
@@ -60,8 +59,8 @@ const findById = async (id, tenantId) => {
     `SELECT g.*, v.name AS vendor_name, w.name AS warehouse_name,
             po.po_number AS po_number
      FROM grn g
-     JOIN vendors   v  ON g.vendor_id    = v.id
-     JOIN warehouses w  ON g.warehouse_id = w.id
+     LEFT JOIN vendors   v  ON g.vendor_id    = v.id
+     LEFT JOIN warehouses w  ON g.warehouse_id = w.id
      LEFT JOIN purchase_orders po ON g.purchase_order_id = po.id AND po.tenant_id = g.tenant_id
      WHERE g.id = ? AND g.tenant_id = ?`,
     [id, tenantId]

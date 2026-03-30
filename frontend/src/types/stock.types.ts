@@ -42,7 +42,6 @@ export interface DashboardRecentGRN {
 
 export interface DashboardRecentTransfer {
   id: string;
-  transfer_number: string;
   transfer_date: string;
   status: string;
   created_at: string;
@@ -221,6 +220,20 @@ export interface StockSummaryParams {
 
 export type StockTransferStatus = 'draft' | 'in_transit' | 'received' | 'cancelled';
 
+/** Returned by GET /stock-transfers/by-product/:id */
+export interface ProductTransferRow {
+  id: string;
+  transfer_number: string;
+  status: StockTransferStatus;
+  transfer_date: string;
+  received_date: string | null;
+  from_warehouse_name: string;
+  to_warehouse_name: string;
+  transferred_boxes: number;
+  received_boxes: number;
+  discrepancy_boxes: number;
+}
+
 export interface StockTransferItem {
   id?: string;
   transfer_id?: string;
@@ -255,7 +268,7 @@ export interface StockTransfer {
 }
 
 export interface CreateStockTransferDto {
-  transfer_number: string;
+  transfer_number?: string;
   from_warehouse_id: string;
   to_warehouse_id: string;
   status?: StockTransferStatus;

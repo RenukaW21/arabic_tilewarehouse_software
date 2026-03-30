@@ -62,13 +62,11 @@ export default function DamageEntries() {
       return damageEntriesApi.create(payload);
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['damage-entries'] }); setDialogOpen(false); setEditing(null); toast.success(editing ? t('damageEntries.updated') : t('damageEntries.created')); },
-    onError: (e: { response?: { data?: { error?: { message?: string } } } }) => toast.error(e?.response?.data?.error?.message ?? t('common.operationFailed', 'فشلت العملية')),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => damageEntriesApi.delete(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['damage-entries'] }); setDeleting(null); toast.success(t('damageEntries.deleted')); },
-    onError: (e: { response?: { data?: { error?: { message?: string } } } }) => toast.error(e?.response?.data?.error?.message ?? t('common.deleteFailed', 'فشل الحذف')),
   });
 
   const columns = [

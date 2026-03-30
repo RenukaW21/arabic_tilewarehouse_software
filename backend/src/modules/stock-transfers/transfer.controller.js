@@ -6,6 +6,7 @@ const transferExecutionService = require('./transferExecution.service');
 const { createTransferSchema, updateTransferSchema } = require('./transfer.validation');
 const { success, created, paginated } = require('../../utils/response');
 const { AppError } = require('../../middlewares/error.middleware');
+const { generateDocNumber } = require('../../utils/docNumber');
 
 const createTransfer = async (req, res, next) => {
   try {
@@ -24,10 +25,12 @@ const createTransfer = async (req, res, next) => {
         error: { code: 'BAD_REQUEST', message: 'User context required for creating transfer' },
       });
     }
+    const transferNumber = await generateDocNumber(tenantId, 'ST', 'ST');
     const payload = {
       id: uuidv4(),
       tenant_id: tenantId,
       created_by: createdBy,
+      transfer_number: transferNumber,
       ...value,
     };
     await transferService.createTransfer(payload);
@@ -66,8 +69,16 @@ const updateTransfer = async (req, res, next) => {
         error: { code: 'VALIDATION_ERROR', message: err.details[0].message },
       });
     }
+    const existing = await transferService.getTransferById(req.params.id, req.tenantId);
+    if (!existing) throw new AppError('Transfer not found', 404, 'NOT_FOUND');
+    if (existing.status !== 'draft') {
+      throw new AppError(
+        'Only draft transfers can be edited.',
+        400, 'INVALID_STATUS',
+        'Confirm the transfer first to lock it, or create a new transfer.'
+      );
+    }
     const updated = await transferService.updateTransfer(req.params.id, req.tenantId, value);
-    if (!updated) throw new AppError('Transfer not found', 404, 'NOT_FOUND');
     return success(res, updated, 'Transfer updated successfully');
   } catch (e) {
     next(e);
@@ -76,8 +87,16 @@ const updateTransfer = async (req, res, next) => {
 
 const deleteTransfer = async (req, res, next) => {
   try {
-    const deleted = await transferService.deleteTransfer(req.params.id, req.tenantId);
-    if (!deleted) throw new AppError('Transfer not found', 404, 'NOT_FOUND');
+    const existing = await transferService.getTransferById(req.params.id, req.tenantId);
+    if (!existing) throw new AppError('Transfer not found', 404, 'NOT_FOUND');
+    if (existing.status !== 'draft') {
+      throw new AppError(
+        'Only draft transfers can be deleted.',
+        400, 'INVALID_STATUS',
+        'Cancel the transfer instead, or contact an administrator.'
+      );
+    }
+    await transferService.deleteTransfer(req.params.id, req.tenantId);
     return res.status(204).send();
   } catch (e) {
     next(e);
@@ -85,17 +104,47 @@ const deleteTransfer = async (req, res, next) => {
 };
 
 /**
- * Execute (dispatch) transfer — moves stock from source to destination warehouse.
- * Transaction-safe; uses postStockMovement only (no direct stock edit).
+ * POST /:id/confirm — Draft → In Transit.
+ * Immediately deducts stock from source warehouse; marks empty racks as vacant.
  */
-const executeTransfer = async (req, res, next) => {
+const confirmTransfer = async (req, res, next) => {
   try {
-    const transfer = await transferExecutionService.executeTransfer(
+    const transfer = await transferExecutionService.confirmTransfer(
       req.params.id,
       req.tenantId,
       req.user.id
     );
-    return success(res, transfer, 'Transfer executed — stock moved');
+    return success(res, transfer, 'Transfer confirmed — stock deducted from source warehouse');
+  } catch (e) {
+    next(e);
+  }
+};
+
+/**
+ * POST /:id/receive — In Transit → Received.
+ * Adds stock to destination warehouse.
+ */
+const receiveTransfer = async (req, res, next) => {
+  try {
+    const transfer = await transferExecutionService.receiveTransfer(
+      req.params.id,
+      req.tenantId,
+      req.user.id,
+      req.body?.notes ?? null
+    );
+    return success(res, transfer, 'Transfer received — stock added to destination warehouse');
+  } catch (e) {
+    next(e);
+  }
+};
+
+const getTransfersByProduct = async (req, res, next) => {
+  try {
+    const transfers = await transferService.getTransfersByProduct(
+      req.params.productId,
+      req.tenantId
+    );
+    return success(res, transfers, 'Product transfers fetched');
   } catch (e) {
     next(e);
   }
@@ -107,5 +156,7 @@ module.exports = {
   getTransferById,
   updateTransfer,
   deleteTransfer,
-  executeTransfer,
+  confirmTransfer,
+  receiveTransfer,
+  getTransfersByProduct,
 };

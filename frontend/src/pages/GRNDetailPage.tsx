@@ -783,16 +783,6 @@ export default function GRNDetailPage() {
                       </td>
                     )}
 
-                    {/* Rack */}
-                    <td className="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">
-                      {item.rack_name ?? '—'}
-                    </td>
-
-                    {/* Batch */}
-                    <td className="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">
-                      {item.batch_number ?? '—'}
-                    </td>
-
                     {/* Received boxes */}
                     <td className="px-4 py-3 text-right">
                       <span className={isShort ? 'text-amber-600 font-semibold' : 'font-medium'}>

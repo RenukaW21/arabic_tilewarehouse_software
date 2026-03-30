@@ -48,6 +48,7 @@ export interface AdjustStockPayload {
 export interface InventoryListParams extends PaginationParams {
   sortBy?: 'code' | 'product_name' | 'warehouse_name' | 'total_boxes' | 'total_pieces' | 'total_sqft' | 'updated_at';
   sortOrder?: 'ASC' | 'DESC';
+  warehouse_id?: string;
 }
 
 export const inventoryApi = {
