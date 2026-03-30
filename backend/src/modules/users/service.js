@@ -145,4 +145,6 @@ const remove = async (id, tenantId, currentUserId) => {
   await query('DELETE FROM users WHERE id = ? AND tenant_id = ?', [id, tenantId]);
 };
 
-module.exports = { getAll, getById, create, update, remove };
+const lookup = async (tenantId, roles) => repo.findLookup(tenantId, roles);
+
+module.exports = { getAll, getById, create, update, remove, lookup };

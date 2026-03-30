@@ -7,6 +7,9 @@ const { createUserSchema, updateUserSchema, listQuerySchema, validate } = requir
 
 router.use(authenticate);
 
+// Lightweight lookup — all authenticated roles can call this for dropdowns
+router.get('/lookup', ctrl.lookup);
+
 router.get('/', requireRole(['super_admin', 'admin']), validate(listQuerySchema, 'query'), ctrl.list);
 router.get('/:id', requireRole(['super_admin', 'admin']), ctrl.getById);
 router.post('/', requireRole(['super_admin', 'admin']), validate(createUserSchema), ctrl.create);

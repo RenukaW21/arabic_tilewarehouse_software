@@ -1,7 +1,7 @@
 'use strict';
 const Joi = require('joi');
 
-const ROLES = ['super_admin', 'admin', 'warehouse_manager', 'sales', 'accountant', 'user'];
+const ROLES = ['super_admin', 'admin', 'warehouse_manager', 'supervisor', 'sales', 'accountant', 'warehouse_staff', 'viewer', 'user'];
 const VALID_ROLES = Object.freeze([...ROLES]);
 
 const createUserSchema = Joi.object({

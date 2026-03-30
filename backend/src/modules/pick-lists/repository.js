@@ -15,6 +15,10 @@ const findAll = async (tenantId, queryParams) => {
     conditions.push('pl.status = ?');
     params.push(queryParams.status);
   }
+  if (queryParams.warehouse_id) {
+    conditions.push('pl.warehouse_id = ?');
+    params.push(queryParams.warehouse_id);
+  }
   if (queryParams.sales_order_id) {
     conditions.push('pl.sales_order_id = ?');
     params.push(queryParams.sales_order_id);

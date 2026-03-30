@@ -8,7 +8,13 @@ exports.handleAIQuery = async (req, res) => {
       return res.status(400).json({ error: 'Query is required' });
     }
 
-    const result = await processAI(query.trim(), req.tenantId);
+    const userContext = {
+      userId: req.user?.id ?? null,
+      role:   req.user?.role ?? 'user',
+      name:   req.user?.name ?? '',
+    };
+
+    const result = await processAI(query.trim(), req.tenantId, userContext);
     res.json({ answer: result });
   } catch (err) {
     console.error('[AI Controller]', err);

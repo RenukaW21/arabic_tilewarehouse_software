@@ -52,7 +52,7 @@ interface NavItem {
   allowedRoles?: UserRole[];
 }
 
-const ALL_ROLES: UserRole[] = ['super_admin', 'admin', 'warehouse_manager', 'sales', 'accountant', 'user'];
+const ALL_ROLES: UserRole[] = ['super_admin', 'admin', 'warehouse_manager', 'supervisor', 'sales', 'accountant', 'warehouse_staff', 'viewer', 'user'];
 
 function canSeeNavItem(item: NavItem | NavChild, userRole: string): boolean {
   const roles = item.allowedRoles ?? ALL_ROLES;
@@ -90,114 +90,181 @@ export function AppSidebar({ collapsed }: AppSidebarProps) {
     () => [
       { labelKey: "nav.dashboard", icon: LayoutDashboard, path: "/", allowedRoles: ALL_ROLES },
 
+      // ── Setup (admin only) ──────────────────────────────────────────────────
       {
         labelKey: "nav.setup",
         icon: Building2,
         allowedRoles: ["super_admin", "admin"],
         children: [
-          { labelKey: "nav.gstConfig", path: "/setup/company", icon: ReceiptText },
-          { labelKey: "nav.warehouses", path: "/setup/warehouses", icon: Warehouse },
-          { labelKey: "nav.racks", path: "/setup/racks", icon: Layers },
-          { labelKey: "nav.users", path: "/setup/users", icon: Users },
+          { labelKey: "nav.gstConfig",   path: "/setup/company",     icon: ReceiptText },
+          { labelKey: "nav.warehouses",  path: "/setup/warehouses",  icon: Warehouse },
+          { labelKey: "nav.racks",       path: "/setup/racks",       icon: Layers },
+          { labelKey: "nav.users",       path: "/setup/users",       icon: Users },
         ],
       },
 
+      // ── Master data ─────────────────────────────────────────────────────────
       {
         labelKey: "nav.master",
         icon: Package,
-        allowedRoles: ["super_admin", "admin", "warehouse_manager", "sales", "accountant"],
+        allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "sales", "accountant", "viewer"],
         children: [
-          { labelKey: "nav.products", path: "/master/products", icon: Boxes },
+          { labelKey: "nav.products",   path: "/master/products",   icon: Boxes },
           { labelKey: "nav.categories", path: "/master/categories", icon: Tag },
-          { labelKey: "nav.vendors", path: "/master/vendors", icon: Factory },
-          { labelKey: "nav.customers", path: "/master/customers", icon: Users },
+          {
+            labelKey: "nav.vendors",
+            path: "/master/vendors",
+            icon: Factory,
+            allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "accountant", "viewer"],
+          },
+          {
+            labelKey: "nav.customers",
+            path: "/master/customers",
+            icon: Users,
+            allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "sales", "accountant", "viewer"],
+          },
         ],
       },
 
+      // ── Purchase ────────────────────────────────────────────────────────────
       {
         labelKey: "nav.purchase",
         icon: ShoppingCart,
-        allowedRoles: ["super_admin", "admin", "warehouse_manager"],
+        allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "accountant", "viewer"],
         children: [
-          { labelKey: "nav.orders", path: "/purchase/orders", icon: ClipboardList },
-          { labelKey: "nav.grn", path: "/purchase/grn", icon: ClipboardCheck },
-          { labelKey: "nav.returns", path: "/purchase/returns", icon: PackageMinus },
+          {
+            labelKey: "nav.orders",
+            path: "/purchase/orders",
+            icon: ClipboardList,
+            allowedRoles: ["super_admin", "admin", "warehouse_manager", "accountant", "viewer"],
+          },
+          {
+            labelKey: "nav.grn",
+            path: "/purchase/grn",
+            icon: ClipboardCheck,
+            allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "warehouse_staff", "viewer"],
+          },
+          {
+            labelKey: "nav.returns",
+            path: "/purchase/returns",
+            icon: PackageMinus,
+            allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor"],
+          },
         ],
       },
 
+      // ── Inventory ───────────────────────────────────────────────────────────
       {
         labelKey: "nav.inventory",
         icon: Warehouse,
-        allowedRoles: ["super_admin", "admin", "warehouse_manager"],
+        allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "warehouse_staff", "accountant", "viewer"],
         children: [
-          { labelKey: "nav.productInventory", path: "/inventory/product-inventory", icon: Layers },
-          { labelKey: "nav.stock", path: "/inventory/stock", icon: Boxes },
-          { labelKey: "nav.ledger", path: "/inventory/ledger", icon: ScrollText },
-          { labelKey: "nav.transfers", path: "/inventory/transfers", icon: ArrowLeftRight },
-          { labelKey: "nav.adjustments", path: "/inventory/adjustments", icon: Settings },
-          { labelKey: "nav.damage", path: "/inventory/damage", icon: AlertTriangle },
-          { labelKey: "nav.stockCount", path: "/inventory/counts", icon: ClipboardCheck },
+          {
+            labelKey: "nav.productInventory",
+            path: "/inventory/product-inventory",
+            icon: Layers,
+            allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "warehouse_staff", "accountant", "viewer"],
+          },
+          {
+            labelKey: "nav.stock",
+            path: "/inventory/stock",
+            icon: Boxes,
+            allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "warehouse_staff", "accountant", "viewer"],
+          },
+          {
+            labelKey: "nav.ledger",
+            path: "/inventory/ledger",
+            icon: ScrollText,
+            allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "accountant", "viewer"],
+          },
+          {
+            labelKey: "nav.transfers",
+            path: "/inventory/transfers",
+            icon: ArrowLeftRight,
+            allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "viewer"],
+          },
+          {
+            labelKey: "nav.adjustments",
+            path: "/inventory/adjustments",
+            icon: Settings,
+            allowedRoles: ["super_admin", "admin", "warehouse_manager"],
+          },
+          {
+            labelKey: "nav.damage",
+            path: "/inventory/damage",
+            icon: AlertTriangle,
+            allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor"],
+          },
+          {
+            labelKey: "nav.stockCount",
+            path: "/inventory/counts",
+            icon: ClipboardCheck,
+            allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "warehouse_staff"],
+          },
         ],
       },
 
+      // ── Sales ───────────────────────────────────────────────────────────────
       {
         labelKey: "nav.sales",
         icon: Receipt,
-        allowedRoles: ["super_admin", "admin", "warehouse_manager", "sales", "accountant"],
+        allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "sales", "warehouse_staff", "accountant", "viewer"],
         children: [
           {
             labelKey: "nav.orders",
             path: "/sales/orders",
             icon: ClipboardList,
-            allowedRoles: ["super_admin", "admin", "warehouse_manager", "sales", "accountant"],
+            allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "sales", "accountant", "viewer"],
           },
           {
             labelKey: "nav.pickLists",
             path: "/sales/pick-lists",
             icon: ClipboardCheck,
-            allowedRoles: ["super_admin", "admin", "warehouse_manager", "sales"],
+            allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "warehouse_staff", "sales"],
           },
           {
             labelKey: "nav.challans",
             path: "/sales/challans",
             icon: Truck,
-            allowedRoles: ["super_admin", "admin", "warehouse_manager"],
+            allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "warehouse_staff", "accountant", "viewer"],
           },
           {
             labelKey: "nav.invoices",
             path: "/sales/invoices",
             icon: FileText,
-            allowedRoles: ["super_admin", "admin", "accountant"],
+            allowedRoles: ["super_admin", "admin", "accountant", "viewer"],
           },
           {
             labelKey: "nav.returns",
             path: "/sales/returns",
             icon: PackageMinus,
-            allowedRoles: ["super_admin", "admin", "warehouse_manager"],
+            allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "warehouse_staff", "accountant", "viewer"],
           },
         ],
       },
 
+      // ── Accounts ────────────────────────────────────────────────────────────
       {
         labelKey: "nav.accounts",
         icon: CreditCard,
-        allowedRoles: ["super_admin", "admin", "accountant"],
+        allowedRoles: ["super_admin", "admin", "accountant", "viewer"],
         children: [
-          { labelKey: "nav.received", path: "/accounts/received", icon: BadgeDollarSign },
-          { labelKey: "nav.paid", path: "/accounts/paid", icon: CreditCard },
+          { labelKey: "nav.received",    path: "/accounts/received",     icon: BadgeDollarSign },
+          { labelKey: "nav.paid",        path: "/accounts/paid",         icon: CreditCard },
           { labelKey: "nav.creditNotes", path: "/accounts/credit-notes", icon: FileText },
-          { labelKey: "nav.debitNotes", path: "/accounts/debit-notes", icon: FileText },
+          { labelKey: "nav.debitNotes",  path: "/accounts/debit-notes",  icon: FileText },
         ],
       },
 
+      // ── Reports ─────────────────────────────────────────────────────────────
       {
         labelKey: "nav.reports",
         icon: BarChart3,
-        allowedRoles: ["super_admin", "admin", "accountant"],
+        allowedRoles: ["super_admin", "admin", "warehouse_manager", "accountant", "viewer"],
         children: [
-          { labelKey: "nav.gstReport", path: "/reports/gst", icon: ReceiptText },
-          { labelKey: "nav.revenue", path: "/reports/revenue", icon: BarChart3 },
-          { labelKey: "nav.aging", path: "/reports/aging", icon: ScrollText },
+          { labelKey: "nav.gstReport", path: "/reports/gst",     icon: ReceiptText },
+          { labelKey: "nav.revenue",   path: "/reports/revenue", icon: BarChart3 },
+          { labelKey: "nav.aging",     path: "/reports/aging",   icon: ScrollText },
         ],
       },
 

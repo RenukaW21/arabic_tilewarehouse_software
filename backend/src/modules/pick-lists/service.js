@@ -3,7 +3,23 @@ const repo = require('./repository');
 const { beginTransaction } = require('../../config/db');
 const { AppError } = require('../../middlewares/error.middleware');
 
-const getAll = async (tenantId, queryParams) => repo.findAll(tenantId, queryParams);
+const WAREHOUSE_SCOPED_ROLES = ['warehouse_manager', 'supervisor', 'warehouse_staff'];
+
+const getAll = async (tenantId, queryParams, user) => {
+  let params = queryParams;
+  if (user && WAREHOUSE_SCOPED_ROLES.includes(user.role)) {
+    const { query } = require('../../config/db');
+    const rows = await query(
+      'SELECT warehouse_id FROM users WHERE id = ? AND tenant_id = ? LIMIT 1',
+      [user.id, tenantId]
+    );
+    const warehouseId = rows[0]?.warehouse_id ?? null;
+    if (warehouseId) {
+      params = { ...queryParams, warehouse_id: warehouseId };
+    }
+  }
+  return repo.findAll(tenantId, params);
+};
 
 const getById = async (id, tenantId) => {
   const pick = await repo.findById(id, tenantId);

@@ -4,7 +4,7 @@ const { success, paginated } = require('../../utils/response');
 
 const list = async (req, res, next) => {
   try {
-    const { rows, total } = await service.getAll(req.tenantId, req.query);
+    const { rows, total } = await service.getAll(req.tenantId, req.query, req.user);
     return paginated(res, rows, {
       page: req.query.page || 1,
       limit: req.query.limit || 25,

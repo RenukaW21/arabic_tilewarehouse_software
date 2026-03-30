@@ -57,4 +57,23 @@ const remove = async (req, res, next) => {
   }
 };
 
-module.exports = { list, getById, create, update, remove };
+/**
+ * GET /users/lookup?role=warehouse_manager,sales
+ * Minimal endpoint — returns id, name, role only.
+ * Accessible to all authenticated roles for dropdowns.
+ */
+const lookup = async (req, res, next) => {
+  try {
+    const rawRole = req.query.role;
+    let roles = [];
+    if (rawRole) {
+      roles = String(rawRole).split(',').map((r) => r.trim()).filter(Boolean);
+    }
+    const rows = await service.lookup(req.tenantId, roles);
+    return success(res, rows, 'Users fetched');
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { list, getById, create, update, remove, lookup };

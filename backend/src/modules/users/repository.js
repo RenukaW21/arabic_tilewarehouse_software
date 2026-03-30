@@ -90,10 +90,28 @@ const update = async (id, tenantId, data) => {
   );
 };
 
+/**
+ * Lightweight lookup — returns only id, name, role for dropdowns.
+ * Accessible to all authenticated roles; no sensitive fields exposed.
+ */
+const findLookup = async (tenantId, roles) => {
+  const conditions = ['tenant_id = ?', 'is_active = 1'];
+  const params = [tenantId];
+  if (roles && roles.length > 0) {
+    conditions.push(`role IN (${roles.map(() => '?').join(',')})`);
+    params.push(...roles);
+  }
+  return query(
+    `SELECT id, name, role FROM users WHERE ${conditions.join(' AND ')} ORDER BY name ASC`,
+    params
+  );
+};
+
 module.exports = {
   findAll,
   findById,
   findByEmail,
+  findLookup,
   create,
   update,
 };

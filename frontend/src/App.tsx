@@ -6,6 +6,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import type { UserRole } from "@/types/auth.types";
+
+/** Block direct URL navigation to routes the user's role cannot access. */
+function RoleGuard({ allow, children }: { allow: UserRole[]; children: React.ReactNode }) {
+  const { user } = useAuth();
+  if (!user || !allow.includes(user.role)) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
 
 // Pages
 import AuthPage from "@/pages/AuthPage";
@@ -70,44 +78,59 @@ function AppRoutes() {
       
       {/* Protected Routes */}
       <Route element={user ? <DashboardLayout /> : <Navigate to="/login" />}>
+        {/* ── All roles ── */}
         <Route path="/" element={<DashboardPage />} />
         <Route path="/master/products" element={<ProductsPage />} />
         <Route path="/master/products/:id" element={<ProductDetailsPage />} />
         <Route path="/master/categories" element={<CategoriesPage />} />
-        <Route path="/master/vendors" element={<VendorsPage />} />
-        <Route path="/master/customers" element={<CustomersPage />} />
-        <Route path="/purchase/orders" element={<PurchaseOrdersPage />} />
-        <Route path="/purchase/orders/:id" element={<PurchaseOrderDetailsPage />} />
-        <Route path="/purchase/grn" element={<GRNPage />} />
-        <Route path="/purchase/grn/:id" element={<GRNDetailPage />} />
-        <Route path="/purchase/returns" element={<PurchaseReturnsPage />} />
-        <Route path="/inventory/product-inventory" element={<ProductInventoryPage />} />
-        <Route path="/inventory/stock" element={<InventoryStockPage />} />
-        <Route path="/inventory/ledger" element={<StockLedgerPage />} />
-        <Route path="/inventory/transfers" element={<StockTransfersPage />} />
-        <Route path="/inventory/adjustments" element={<StockAdjustmentsPage />} />
-        <Route path="/inventory/damage" element={<DamageEntriesPage />} />
-        <Route path="/inventory/counts" element={<StockCountsPage />} />
-        <Route path="/inventory/counts/:id" element={<StockCountDetailPage />} />
-        <Route path="/sales/orders" element={<SalesOrdersPage />} />
-        <Route path="/sales/pick-lists" element={<PickListsPage />} />
-        <Route path="/sales/challans" element={<DeliveryChallansPage />} />
-        <Route path="/sales/invoices" element={<InvoicesPage />} />
-        <Route path="/sales/returns" element={<SalesReturnsPage />} />
-        <Route path="/accounts/received" element={<PaymentsReceivedPage />} />
-        <Route path="/accounts/paid" element={<PaymentsMadePage />} />
-        <Route path="/accounts/credit-notes" element={<CreditNotesPage />} />
-        <Route path="/accounts/debit-notes" element={<DebitNotesPage />} />
-        <Route path="/reports/gst" element={<GSTReportPage />} />
-        <Route path="/reports/revenue" element={<RevenueReportPage />} />
-        <Route path="/reports/aging" element={<AgingReportPage />} />
         <Route path="/alerts" element={<AlertsPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/setup/company" element={<GstConfigurationPage />} />
-        <Route path="/setup/warehouses" element={<WarehousesPage />} />
-        <Route path="/setup/warehouses/:id" element={<WarehouseDetailPage />} />
-        <Route path="/setup/racks" element={<RacksPage />} />
-        <Route path="/setup/users" element={<UsersPage />} />
+
+        {/* ── Admin / Setup ── */}
+        <Route path="/setup/company" element={<RoleGuard allow={["super_admin","admin"]}><GstConfigurationPage /></RoleGuard>} />
+        <Route path="/setup/warehouses" element={<RoleGuard allow={["super_admin","admin"]}><WarehousesPage /></RoleGuard>} />
+        <Route path="/setup/warehouses/:id" element={<RoleGuard allow={["super_admin","admin"]}><WarehouseDetailPage /></RoleGuard>} />
+        <Route path="/setup/racks" element={<RoleGuard allow={["super_admin","admin"]}><RacksPage /></RoleGuard>} />
+        <Route path="/setup/users" element={<RoleGuard allow={["super_admin","admin"]}><UsersPage /></RoleGuard>} />
+        <Route path="/settings" element={<RoleGuard allow={["super_admin","admin"]}><SettingsPage /></RoleGuard>} />
+
+        {/* ── Master data ── */}
+        <Route path="/master/vendors" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor","accountant","viewer"]}><VendorsPage /></RoleGuard>} />
+        <Route path="/master/customers" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor","sales","accountant","viewer"]}><CustomersPage /></RoleGuard>} />
+
+        {/* ── Purchase ── */}
+        <Route path="/purchase/orders" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","accountant","viewer"]}><PurchaseOrdersPage /></RoleGuard>} />
+        <Route path="/purchase/orders/:id" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","accountant","viewer"]}><PurchaseOrderDetailsPage /></RoleGuard>} />
+        <Route path="/purchase/grn" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor","warehouse_staff","viewer"]}><GRNPage /></RoleGuard>} />
+        <Route path="/purchase/grn/:id" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor","warehouse_staff","viewer"]}><GRNDetailPage /></RoleGuard>} />
+        <Route path="/purchase/returns" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor"]}><PurchaseReturnsPage /></RoleGuard>} />
+
+        {/* ── Inventory ── */}
+        <Route path="/inventory/product-inventory" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor","warehouse_staff","accountant","viewer"]}><ProductInventoryPage /></RoleGuard>} />
+        <Route path="/inventory/stock" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor","warehouse_staff","accountant","viewer"]}><InventoryStockPage /></RoleGuard>} />
+        <Route path="/inventory/ledger" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor","accountant","viewer"]}><StockLedgerPage /></RoleGuard>} />
+        <Route path="/inventory/transfers" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor","viewer"]}><StockTransfersPage /></RoleGuard>} />
+        <Route path="/inventory/adjustments" element={<RoleGuard allow={["super_admin","admin","warehouse_manager"]}><StockAdjustmentsPage /></RoleGuard>} />
+        <Route path="/inventory/damage" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor"]}><DamageEntriesPage /></RoleGuard>} />
+        <Route path="/inventory/counts" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor","warehouse_staff"]}><StockCountsPage /></RoleGuard>} />
+        <Route path="/inventory/counts/:id" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor","warehouse_staff"]}><StockCountDetailPage /></RoleGuard>} />
+
+        {/* ── Sales ── */}
+        <Route path="/sales/orders" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor","sales","accountant","viewer"]}><SalesOrdersPage /></RoleGuard>} />
+        <Route path="/sales/pick-lists" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor","warehouse_staff","sales"]}><PickListsPage /></RoleGuard>} />
+        <Route path="/sales/challans" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor","warehouse_staff","accountant","viewer"]}><DeliveryChallansPage /></RoleGuard>} />
+        <Route path="/sales/invoices" element={<RoleGuard allow={["super_admin","admin","accountant","viewer"]}><InvoicesPage /></RoleGuard>} />
+        <Route path="/sales/returns" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor","warehouse_staff","accountant","viewer"]}><SalesReturnsPage /></RoleGuard>} />
+
+        {/* ── Accounts ── */}
+        <Route path="/accounts/received" element={<RoleGuard allow={["super_admin","admin","accountant","viewer"]}><PaymentsReceivedPage /></RoleGuard>} />
+        <Route path="/accounts/paid" element={<RoleGuard allow={["super_admin","admin","accountant","viewer"]}><PaymentsMadePage /></RoleGuard>} />
+        <Route path="/accounts/credit-notes" element={<RoleGuard allow={["super_admin","admin","accountant","viewer"]}><CreditNotesPage /></RoleGuard>} />
+        <Route path="/accounts/debit-notes" element={<RoleGuard allow={["super_admin","admin","accountant","viewer"]}><DebitNotesPage /></RoleGuard>} />
+
+        {/* ── Reports ── */}
+        <Route path="/reports/gst" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","accountant","viewer"]}><GSTReportPage /></RoleGuard>} />
+        <Route path="/reports/revenue" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","accountant","viewer"]}><RevenueReportPage /></RoleGuard>} />
+        <Route path="/reports/aging" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","accountant","viewer"]}><AgingReportPage /></RoleGuard>} />
       </Route>
 
       {/* Fallback */}

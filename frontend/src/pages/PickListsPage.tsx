@@ -63,7 +63,7 @@ export default function PickListsPage() {
 
   const { data: assignableUsersData } = useQuery({
     queryKey: ['users-assignable'],
-    queryFn: () => usersApi.getAll({ role: 'warehouse_manager,sales', is_active: true, limit: 100 }),
+    queryFn: () => usersApi.lookup('warehouse_manager,sales'),
   });
   const assignableUsers = assignableUsersData?.data ?? [];
 

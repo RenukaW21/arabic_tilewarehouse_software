@@ -33,8 +33,11 @@ export type UserRole =
   | 'super_admin'
   | 'admin'
   | 'warehouse_manager'
+  | 'supervisor'
   | 'sales'
   | 'accountant'
+  | 'warehouse_staff'
+  | 'viewer'
   | 'user';
 
 export interface AuthTokens {
