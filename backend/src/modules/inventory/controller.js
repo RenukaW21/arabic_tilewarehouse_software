@@ -2,6 +2,7 @@
 const service = require('./service');
 const { success, created, paginated } = require('../../utils/response');
 const { openingStockSchema, adjustStockSchema, listQuerySchema } = require('./validation');
+const { applyWarehouseScope, scopedWarehouseOpts } = require('../../utils/warehouseScope');
 
 const validate = (schema) => (req, res, next) => {
   const { error, value } = schema.validate(req.body, { abortEarly: false, stripUnknown: true });
@@ -23,7 +24,9 @@ const listStock = async (req, res, next) => {
   try {
     const { error } = listQuerySchema.validate(req.query);
     if (error) return res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: error.details[0].message } });
-    const { rows, total } = await service.getAll(req.tenantId, req.query);
+    const q = { ...req.query };
+    applyWarehouseScope(req, q);
+    const { rows, total } = await service.getAll(req.tenantId, q);
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(1000, Math.max(1, parseInt(req.query.limit) || 25));
     return paginated(res, rows, { page, limit, total }, 'Stock summary fetched');
@@ -34,7 +37,8 @@ const listStock = async (req, res, next) => {
 
 const getStockById = async (req, res, next) => {
   try {
-    const row = await service.getById(req.params.id, req.tenantId);
+    const opts = scopedWarehouseOpts(req);
+    const row = await service.getById(req.params.id, req.tenantId, opts);
     return success(res, row, 'Stock record fetched');
   } catch (err) {
     next(err);

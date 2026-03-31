@@ -6,9 +6,12 @@ const { AppError } = require('../../middlewares/error.middleware');
 
 const getAll = async (tenantId, queryParams) => repo.findAll(tenantId, queryParams);
 
-const getById = async (id, tenantId) => {
+const getById = async (id, tenantId, opts = {}) => {
   const row = await repo.findById(id, tenantId);
   if (!row) throw new AppError('Stock record not found', 404, 'NOT_FOUND');
+  if (opts.warehouseId && row.warehouse_id !== opts.warehouseId) {
+    throw new AppError('Stock record not found', 404, 'NOT_FOUND');
+  }
   return row;
 };
 

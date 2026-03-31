@@ -2,15 +2,20 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../../middlewares/auth.middleware');
+const { attachWarehouseScope } = require('../../middlewares/warehouse-scope.middleware');
 const { query } = require('../../config/db');
 const { success, paginated } = require('../../utils/response');
 const { parsePagination, buildSearchClause, buildFilterClauses } = require('../../utils/pagination');
+const { applyWarehouseScope } = require('../../utils/warehouseScope');
 
 router.use(authenticate);
+router.use(attachWarehouseScope);
 
 router.get('/', async (req, res, next) => {
     try {
-        const { page, limit, offset, sortBy, sortOrder, search } = parsePagination(req.query, ['product_name', 'rack_name']);
+        const q = { ...req.query };
+        applyWarehouseScope(req, q);
+        const { page, limit, offset, sortBy, sortOrder, search } = parsePagination(q, ['product_name', 'rack_name']);
 
         let baseSql = `
       SELECT pr.id, pr.product_id, pr.rack_id, pr.boxes_stored, 
@@ -24,9 +29,9 @@ router.get('/', async (req, res, next) => {
     `;
         const params = [req.tenantId];
 
-        if (req.query.warehouse_id) {
+        if (q.warehouse_id) {
             baseSql += ` AND r.warehouse_id = ?`;
-            params.push(req.query.warehouse_id);
+            params.push(q.warehouse_id);
         }
 
         if (search) {

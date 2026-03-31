@@ -1,25 +1,30 @@
 'use strict';
 const router = require('express').Router();
 const { authenticate } = require('../../middlewares/auth.middleware');
+const { attachWarehouseScope } = require('../../middlewares/warehouse-scope.middleware');
 const { query } = require('../../config/db');
 const { paginated } = require('../../utils/response');
 const { parsePagination } = require('../../utils/pagination');
+const { applyWarehouseScope } = require('../../utils/warehouseScope');
 
 router.use(authenticate);
+router.use(attachWarehouseScope);
 
 router.get('/', async (req, res) => {
-  const { page, limit, offset, sortBy, sortOrder } = parsePagination(req.query, ['transaction_date','created_at']);
+  const q = { ...req.query };
+  applyWarehouseScope(req, q);
+  const { page, limit, offset, sortBy, sortOrder } = parsePagination(q, ['transaction_date','created_at']);
   const conditions = ['sl.tenant_id = ?'];
   const params = [req.tenantId];
-  if (req.query.productId)   { conditions.push('sl.product_id = ?');   params.push(req.query.productId); }
-  if (req.query.warehouseId) { conditions.push('sl.warehouse_id = ?'); params.push(req.query.warehouseId); }
-  if (req.query.type) {
+  if (q.productId)   { conditions.push('sl.product_id = ?');   params.push(q.productId); }
+  if (q.warehouseId) { conditions.push('sl.warehouse_id = ?'); params.push(q.warehouseId); }
+  if (q.type) {
     const typeMap = { GRN: 'grn', SALES_DISPATCH: 'sale', ADJUSTMENT_IN: 'adjustment', ADJUSTMENT_OUT: 'adjustment', TRANSFER_IN: 'transfer_in', TRANSFER_OUT: 'transfer_out', RETURN_IN: 'return', DAMAGE: 'damage', OPENING: 'opening' };
-    const dbType = typeMap[String(req.query.type).toUpperCase()] || String(req.query.type).toLowerCase();
+    const dbType = typeMap[String(q.type).toUpperCase()] || String(q.type).toLowerCase();
     conditions.push('sl.transaction_type = ?'); params.push(dbType);
   }
-  if (req.query.from)        { conditions.push('sl.transaction_date >= ?'); params.push(req.query.from); }
-  if (req.query.to)          { conditions.push('sl.transaction_date <= ?'); params.push(req.query.to); }
+  if (q.from)        { conditions.push('sl.transaction_date >= ?'); params.push(q.from); }
+  if (q.to)          { conditions.push('sl.transaction_date <= ?'); params.push(q.to); }
   const where = conditions.join(' AND ');
   const [rows, count] = await Promise.all([
     query(`SELECT sl.id, sl.tenant_id, sl.warehouse_id, sl.rack_id, sl.product_id, sl.shade_id, sl.batch_id,

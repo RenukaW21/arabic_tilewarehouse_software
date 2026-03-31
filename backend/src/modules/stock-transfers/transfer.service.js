@@ -133,6 +133,11 @@ const getAllTransfers = async (tenantId, options = {}) => {
     conditions.push(searchClause);
     params.push(...searchParams);
   }
+  if (options.warehouse_id) {
+    conditions.push('(stock_transfers.from_warehouse_id = ? OR stock_transfers.to_warehouse_id = ?)');
+    params.push(options.warehouse_id, options.warehouse_id);
+  }
+
   const orderBy = ALLOWED_SORT_FIELDS.includes(sortBy) ? sortBy : 'created_at';
   const order = sortOrder === 'ASC' ? 'ASC' : 'DESC';
   const whereSql = conditions.join(' AND ');
@@ -227,7 +232,11 @@ const deleteTransfer = async (id, tenantId) => {
  * Fetch all transfers that contain a given product (for product detail page).
  * Returns transfer header + warehouse names + per-item boxes for that product.
  */
-const getTransfersByProduct = async (productId, tenantId) => {
+const getTransfersByProduct = async (productId, tenantId, warehouseId = null) => {
+  const whClause = warehouseId
+    ? ' AND (st.from_warehouse_id = ? OR st.to_warehouse_id = ?)'
+    : '';
+  const whParams = warehouseId ? [warehouseId, warehouseId] : [];
   const rows = await query(
     `SELECT
        st.id, st.transfer_number, st.status, st.transfer_date, st.received_date,
@@ -241,9 +250,10 @@ const getTransfersByProduct = async (productId, tenantId) => {
      JOIN warehouses fw       ON fw.id  = st.from_warehouse_id AND fw.tenant_id  = st.tenant_id
      JOIN warehouses tw       ON tw.id  = st.to_warehouse_id   AND tw.tenant_id  = st.tenant_id
      WHERE sti.product_id = ? AND sti.tenant_id = ?
+     ${whClause}
      ORDER BY st.created_at DESC
      LIMIT 100`,
-    [productId, tenantId]
+    [productId, tenantId, ...whParams]
   );
   return rows;
 };

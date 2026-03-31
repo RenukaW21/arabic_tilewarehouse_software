@@ -2,9 +2,11 @@
 const router = require('express').Router();
 const ctrl = require('./controller');
 const { authenticate } = require('../../middlewares/auth.middleware');
+const { attachWarehouseScope } = require('../../middlewares/warehouse-scope.middleware');
 const { requireMinRole } = require('../../middlewares/role.middleware');
 
 router.use(authenticate);
+router.use(attachWarehouseScope);
 
 router.get('/', ctrl.list);
 router.get('/:id', ctrl.getById);

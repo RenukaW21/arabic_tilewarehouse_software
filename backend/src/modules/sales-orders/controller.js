@@ -2,14 +2,18 @@
 const service = require('./service');
 const { success, created, paginated } = require('../../utils/response');
 const { writeAuditLog, extractRequestMeta } = require('../../utils/auditLog');
+const { applyWarehouseScope, scopedWarehouseOpts } = require('../../utils/warehouseScope');
 
 const getAll = async (req, res) => {
-  const { rows, total } = await service.getAll(req.tenantId, req.query);
+  const q = { ...req.query };
+  applyWarehouseScope(req, q);
+  const { rows, total } = await service.getAll(req.tenantId, q);
   return paginated(res, rows, { page: req.query.page || 1, limit: req.query.limit || 25, total });
 };
 
 const getById = async (req, res) => {
-  const so = await service.getById(req.params.id, req.tenantId);
+  const opts = scopedWarehouseOpts(req);
+  const so = await service.getById(req.params.id, req.tenantId, opts);
   return success(res, so, 'Sales order fetched');
 };
 

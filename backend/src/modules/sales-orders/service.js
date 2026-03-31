@@ -17,6 +17,7 @@ const getAll = async (tenantId, queryParams) => {
   if (queryParams.customerId){ conditions.push('so.customer_id = ?'); params.push(queryParams.customerId); }
   const paymentFilter = queryParams.paymentStatus ?? queryParams.payment_status;
   if (paymentFilter) { conditions.push('so.payment_status = ?'); params.push(paymentFilter); }
+  if (queryParams.warehouse_id) { conditions.push('so.warehouse_id = ?'); params.push(queryParams.warehouse_id); }
   if (search) { conditions.push('(so.so_number LIKE ? OR c.name LIKE ?)'); params.push(`%${search}%`, `%${search}%`); }
 
   const where = conditions.join(' AND ');
@@ -30,7 +31,7 @@ const getAll = async (tenantId, queryParams) => {
   return { rows, total: count[0].total };
 };
 
-const getById = async (id, tenantId) => {
+const getById = async (id, tenantId, opts = {}) => {
   const rows = await query(
     `SELECT so.*, c.name AS customer_name, w.name AS warehouse_name
      FROM sales_orders so JOIN customers c ON so.customer_id = c.id JOIN warehouses w ON so.warehouse_id = w.id
@@ -38,6 +39,9 @@ const getById = async (id, tenantId) => {
     [id, tenantId]
   );
   if (!rows.length) throw new AppError('Sales order not found', 404, 'NOT_FOUND');
+  if (opts.warehouseId && rows[0].warehouse_id !== opts.warehouseId) {
+    throw new AppError('Sales order not found', 404, 'NOT_FOUND');
+  }
   const items = await query(
     `SELECT soi.*, p.name AS product_name, p.code AS product_code, s.shade_code
      FROM sales_order_items soi JOIN products p ON soi.product_id = p.id LEFT JOIN shades s ON soi.shade_id = s.id

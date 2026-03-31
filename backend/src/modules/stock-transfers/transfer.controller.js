@@ -6,7 +6,17 @@ const transferExecutionService = require('./transferExecution.service');
 const { createTransferSchema, updateTransferSchema } = require('./transfer.validation');
 const { success, created, paginated } = require('../../utils/response');
 const { AppError } = require('../../middlewares/error.middleware');
+const { applyWarehouseScope, isWarehouseScopedRole } = require('../../utils/warehouseScope');
 const { generateDocNumber } = require('../../utils/docNumber');
+
+const assertTransferWarehouseScope = (req, transfer) => {
+  if (isWarehouseScopedRole(req.user?.role) && req.user.warehouse_id) {
+    const w = req.user.warehouse_id;
+    if (transfer.from_warehouse_id !== w && transfer.to_warehouse_id !== w) {
+      throw new AppError('Transfer not found', 404, 'NOT_FOUND');
+    }
+  }
+};
 
 const createTransfer = async (req, res, next) => {
   try {
@@ -16,6 +26,12 @@ const createTransfer = async (req, res, next) => {
         success: false,
         error: { code: 'VALIDATION_ERROR', message: err.details[0].message },
       });
+    }
+    if (isWarehouseScopedRole(req.user?.role) && req.user.warehouse_id) {
+      const w = req.user.warehouse_id;
+      if (value.from_warehouse_id !== w && value.to_warehouse_id !== w) {
+        throw new AppError('Transfer must involve your assigned warehouse', 400, 'FORBIDDEN');
+      }
     }
     const tenantId = req.tenantId;
     const createdBy = req.user?.id ?? null;
@@ -43,7 +59,9 @@ const createTransfer = async (req, res, next) => {
 
 const getTransfers = async (req, res, next) => {
   try {
-    const { data, meta } = await transferService.getAllTransfers(req.tenantId, req.query);
+    const q = { ...req.query };
+    applyWarehouseScope(req, q);
+    const { data, meta } = await transferService.getAllTransfers(req.tenantId, q);
     return paginated(res, data, meta, 'Transfers fetched');
   } catch (e) {
     next(e);
@@ -54,6 +72,7 @@ const getTransferById = async (req, res, next) => {
   try {
     const transfer = await transferService.getTransferById(req.params.id, req.tenantId);
     if (!transfer) throw new AppError('Transfer not found', 404, 'NOT_FOUND');
+    assertTransferWarehouseScope(req, transfer);
     return success(res, transfer, 'Transfer fetched');
   } catch (e) {
     next(e);
@@ -71,6 +90,7 @@ const updateTransfer = async (req, res, next) => {
     }
     const existing = await transferService.getTransferById(req.params.id, req.tenantId);
     if (!existing) throw new AppError('Transfer not found', 404, 'NOT_FOUND');
+    assertTransferWarehouseScope(req, existing);
     if (existing.status !== 'draft') {
       throw new AppError(
         'Only draft transfers can be edited.',
@@ -89,6 +109,7 @@ const deleteTransfer = async (req, res, next) => {
   try {
     const existing = await transferService.getTransferById(req.params.id, req.tenantId);
     if (!existing) throw new AppError('Transfer not found', 404, 'NOT_FOUND');
+    assertTransferWarehouseScope(req, existing);
     if (existing.status !== 'draft') {
       throw new AppError(
         'Only draft transfers can be deleted.',
@@ -109,6 +130,9 @@ const deleteTransfer = async (req, res, next) => {
  */
 const confirmTransfer = async (req, res, next) => {
   try {
+    const existing = await transferService.getTransferById(req.params.id, req.tenantId);
+    if (!existing) throw new AppError('Transfer not found', 404, 'NOT_FOUND');
+    assertTransferWarehouseScope(req, existing);
     const transfer = await transferExecutionService.confirmTransfer(
       req.params.id,
       req.tenantId,
@@ -126,6 +150,9 @@ const confirmTransfer = async (req, res, next) => {
  */
 const receiveTransfer = async (req, res, next) => {
   try {
+    const existing = await transferService.getTransferById(req.params.id, req.tenantId);
+    if (!existing) throw new AppError('Transfer not found', 404, 'NOT_FOUND');
+    assertTransferWarehouseScope(req, existing);
     const transfer = await transferExecutionService.receiveTransfer(
       req.params.id,
       req.tenantId,
@@ -140,9 +167,14 @@ const receiveTransfer = async (req, res, next) => {
 
 const getTransfersByProduct = async (req, res, next) => {
   try {
+    let warehouseId = null;
+    if (isWarehouseScopedRole(req.user?.role) && req.user.warehouse_id) {
+      warehouseId = req.user.warehouse_id;
+    }
     const transfers = await transferService.getTransfersByProduct(
       req.params.productId,
-      req.tenantId
+      req.tenantId,
+      warehouseId
     );
     return success(res, transfers, 'Product transfers fetched');
   } catch (e) {

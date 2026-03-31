@@ -14,9 +14,12 @@ const { AppError } = require('../../middlewares/error.middleware');
 
 const getAll = (tenantId, q) => repo.findAll(tenantId, q);
 
-const getById = async (id, tenantId) => {
+const getById = async (id, tenantId, opts = {}) => {
   const grn = await repo.findById(id, tenantId);
   if (!grn) throw new AppError('GRN not found', 404, 'NOT_FOUND');
+  if (opts.warehouseId && grn.warehouse_id !== opts.warehouseId) {
+    throw new AppError('GRN not found', 404, 'NOT_FOUND');
+  }
   return grn;
 };
 
@@ -83,8 +86,8 @@ const create = async (tenantId, userId, data) => {
   }
 };
 
-const postGRN = async (id, tenantId, userId) => {
-  const grn = await getById(id, tenantId);
+const postGRN = async (id, tenantId, userId, opts = {}) => {
+  const grn = await getById(id, tenantId, opts);
   if (grn.status !== 'draft' && grn.status !== 'verified') {
     throw new AppError(`GRN cannot be posted in status: ${grn.status}`, 400, 'INVALID_STATUS');
   }
@@ -134,7 +137,7 @@ const postGRN = async (id, tenantId, userId) => {
     await repo.updatePOReceivedBoxes(trx, grn.purchase_order_id, tenantId);
 
     await trx.commit();
-    return getById(id, tenantId);
+    return getById(id, tenantId, opts);
   } catch (err) {
     await trx.rollback();
     throw err;
@@ -143,7 +146,8 @@ const postGRN = async (id, tenantId, userId) => {
   }
 };
 
-const updateQuality = async (id, tenantId, itemId, qualityData) => {
+const updateQuality = async (id, tenantId, itemId, qualityData, opts = {}) => {
+  await getById(id, tenantId, opts);
   const { query } = require('../../config/db');
 
   await query(
@@ -170,8 +174,8 @@ const updateQuality = async (id, tenantId, itemId, qualityData) => {
   }
 };
 
-const update = async (id, tenantId, data) => {
-  const grn = await getById(id, tenantId);
+const update = async (id, tenantId, data, opts = {}) => {
+  const grn = await getById(id, tenantId, opts);
   if (grn.status !== 'draft' && grn.status !== 'verified') {
     throw new AppError(`GRN cannot be updated in status: ${grn.status}`, 400, 'INVALID_STATUS');
   }
@@ -189,11 +193,11 @@ const update = async (id, tenantId, data) => {
     if (v !== undefined) payload[k] = v;
   }
   if (Object.keys(payload).length > 0) await repo.updateGRN(id, tenantId, payload);
-  return getById(id, tenantId);
+  return getById(id, tenantId, opts);
 };
 
-const addItem = async (id, tenantId, data) => {
-  const grn = await getById(id, tenantId);
+const addItem = async (id, tenantId, data, opts = {}) => {
+  const grn = await getById(id, tenantId, opts);
   if (grn.status !== 'draft' && grn.status !== 'verified') {
     throw new AppError(`Cannot add items to GRN in status: ${grn.status}`, 400, 'INVALID_STATUS');
   }
@@ -209,11 +213,11 @@ const addItem = async (id, tenantId, data) => {
     quality_status: data.quality_status ?? 'pending',
     quality_notes: data.quality_notes ?? null,
   });
-  return getById(id, tenantId);
+  return getById(id, tenantId, opts);
 };
 
-const updateItem = async (id, tenantId, itemId, data) => {
-  const grn = await getById(id, tenantId);
+const updateItem = async (id, tenantId, itemId, data, opts = {}) => {
+  const grn = await getById(id, tenantId, opts);
   if (grn.status !== 'draft' && grn.status !== 'verified') {
     throw new AppError(`Cannot update items of GRN in status: ${grn.status}`, 400, 'INVALID_STATUS');
   }
@@ -239,28 +243,28 @@ const updateItem = async (id, tenantId, itemId, data) => {
   if (Object.keys(payload).length > 0) {
     await repo.updateGRNItem(tenantId, id, itemId, payload);
   }
-  return getById(id, tenantId);
+  return getById(id, tenantId, opts);
 };
 
-const deleteItem = async (id, tenantId, itemId) => {
-  const grn = await getById(id, tenantId);
+const deleteItem = async (id, tenantId, itemId, opts = {}) => {
+  const grn = await getById(id, tenantId, opts);
   if (grn.status !== 'draft') {
     throw new AppError('Only draft GRNs can have items deleted', 400, 'INVALID_STATUS');
   }
   await repo.removeGRNItem(tenantId, id, itemId);
-  return getById(id, tenantId);
+  return getById(id, tenantId, opts);
 };
 
-const generateLabels = async (id, tenantId, itemId) => {
-  const grn = await getById(id, tenantId);
+const generateLabels = async (id, tenantId, itemId, opts = {}) => {
+  const grn = await getById(id, tenantId, opts);
   const item = grn.items.find((i) => i.id === itemId);
   if (!item) throw new AppError('GRN item not found', 404, 'NOT_FOUND');
   await repo.markBarcodePrinted(tenantId, id, itemId);
   return { success: true, item };
 };
 
-const remove = async (id, tenantId) => {
-  const grn = await getById(id, tenantId);
+const remove = async (id, tenantId, opts = {}) => {
+  const grn = await getById(id, tenantId, opts);
   if (grn.status !== 'draft') {
     throw new AppError('Only draft GRNs can be deleted', 400, 'INVALID_STATUS');
   }

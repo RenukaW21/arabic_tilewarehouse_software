@@ -1,17 +1,22 @@
 'use strict';
 const router = require('express').Router();
 const { authenticate } = require('../../middlewares/auth.middleware');
+const { attachWarehouseScope } = require('../../middlewares/warehouse-scope.middleware');
 const { query } = require('../../config/db');
 const { success } = require('../../utils/response');
+const { applyWarehouseScope } = require('../../utils/warehouseScope');
 
 router.use(authenticate);
+router.use(attachWarehouseScope);
 
 router.get('/', async (req, res) => {
+  const q = { ...req.query };
+  applyWarehouseScope(req, q);
   const conditions = ['ss.tenant_id = ?'];
   const params = [req.tenantId];
-  if (req.query.warehouseId) { conditions.push('ss.warehouse_id = ?'); params.push(req.query.warehouseId); }
-  if (req.query.productId)   { conditions.push('ss.product_id = ?');   params.push(req.query.productId); }
-  if (req.query.lowStock === 'true') { conditions.push('ss.total_boxes <= p.reorder_level_boxes'); }
+  if (q.warehouseId) { conditions.push('ss.warehouse_id = ?'); params.push(q.warehouseId); }
+  if (q.productId)   { conditions.push('ss.product_id = ?');   params.push(q.productId); }
+  if (q.lowStock === 'true') { conditions.push('ss.total_boxes <= p.reorder_level_boxes'); }
 
   const rows = await query(
     `SELECT ss.*,

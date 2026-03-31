@@ -2,10 +2,12 @@
 const router = require('express').Router();
 const ctrl = require('./controller');
 const { authenticate } = require('../../middlewares/auth.middleware');
+const { attachWarehouseScope } = require('../../middlewares/warehouse-scope.middleware');
 const { requireMinRole } = require('../../middlewares/role.middleware');
 const { openingStockSchema, adjustStockSchema } = require('./validation');
 
 router.use(authenticate);
+router.use(attachWarehouseScope);
 
 router.get('/stock', ctrl.listStock);
 router.get('/stock/:id', ctrl.getStockById);

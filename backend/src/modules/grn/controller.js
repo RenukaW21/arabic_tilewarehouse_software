@@ -9,6 +9,7 @@ const {
   updateQualitySchema,
   listQuerySchema,
 } = require('./validation');
+const { applyWarehouseScope, scopedWarehouseOpts } = require('../../utils/warehouseScope');
 
 // ─── VALIDATION MIDDLEWARE ────────────────────────────────────────────────────
 // FIX #12 — added validate middleware (GRN had none before)
@@ -39,7 +40,9 @@ const getAll = async (req, res, next) => {
     }
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(500, Math.max(1, parseInt(req.query.limit) || 25));
-    const { rows, total } = await service.getAll(req.tenantId, req.query);
+    const q = { ...req.query };
+    applyWarehouseScope(req, q);
+    const { rows, total } = await service.getAll(req.tenantId, q);
     return paginated(res, rows, { page, limit, total });
   } catch (err) {
     next(err);
@@ -49,7 +52,8 @@ const getAll = async (req, res, next) => {
 // ─── GET BY ID ────────────────────────────────────────────────────────────────
 const getById = async (req, res, next) => {
   try {
-    const grn = await service.getById(req.params.id, req.tenantId);
+    const opts = scopedWarehouseOpts(req);
+    const grn = await service.getById(req.params.id, req.tenantId, opts);
     return success(res, grn, 'GRN fetched');
   } catch (err) {
     next(err);
@@ -71,7 +75,7 @@ const create = async (req, res, next) => {
 // ─── POST GRN ─────────────────────────────────────────────────────────────────
 const postGRN = async (req, res, next) => {
   try {
-    const grn = await service.postGRN(req.params.id, req.tenantId, req.user.id);
+    const grn = await service.postGRN(req.params.id, req.tenantId, req.user.id, wmScope(req));
     const meta = extractRequestMeta(req);
     await writeAuditLog({ tenantId: req.tenantId, userId: req.user.id, action: 'POST_GRN', tableName: 'grn', recordId: req.params.id, newValues: { status: 'posted' }, ...meta });
     return success(res, grn, 'GRN posted — stock updated');
@@ -83,7 +87,7 @@ const postGRN = async (req, res, next) => {
 // ─── UPDATE QUALITY ───────────────────────────────────────────────────────────
 const updateQuality = async (req, res, next) => {
   try {
-    await service.updateQuality(req.params.id, req.tenantId, req.params.itemId, req.body);
+    await service.updateQuality(req.params.id, req.tenantId, req.params.itemId, req.body, scopedWarehouseOpts(req));
     return success(res, {}, 'Quality status updated');
   } catch (err) {
     next(err);
@@ -93,7 +97,7 @@ const updateQuality = async (req, res, next) => {
 // ─── UPDATE ───────────────────────────────────────────────────────────────────
 const update = async (req, res, next) => {
   try {
-    const grn = await service.update(req.params.id, req.tenantId, req.body);
+    const grn = await service.update(req.params.id, req.tenantId, req.body, scopedWarehouseOpts(req));
     return success(res, grn, 'GRN updated');
   } catch (err) {
     next(err);
@@ -103,7 +107,7 @@ const update = async (req, res, next) => {
 // ─── ADD ITEM ─────────────────────────────────────────────────────────────────
 const addItem = async (req, res, next) => {
   try {
-    const grn = await service.addItem(req.params.id, req.tenantId, req.body);
+    const grn = await service.addItem(req.params.id, req.tenantId, req.body, wmScope(req));
     return created(res, grn, 'GRN item added');
   } catch (err) {
     next(err);
@@ -113,7 +117,7 @@ const addItem = async (req, res, next) => {
 // ─── UPDATE ITEM ──────────────────────────────────────────────────────────────
 const updateItem = async (req, res, next) => {
   try {
-    const grn = await service.updateItem(req.params.id, req.tenantId, req.params.itemId, req.body);
+    const grn = await service.updateItem(req.params.id, req.tenantId, req.params.itemId, req.body, scopedWarehouseOpts(req));
     return success(res, grn, 'GRN item updated');
   } catch (err) {
     next(err);
@@ -123,7 +127,7 @@ const updateItem = async (req, res, next) => {
 // ─── DELETE ITEM ──────────────────────────────────────────────────────────────
 const deleteItem = async (req, res, next) => {
   try {
-    const grn = await service.deleteItem(req.params.id, req.tenantId, req.params.itemId);
+    const grn = await service.deleteItem(req.params.id, req.tenantId, req.params.itemId, scopedWarehouseOpts(req));
     return success(res, grn, 'GRN item deleted');
   } catch (err) {
     next(err);
@@ -133,7 +137,7 @@ const deleteItem = async (req, res, next) => {
 // ─── GENERATE LABELS ──────────────────────────────────────────────────────────
 const generateLabels = async (req, res, next) => {
   try {
-    const labels = await service.generateLabels(req.params.id, req.tenantId, req.params.itemId);
+    const labels = await service.generateLabels(req.params.id, req.tenantId, req.params.itemId, scopedWarehouseOpts(req));
     return success(res, labels, 'Labels generated successfully');
   } catch (err) {
     next(err);
@@ -143,7 +147,7 @@ const generateLabels = async (req, res, next) => {
 // ─── REMOVE ───────────────────────────────────────────────────────────────────
 const remove = async (req, res, next) => {
   try {
-    const result = await service.remove(req.params.id, req.tenantId);
+    const result = await service.remove(req.params.id, req.tenantId, scopedWarehouseOpts(req));
     return success(res, result, 'GRN deleted');
   } catch (err) {
     next(err);

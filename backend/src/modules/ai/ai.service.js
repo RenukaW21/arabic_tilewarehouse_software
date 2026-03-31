@@ -2,6 +2,7 @@
 
 const OpenAI = require('openai');
 const { query } = require('../../config/db');
+const { isWarehouseScopedRole } = require('../../utils/warehouseScope');
 
 // ─── OpenAI Client ────────────────────────────────────────────────────────────
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -479,7 +480,7 @@ exports.processAI = async (userQuery, tenantId, userContext = {}) => {
     : 'your Supervisor or Admin';
 
   // For managers, scope context to their warehouse; admins/super_admins see all
-  const scopedWarehouseId = (role === 'warehouse_manager') ? warehouseId : null;
+  const scopedWarehouseId = isWarehouseScopedRole(role) ? warehouseId : null;
 
   // ── Cache key (scoped per user so different managers see different data) ───
   const cacheKey = `${tid}_${userContext.userId ?? 'anon'}_${normalizedQuery}`;

@@ -2,35 +2,28 @@
 const repo = require('./repository');
 const { beginTransaction } = require('../../config/db');
 const { AppError } = require('../../middlewares/error.middleware');
-
-const WAREHOUSE_SCOPED_ROLES = ['warehouse_manager', 'supervisor', 'warehouse_staff'];
+const { isWarehouseScopedRole } = require('../../utils/warehouseScope');
 
 const getAll = async (tenantId, queryParams, user) => {
   let params = queryParams;
-  if (user && WAREHOUSE_SCOPED_ROLES.includes(user.role)) {
-    const { query } = require('../../config/db');
-    const rows = await query(
-      'SELECT warehouse_id FROM users WHERE id = ? AND tenant_id = ? LIMIT 1',
-      [user.id, tenantId]
-    );
-    const warehouseId = rows[0]?.warehouse_id ?? null;
-    if (warehouseId) {
-      params = { ...queryParams, warehouse_id: warehouseId };
-    }
+  if (user && isWarehouseScopedRole(user.role) && user.warehouse_id) {
+    params = { ...queryParams, warehouse_id: user.warehouse_id };
   }
   return repo.findAll(tenantId, params);
 };
 
-const getById = async (id, tenantId) => {
+const getById = async (id, tenantId, opts = {}) => {
   const pick = await repo.findById(id, tenantId);
   if (!pick) throw new AppError('Pick list not found', 404, 'NOT_FOUND');
+  if (opts.warehouseId && pick.warehouse_id !== opts.warehouseId) {
+    throw new AppError('Pick list not found', 404, 'NOT_FOUND');
+  }
   const items = await repo.findItemsByPickListId(id, tenantId);
   return { ...pick, items };
 };
 
-const assign = async (id, tenantId, assignedTo) => {
-  const pick = await repo.findById(id, tenantId);
-  if (!pick) throw new AppError('Pick list not found', 404, 'NOT_FOUND');
+const assign = async (id, tenantId, assignedTo, opts = {}) => {
+  const pick = await getById(id, tenantId, opts);
   if (!['pending', 'in_progress'].includes(pick.status)) {
     throw new AppError('Only pending or in-progress pick lists can be assigned', 400, 'INVALID_STATUS');
   }
@@ -40,12 +33,12 @@ const assign = async (id, tenantId, assignedTo) => {
     updates.started_at = new Date();
   }
   await repo.update(id, tenantId, updates);
-  return getById(id, tenantId);
+  return getById(id, tenantId, opts);
 };
 
 /** Updates pick_list_items only — never posts stock movements (deduction is on challan dispatch). */
-const updateItemPicked = async (pickListId, itemId, tenantId, pickedBoxes) => {
-  const pick = await getById(pickListId, tenantId);
+const updateItemPicked = async (pickListId, itemId, tenantId, pickedBoxes, opts = {}) => {
+  const pick = await getById(pickListId, tenantId, opts);
   if (!['pending', 'in_progress'].includes(pick.status)) {
     throw new AppError('Only pending or in-progress pick lists can be updated', 400, 'INVALID_STATUS');
   }
@@ -73,7 +66,7 @@ const updateItemPicked = async (pickListId, itemId, tenantId, pickedBoxes) => {
     }
     await repo.updateItemPicked(itemId, pickListId, tenantId, picked, trx);
     await trx.commit();
-    return getById(pickListId, tenantId);
+    return getById(pickListId, tenantId, opts);
   } catch (err) {
     await trx.rollback();
     throw err;
@@ -82,8 +75,8 @@ const updateItemPicked = async (pickListId, itemId, tenantId, pickedBoxes) => {
   }
 };
 
-const complete = async (id, tenantId, userId) => {
-  const pick = await getById(id, tenantId);
+const complete = async (id, tenantId, userId, opts = {}) => {
+  const pick = await getById(id, tenantId, opts);
   if (!['pending', 'in_progress'].includes(pick.status)) {
     throw new AppError('Only pending or in-progress pick lists can be completed', 400, 'INVALID_STATUS');
   }
@@ -105,12 +98,12 @@ const complete = async (id, tenantId, userId) => {
     // We don't throw here to avoid blocking the pick list completion if DC fails for some reason
   }
 
-  return getById(id, tenantId);
+  return getById(id, tenantId, opts);
 };
 
 /** Reopen a completed pick list that has no picked items so user can enter quantities and complete again. */
-const reopen = async (id, tenantId) => {
-  const pick = await getById(id, tenantId);
+const reopen = async (id, tenantId, opts = {}) => {
+  const pick = await getById(id, tenantId, opts);
   if (pick.status !== 'completed') {
     throw new AppError('Only completed pick lists can be reopened', 400, 'INVALID_STATUS');
   }
@@ -127,28 +120,27 @@ const reopen = async (id, tenantId) => {
     throw new AppError('Pick list is already used by a delivery challan', 400, 'IN_USE');
   }
   await repo.update(id, tenantId, { status: 'in_progress', completed_at: null });
-  return getById(id, tenantId);
+  return getById(id, tenantId, opts);
 };
 
-const update = async (id, tenantId, data) => {
-  const pick = await getById(id, tenantId);
+const update = async (id, tenantId, data, opts = {}) => {
+  const pick = await getById(id, tenantId, opts);
   if (!['pending', 'in_progress'].includes(pick.status)) {
     throw new AppError('Only pending or in-progress pick lists can be updated', 400, 'INVALID_STATUS');
   }
   const updates = {};
   if (data.assigned_to !== undefined) updates.assigned_to = data.assigned_to || null;
-  if (Object.keys(updates).length === 0) return getById(id, tenantId);
+  if (Object.keys(updates).length === 0) return getById(id, tenantId, opts);
   if (pick.status === 'pending' && updates.assigned_to) {
     updates.status = 'in_progress';
     updates.started_at = new Date();
   }
   await repo.update(id, tenantId, updates);
-  return getById(id, tenantId);
+  return getById(id, tenantId, opts);
 };
 
-const remove = async (id, tenantId) => {
-  const pick = await repo.findById(id, tenantId);
-  if (!pick) throw new AppError('Pick list not found', 404, 'NOT_FOUND');
+const remove = async (id, tenantId, opts = {}) => {
+  const pick = await getById(id, tenantId, opts);
   if (pick.status !== 'pending') {
     throw new AppError('Only pending pick lists can be deleted', 400, 'INVALID_STATUS');
   }

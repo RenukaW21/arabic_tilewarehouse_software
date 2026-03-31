@@ -3,20 +3,25 @@ const { query } = require('../../config/db');
 
 /**
  * GSTR-1 style GST report — invoice-wise tax summary
+ * Optional warehouseId: limit to invoices tied to sales orders for that warehouse.
  */
-const getGSTReport = async (tenantId, { month, year }) => {
+const getGSTReport = async (tenantId, { month, year, warehouseId } = {}) => {
   const m = parseInt(month) || new Date().getMonth() + 1;
   const y = parseInt(year) || new Date().getFullYear();
+  const wh = warehouseId ?? null;
 
   const invoices = await query(
     `SELECT i.invoice_number, i.invoice_date, c.name AS customer_name,
             c.gstin AS customer_gstin, i.sub_total, i.cgst_amount, i.sgst_amount,
             i.igst_amount, i.grand_total
-     FROM invoices i JOIN customers c ON i.customer_id = c.id
+     FROM invoices i
+     JOIN customers c ON i.customer_id = c.id
+     JOIN sales_orders so ON i.sales_order_id = so.id AND so.tenant_id = i.tenant_id
      WHERE i.tenant_id = ? AND i.status = 'issued'
        AND MONTH(i.invoice_date) = ? AND YEAR(i.invoice_date) = ?
+       AND (? IS NULL OR so.warehouse_id = ?)
      ORDER BY i.invoice_date`,
-    [tenantId, m, y]
+    [tenantId, m, y, wh, wh]
   );
 
   const hsn = await query(
@@ -28,11 +33,13 @@ const getGSTReport = async (tenantId, { month, year }) => {
             SUM(ii.igst_amount) AS igst_amount
      FROM invoice_items ii
      JOIN invoices i ON ii.invoice_id = i.id
+     JOIN sales_orders so ON i.sales_order_id = so.id AND so.tenant_id = i.tenant_id
      JOIN products p ON ii.product_id = p.id
      WHERE ii.tenant_id = ? AND i.status = 'issued'
        AND MONTH(i.invoice_date) = ? AND YEAR(i.invoice_date) = ?
+       AND (? IS NULL OR so.warehouse_id = ?)
      GROUP BY ii.hsn_code, p.name`,
-    [tenantId, m, y]
+    [tenantId, m, y, wh, wh]
   );
 
   const summary = invoices.reduce((acc, inv) => ({
@@ -50,36 +57,48 @@ const getGSTReport = async (tenantId, { month, year }) => {
 /**
  * Revenue report — last N months trend
  */
-const getRevenueReport = async (tenantId, { months = 12 } = {}) => {
+const getRevenueReport = async (tenantId, { months = 12, warehouseId } = {}) => {
+  const m = months;
+  const wh = warehouseId ?? null;
+
   const monthly = await query(
-    `SELECT DATE_FORMAT(invoice_date, '%Y-%m') AS month,
+    `SELECT DATE_FORMAT(i.invoice_date, '%Y-%m') AS month,
             COUNT(*) AS invoice_count,
-            SUM(grand_total) AS revenue,
-            SUM(cgst_amount + sgst_amount + igst_amount) AS tax_collected
-     FROM invoices
-     WHERE tenant_id = ? AND status = 'issued'
-       AND invoice_date >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
-     GROUP BY DATE_FORMAT(invoice_date, '%Y-%m')
+            SUM(i.grand_total) AS revenue,
+            SUM(i.cgst_amount + i.sgst_amount + i.igst_amount) AS tax_collected
+     FROM invoices i
+     JOIN sales_orders so ON i.sales_order_id = so.id AND so.tenant_id = i.tenant_id
+     WHERE i.tenant_id = ? AND i.status = 'issued'
+       AND i.invoice_date >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+       AND (? IS NULL OR so.warehouse_id = ?)
+     GROUP BY DATE_FORMAT(i.invoice_date, '%Y-%m')
      ORDER BY month ASC`,
-    [tenantId, months]
+    [tenantId, m, wh, wh]
   );
 
   const topProducts = await query(
     `SELECT p.name, p.code, SUM(ii.quantity_boxes) AS boxes_sold, SUM(ii.line_total) AS revenue
-     FROM invoice_items ii JOIN products p ON ii.product_id = p.id JOIN invoices i ON ii.invoice_id = i.id
+     FROM invoice_items ii
+     JOIN products p ON ii.product_id = p.id
+     JOIN invoices i ON ii.invoice_id = i.id
+     JOIN sales_orders so ON i.sales_order_id = so.id AND so.tenant_id = i.tenant_id
      WHERE ii.tenant_id = ? AND i.status = 'issued'
        AND i.invoice_date >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+       AND (? IS NULL OR so.warehouse_id = ?)
      GROUP BY p.id, p.name, p.code ORDER BY revenue DESC LIMIT 10`,
-    [tenantId, months]
+    [tenantId, m, wh, wh]
   );
 
   const topCustomers = await query(
     `SELECT c.name, c.code, SUM(i.grand_total) AS total_revenue, COUNT(*) AS invoice_count
-     FROM invoices i JOIN customers c ON i.customer_id = c.id
+     FROM invoices i
+     JOIN customers c ON i.customer_id = c.id
+     JOIN sales_orders so ON i.sales_order_id = so.id AND so.tenant_id = i.tenant_id
      WHERE i.tenant_id = ? AND i.status = 'issued'
        AND i.invoice_date >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+       AND (? IS NULL OR so.warehouse_id = ?)
      GROUP BY c.id, c.name, c.code ORDER BY total_revenue DESC LIMIT 10`,
-    [tenantId, months]
+    [tenantId, m, wh, wh]
   );
 
   return { monthly, topProducts, topCustomers };
@@ -88,7 +107,8 @@ const getRevenueReport = async (tenantId, { months = 12 } = {}) => {
 /**
  * Accounts receivable aging report
  */
-const getAgingReport = async (tenantId) => {
+const getAgingReport = async (tenantId, warehouseId = null) => {
+  const wh = warehouseId ?? null;
   const invoices = await query(
     `SELECT i.invoice_number, i.invoice_date, i.due_date, i.grand_total,
             i.payment_status, c.name AS customer_name, c.phone AS customer_phone,
@@ -96,14 +116,16 @@ const getAgingReport = async (tenantId) => {
             (i.grand_total - COALESCE(paid.total_paid, 0)) AS outstanding
      FROM invoices i
      JOIN customers c ON i.customer_id = c.id
+     JOIN sales_orders so ON i.sales_order_id = so.id AND so.tenant_id = i.tenant_id
      LEFT JOIN (
        SELECT invoice_id, SUM(amount) AS total_paid
        FROM customer_payments WHERE tenant_id = ? AND status = 'cleared'
        GROUP BY invoice_id
      ) paid ON paid.invoice_id = i.id
      WHERE i.tenant_id = ? AND i.status = 'issued' AND i.payment_status != 'paid'
+       AND (? IS NULL OR so.warehouse_id = ?)
      ORDER BY days_overdue DESC`,
-    [tenantId, tenantId]
+    [tenantId, tenantId, wh, wh]
   );
 
   const buckets = { current: 0, days1_30: 0, days31_60: 0, days61_90: 0, days90plus: 0 };
@@ -164,7 +186,8 @@ const getStockValuation = async (tenantId, warehouseId) => {
 /**
  * Dashboard KPIs — legacy shape (kept for backward compatibility)
  */
-const getDashboardKPIs = async (tenantId) => {
+const getDashboardKPIs = async (tenantId, warehouseId = null) => {
+  const wh = warehouseId ?? null;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
@@ -172,28 +195,42 @@ const getDashboardKPIs = async (tenantId) => {
 
   const [todaySales, pendingOrders, lowStock, grnPending, monthRevenue, unpaidInvoices] = await Promise.all([
     query(
-      `SELECT COALESCE(SUM(grand_total), 0) AS total FROM sales_orders
-       WHERE tenant_id = ? AND order_date >= ? AND order_date < ? AND status NOT IN ('cancelled','draft')`,
-      [tenantId, today, tomorrow]
+      `SELECT COALESCE(SUM(so.grand_total), 0) AS total FROM sales_orders so
+       WHERE so.tenant_id = ? AND so.order_date >= ? AND so.order_date < ? AND so.status NOT IN ('cancelled','draft')
+       AND (? IS NULL OR so.warehouse_id = ?)`,
+      [tenantId, today, tomorrow, wh, wh]
     ),
-    query(`SELECT COUNT(*) AS total FROM sales_orders WHERE tenant_id = ? AND status IN ('draft','confirmed','pick_ready')`, [tenantId]),
+    query(
+      `SELECT COUNT(*) AS total FROM sales_orders so WHERE so.tenant_id = ? AND so.status IN ('draft','confirmed','pick_ready')
+       AND (? IS NULL OR so.warehouse_id = ?)`,
+      [tenantId, wh, wh]
+    ),
     query(
       `SELECT COUNT(*) AS total FROM stock_summary ss JOIN products p ON ss.product_id = p.id
-       WHERE ss.tenant_id = ? AND ss.total_boxes <= p.reorder_level_boxes AND ss.total_boxes >= 0`,
-      [tenantId]
-    ),
-    query(`SELECT COUNT(*) AS total FROM grn WHERE tenant_id = ? AND status = 'draft'`, [tenantId]),
-    query(
-      `SELECT COALESCE(SUM(grand_total), 0) AS total FROM invoices
-       WHERE tenant_id = ? AND status != 'cancelled' AND YEAR(invoice_date) = YEAR(CURDATE()) AND MONTH(invoice_date) = MONTH(CURDATE())`,
-      [tenantId]
+       WHERE ss.tenant_id = ? AND ss.total_boxes <= p.reorder_level_boxes AND ss.total_boxes >= 0
+       AND (? IS NULL OR ss.warehouse_id = ?)`,
+      [tenantId, wh, wh]
     ),
     query(
-      `SELECT COALESCE(SUM(grand_total - COALESCE(p.paid, 0)), 0) AS total
+      `SELECT COUNT(*) AS total FROM grn g WHERE g.tenant_id = ? AND g.status = 'draft'
+       AND (? IS NULL OR g.warehouse_id = ?)`,
+      [tenantId, wh, wh]
+    ),
+    query(
+      `SELECT COALESCE(SUM(i.grand_total), 0) AS total FROM invoices i
+       JOIN sales_orders so ON i.sales_order_id = so.id AND so.tenant_id = i.tenant_id
+       WHERE i.tenant_id = ? AND i.status != 'cancelled' AND YEAR(i.invoice_date) = YEAR(CURDATE()) AND MONTH(i.invoice_date) = MONTH(CURDATE())
+       AND (? IS NULL OR so.warehouse_id = ?)`,
+      [tenantId, wh, wh]
+    ),
+    query(
+      `SELECT COALESCE(SUM(i.grand_total - COALESCE(p.paid, 0)), 0) AS total
        FROM invoices i
+       JOIN sales_orders so ON i.sales_order_id = so.id AND so.tenant_id = i.tenant_id
        LEFT JOIN (SELECT invoice_id, SUM(amount) AS paid FROM customer_payments WHERE tenant_id = ? AND status='cleared' GROUP BY invoice_id) p ON p.invoice_id = i.id
-       WHERE i.tenant_id = ? AND i.status = 'issued' AND i.payment_status != 'paid'`,
-      [tenantId, tenantId]
+       WHERE i.tenant_id = ? AND i.status = 'issued' AND i.payment_status != 'paid'
+       AND (? IS NULL OR so.warehouse_id = ?)`,
+      [tenantId, tenantId, wh, wh]
     ),
   ]);
 
@@ -210,8 +247,11 @@ const getDashboardKPIs = async (tenantId) => {
 /**
  * Full dashboard payload in one optimized flow — single endpoint for UI.
  * Uses parallel aggregated queries; no N+1. All tenant-scoped.
+ * Optional warehouseId: limit metrics to that warehouse (sales/orders/GRN/stock tied to warehouse).
  */
-const getDashboard = async (tenantId) => {
+const getDashboard = async (tenantId, { warehouseId } = {}) => {
+  const wh = warehouseId ?? null;
+
   const [
     summaryRows,
     lowStockRows,
@@ -224,29 +264,41 @@ const getDashboard = async (tenantId) => {
   ] = await Promise.all([
     // Summary: counts and amounts in one round-trip per metric
     Promise.all([
-      query(`SELECT COUNT(*) AS total FROM warehouses WHERE tenant_id = ? AND is_active = 1`, [tenantId]),
+      query(
+        `SELECT COUNT(*) AS total FROM warehouses WHERE tenant_id = ? AND is_active = 1
+         AND (? IS NULL OR id = ?)`,
+        [tenantId, wh, wh]
+      ),
       query(`SELECT COUNT(*) AS total FROM products WHERE tenant_id = ? AND is_active = 1`, [tenantId]),
       query(`SELECT COUNT(*) AS total FROM vendors WHERE tenant_id = ? AND is_active = 1`, [tenantId]),
       query(`SELECT COUNT(*) AS total FROM customers WHERE tenant_id = ? AND is_active = 1`, [tenantId]),
-      query(`SELECT COUNT(*) AS total FROM purchase_orders WHERE tenant_id = ? AND status IN ('draft','confirmed')`, [tenantId]),
+      query(
+        `SELECT COUNT(*) AS total FROM purchase_orders po WHERE po.tenant_id = ? AND po.status IN ('draft','confirmed')
+         AND (? IS NULL OR po.warehouse_id = ?)`,
+        [tenantId, wh, wh]
+      ),
       query(
         `SELECT COALESCE(SUM(ss.total_boxes), 0) AS total_boxes, COALESCE(SUM(ss.total_sqft), 0) AS total_sqft
-         FROM stock_summary ss WHERE ss.tenant_id = ?`,
-        [tenantId]
+         FROM stock_summary ss WHERE ss.tenant_id = ?
+         AND (? IS NULL OR ss.warehouse_id = ?)`,
+        [tenantId, wh, wh]
       ),
       query(
         `SELECT COALESCE(SUM(i.grand_total), 0) AS total
          FROM invoices i
+         JOIN sales_orders so ON i.sales_order_id = so.id AND so.tenant_id = i.tenant_id
          WHERE i.tenant_id = ? AND i.status = 'issued'
-           AND YEAR(i.invoice_date) = YEAR(CURDATE()) AND MONTH(i.invoice_date) = MONTH(CURDATE())`,
-        [tenantId]
+           AND YEAR(i.invoice_date) = YEAR(CURDATE()) AND MONTH(i.invoice_date) = MONTH(CURDATE())
+           AND (? IS NULL OR so.warehouse_id = ?)`,
+        [tenantId, wh, wh]
       ),
       query(
         `SELECT COALESCE(SUM(po.grand_total), 0) AS total
          FROM purchase_orders po
          WHERE po.tenant_id = ? AND po.status IN ('confirmed','partial','received')
-           AND YEAR(po.order_date) = YEAR(CURDATE()) AND MONTH(po.order_date) = MONTH(CURDATE())`,
-        [tenantId]
+           AND YEAR(po.order_date) = YEAR(CURDATE()) AND MONTH(po.order_date) = MONTH(CURDATE())
+           AND (? IS NULL OR po.warehouse_id = ?)`,
+        [tenantId, wh, wh]
       ),
     ]),
     // Low stock: from low_stock_alerts if any, else computed from stock_summary vs reorder_level
@@ -258,8 +310,9 @@ const getDashboard = async (tenantId) => {
          FROM low_stock_alerts la
          JOIN products p ON p.id = la.product_id AND p.tenant_id = la.tenant_id
          WHERE la.tenant_id = ? AND la.status = 'open'
+           AND (? IS NULL OR la.warehouse_id = ?)
          ORDER BY la.alerted_at DESC LIMIT 10`,
-        [tenantId]
+        [tenantId, wh, wh]
       );
       if (fromAlerts.length > 0) return fromAlerts;
       return query(
@@ -269,8 +322,9 @@ const getDashboard = async (tenantId) => {
          FROM stock_summary ss
          JOIN products p ON p.id = ss.product_id AND p.tenant_id = ss.tenant_id
          WHERE ss.tenant_id = ? AND ss.total_boxes <= p.reorder_level_boxes AND ss.total_boxes >= 0
+           AND (? IS NULL OR ss.warehouse_id = ?)
          ORDER BY ss.total_boxes ASC LIMIT 10`,
-        [tenantId]
+        [tenantId, wh, wh]
       );
     })(),
     // Recent sales: last 5 with customer name
@@ -279,8 +333,9 @@ const getDashboard = async (tenantId) => {
        FROM sales_orders so
        JOIN customers c ON c.id = so.customer_id AND c.tenant_id = so.tenant_id
        WHERE so.tenant_id = ?
+         AND (? IS NULL OR so.warehouse_id = ?)
        ORDER BY so.order_date DESC, so.created_at DESC LIMIT 5`,
-      [tenantId]
+      [tenantId, wh, wh]
     ),
     // Recent purchases: last 5 with vendor name
     query(
@@ -288,8 +343,9 @@ const getDashboard = async (tenantId) => {
        FROM purchase_orders po
        JOIN vendors v ON v.id = po.vendor_id AND v.tenant_id = po.tenant_id
        WHERE po.tenant_id = ?
+         AND (? IS NULL OR po.warehouse_id = ?)
        ORDER BY po.order_date DESC, po.created_at DESC LIMIT 5`,
-      [tenantId]
+      [tenantId, wh, wh]
     ),
     // Stock by category for pie chart
     query(
@@ -298,9 +354,10 @@ const getDashboard = async (tenantId) => {
        JOIN products p ON p.id = ss.product_id AND p.tenant_id = ss.tenant_id
        LEFT JOIN product_categories pc ON pc.id = p.category_id AND pc.tenant_id = p.tenant_id
        WHERE ss.tenant_id = ? AND ss.total_boxes > 0
+         AND (? IS NULL OR ss.warehouse_id = ?)
        GROUP BY pc.id, COALESCE(pc.name, 'Uncategorized')
        ORDER BY boxes DESC`,
-      [tenantId]
+      [tenantId, wh, wh]
     ),
     // Recent GRNs (last 5 with vendor name)
     query(
@@ -309,8 +366,9 @@ const getDashboard = async (tenantId) => {
        JOIN vendors v ON v.id = g.vendor_id AND v.tenant_id = g.tenant_id
        JOIN warehouses w ON w.id = g.warehouse_id AND w.tenant_id = g.tenant_id
        WHERE g.tenant_id = ?
+         AND (? IS NULL OR g.warehouse_id = ?)
        ORDER BY g.receipt_date DESC, g.created_at DESC LIMIT 5`,
-      [tenantId]
+      [tenantId, wh, wh]
     ),
     // Recent stock transfers (last 5 with from/to warehouse names)
     query(
@@ -320,15 +378,17 @@ const getDashboard = async (tenantId) => {
        JOIN warehouses fw ON fw.id = st.from_warehouse_id AND fw.tenant_id = st.tenant_id
        JOIN warehouses tw ON tw.id = st.to_warehouse_id AND tw.tenant_id = st.tenant_id
        WHERE st.tenant_id = ?
+         AND (? IS NULL OR st.from_warehouse_id = ? OR st.to_warehouse_id = ?)
        ORDER BY st.transfer_date DESC, st.created_at DESC LIMIT 5`,
-      [tenantId]
+      [tenantId, wh, wh, wh]
     ),
     // Ledger summary: entry count (last 30 days) for activity indicator
     query(
       `SELECT COUNT(*) AS entry_count
-       FROM stock_ledger
-       WHERE tenant_id = ? AND transaction_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)`,
-      [tenantId]
+       FROM stock_ledger sl
+       WHERE sl.tenant_id = ? AND sl.transaction_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+         AND (? IS NULL OR sl.warehouse_id = ?)`,
+      [tenantId, wh, wh]
     ),
   ]);
 
@@ -349,7 +409,7 @@ const getDashboard = async (tenantId) => {
   };
 
   // Legacy KPI fields for existing consumers
-  const kpis = await getDashboardKPIs(tenantId);
+  const kpis = await getDashboardKPIs(tenantId, wh);
 
   return {
     summary,
