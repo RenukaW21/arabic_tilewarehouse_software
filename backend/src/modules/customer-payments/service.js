@@ -41,18 +41,10 @@ const updateInvoicePaymentStatus = async (tenantId, invoiceId) => {
   await query(`UPDATE invoices SET payment_status = ? WHERE id = ? AND tenant_id = ?`, [newStatus, invoiceId, tenantId]);
 };
 
-exports.getAll = async (tenantId, { page, limit, offset, sortBy, sortOrder }) => {
-  // const [rows] = await query(`
-  //   SELECT cp.*, 
-  //     c.name as customer_name,
-  //     inv.invoice_number
-  //   FROM customer_payments cp
-  //   LEFT JOIN customers c ON cp.customer_id = c.id
-  //   LEFT JOIN invoices inv ON cp.invoice_id = inv.id
-  //   WHERE cp.tenant_id = ? 
-  //   ORDER BY cp.${sortBy} ${sortOrder} 
-  //   LIMIT ${limit} OFFSET ${offset}
-  // `, [tenantId]);
+exports.getAll = async (tenantId, { page = 1, limit = 25, offset = 0, sortBy = 'payment_date', sortOrder = 'DESC' }) => {
+  const allowedCols = ['payment_date', 'amount', 'created_at', 'payment_number'];
+  const safeSortBy = allowedCols.includes(sortBy) ? sortBy : 'payment_date';
+  const safeSortOrder = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
   const rows = await query(`
   SELECT cp.*, 
@@ -62,8 +54,8 @@ exports.getAll = async (tenantId, { page, limit, offset, sortBy, sortOrder }) =>
   LEFT JOIN customers c ON cp.customer_id = c.id
   LEFT JOIN invoices inv ON cp.invoice_id = inv.id
   WHERE cp.tenant_id = ? 
-  ORDER BY cp.${sortBy} ${sortOrder} 
-  LIMIT ${limit} OFFSET ${offset}
+  ORDER BY cp.${safeSortBy} ${safeSortOrder} 
+  LIMIT ${Number(limit)} OFFSET ${Number(offset)}
 `, [tenantId]);
 
   for(let row of rows) {

@@ -52,13 +52,10 @@ const updatePurchaseOrderPaymentStatus = async (tenantId, purchaseOrderId) => {
   );
 };
 
-exports.getAll = async (tenantId, { page = 1, limit = 50, offset = 0, sortBy = 'payment_date', sortOrder = 'DESC' }) => {
-
-  const allowedSortFields = ['payment_date', 'amount', 'created_at'];
-
-  if (!allowedSortFields.includes(sortBy)) {
-    sortBy = 'payment_date';
-  }
+exports.getAll = async (tenantId, { page = 1, limit = 25, offset = 0, sortBy = 'payment_date', sortOrder = 'DESC' }) => {
+  const allowedCols = ['payment_date', 'amount', 'created_at', 'payment_number'];
+  const safeSortBy = allowedCols.includes(sortBy) ? sortBy : 'payment_date';
+  const safeSortOrder = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
   const rows = await query(`
     SELECT vp.*, 
@@ -68,8 +65,8 @@ exports.getAll = async (tenantId, { page = 1, limit = 50, offset = 0, sortBy = '
     LEFT JOIN vendors v ON vp.vendor_id = v.id
     LEFT JOIN purchase_orders po ON vp.purchase_order_id = po.id
     WHERE vp.tenant_id = ?
-    ORDER BY vp.${sortBy} ${sortOrder}
-    LIMIT ${limit} OFFSET ${offset}
+    ORDER BY vp.${safeSortBy} ${safeSortOrder}
+    LIMIT ${Number(limit)} OFFSET ${Number(offset)}
   `, [tenantId]);
 
   for (let row of rows) {

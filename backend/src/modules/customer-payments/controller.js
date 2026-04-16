@@ -1,16 +1,12 @@
 const service = require('./service');
-const { success, created, error } = require('../../utils/response');
+const { success, created, error, paginated } = require('../../utils/response');
 const { parsePagination } = require('../../utils/pagination');
 
 exports.getAll = async (req, res) => {
   try {
     const { page, limit, offset, sortBy, sortOrder } = parsePagination(req.query, ['payment_date', 'created_at']);
     const { rows, total } = await service.getAll(req.tenantId, { page, limit, offset, sortBy, sortOrder });
-    return res.json({
-      success: true,
-      data: rows,
-      meta: { total, page, limit }
-    });
+    return paginated(res, rows, { page, limit, total }, 'Payments fetched');
   } catch (err) {
     return error(res, err);
   }

@@ -242,6 +242,7 @@ const getProductVendors = async (productId, tenantId) => {
     JOIN purchase_orders po ON po.vendor_id = v.id
     JOIN purchase_order_items poi ON poi.purchase_order_id = po.id
     WHERE poi.product_id = ? AND po.tenant_id = ? AND v.is_active = 1
+      AND po.status NOT IN ('draft', 'cancelled')
     GROUP BY v.id, v.name
   `;
   return await query(sql, [productId, tenantId]);
@@ -254,7 +255,32 @@ const getProductCustomers = async (productId, tenantId) => {
     JOIN sales_orders so ON so.customer_id = c.id
     JOIN sales_order_items soi ON soi.sales_order_id = so.id
     WHERE soi.product_id = ? AND so.tenant_id = ? AND c.is_active = 1
+      AND so.status NOT IN ('draft', 'cancelled')
     GROUP BY c.id, c.name
+  `;
+  return await query(sql, [productId, tenantId]);
+};
+
+const getProductSalesReturns = async (productId, tenantId) => {
+  const sql = `
+    SELECT sr.id, sr.return_number, sr.return_date, sr.status, c.name AS customer_name, sri.returned_boxes
+    FROM sales_returns sr
+    JOIN sales_return_items sri ON sri.sales_return_id = sr.id
+    JOIN customers c ON sr.customer_id = c.id
+    WHERE sri.product_id = ? AND sr.tenant_id = ?
+    ORDER BY sr.created_at DESC
+  `;
+  return await query(sql, [productId, tenantId]);
+};
+
+const getProductPurchaseReturns = async (productId, tenantId) => {
+  const sql = `
+    SELECT pr.id, pr.return_number, pr.return_date, pr.status, v.name AS vendor_name, pri.returned_boxes
+    FROM purchase_returns pr
+    JOIN purchase_return_items pri ON pri.purchase_return_id = pr.id
+    JOIN vendors v ON pr.vendor_id = v.id
+    WHERE pri.product_id = ? AND pr.tenant_id = ?
+    ORDER BY pr.created_at DESC
   `;
   return await query(sql, [productId, tenantId]);
 };
@@ -268,5 +294,7 @@ module.exports = {
   findByCode,
   findShades,
   getProductVendors,
-  getProductCustomers
+  getProductCustomers,
+  getProductSalesReturns,
+  getProductPurchaseReturns
 };

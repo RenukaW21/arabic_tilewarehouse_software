@@ -200,6 +200,84 @@ export default function ProductDetailsPage() {
                     </CardContent>
                 </Card>
 
+                {/* Purchase Returns */}
+                <Card className="shadow-sm flex flex-col">
+                    <CardHeader className="flex flex-row items-center gap-2 pb-4 border-b">
+                        <ArrowLeft className="h-5 w-5 text-destructive" />
+                        <CardTitle className="text-lg">{t('productDetails.purchaseReturnsTitle', 'Purchase Returns')}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-6 flex-1">
+                        <span className="text-muted-foreground block mb-3 text-sm">{t('productDetails.returnsToVendors', 'Returned to Vendors')}</span>
+                        {product.purchaseReturns && product.purchaseReturns.length > 0 ? (
+                            <ul className="space-y-2">
+                                {product.purchaseReturns.map((pr: any) => (
+                                    <li key={pr.id} className="flex flex-col text-sm bg-muted/30 p-2 rounded border border-border/50">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className="font-semibold text-xs">{pr.return_number}</span>
+                                            <StatusBadge status={pr.status} />
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <User className="h-4 w-4 text-muted-foreground" />
+                                                <span className="font-medium text-xs">{pr.vendor_name}</span>
+                                            </div>
+                                            <span className="text-muted-foreground text-xs font-medium">
+                                                {pr.returned_boxes} {t('stockTransfers.boxes')}
+                                            </span>
+                                        </div>
+                                        <span className="text-xs text-muted-foreground mt-1">
+                                            {new Date(pr.return_date).toLocaleDateString()}
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <div className="text-sm text-muted-foreground bg-muted/50 p-4 rounded text-center border border-dashed">
+                                {t('productDetails.noPurchaseReturns', 'No purchase returns')}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* Sales Returns */}
+                <Card className="shadow-sm flex flex-col">
+                    <CardHeader className="flex flex-row items-center gap-2 pb-4 border-b">
+                        <ArrowLeft className="h-5 w-5 text-destructive" />
+                        <CardTitle className="text-lg">{t('productDetails.salesReturnsTitle', 'Sales Returns')}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-6 flex-1">
+                        <span className="text-muted-foreground block mb-3 text-sm">{t('productDetails.returnsFromCustomers', 'Returned from Customers')}</span>
+                        {product.salesReturns && product.salesReturns.length > 0 ? (
+                            <ul className="space-y-2">
+                                {product.salesReturns.map((sr: any) => (
+                                    <li key={sr.id} className="flex flex-col text-sm bg-muted/30 p-2 rounded border border-border/50">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className="font-semibold text-xs">{sr.return_number}</span>
+                                            <StatusBadge status={sr.status} />
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <User className="h-4 w-4 text-muted-foreground" />
+                                                <span className="font-medium text-xs">{sr.customer_name}</span>
+                                            </div>
+                                            <span className="text-muted-foreground text-xs font-medium">
+                                                {sr.returned_boxes} {t('stockTransfers.boxes')}
+                                            </span>
+                                        </div>
+                                        <span className="text-xs text-muted-foreground mt-1">
+                                            {new Date(sr.return_date).toLocaleDateString()}
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <div className="text-sm text-muted-foreground bg-muted/50 p-4 rounded text-center border border-dashed">
+                                {t('productDetails.noSalesReturns', 'No sales returns')}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
                 {/* Transfer History — full width */}
                 <Card className="shadow-sm md:col-span-2">
                     <CardHeader className="flex flex-row items-center gap-2 pb-4 border-b">

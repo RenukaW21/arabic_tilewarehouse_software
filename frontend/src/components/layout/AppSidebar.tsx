@@ -109,19 +109,21 @@ export function AppSidebar({ collapsed }: AppSidebarProps) {
         icon: Package,
         allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "sales", "accountant", "viewer"],
         children: [
-          { labelKey: "nav.products",   path: "/master/products",   icon: Boxes },
+          
           { labelKey: "nav.categories", path: "/master/categories", icon: Tag },
-          {
-            labelKey: "nav.vendors",
-            path: "/master/vendors",
-            icon: Factory,
-            allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "accountant", "viewer"],
-          },
+          { labelKey: "nav.products",   path: "/master/products",   icon: Boxes },
+          
           {
             labelKey: "nav.customers",
             path: "/master/customers",
             icon: Users,
             allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "sales", "accountant", "viewer"],
+          },
+          {
+            labelKey: "nav.vendors",
+            path: "/master/vendors",
+            icon: Factory,
+            allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "accountant", "viewer"],
           },
         ],
       },

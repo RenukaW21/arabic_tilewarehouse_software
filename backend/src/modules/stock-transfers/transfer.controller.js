@@ -20,7 +20,7 @@ const assertTransferWarehouseScope = (req, transfer) => {
 
 const createTransfer = async (req, res, next) => {
   try {
-    const { error: err, value } = createTransferSchema.validate(req.body);
+    const { error: err, value } = createTransferSchema.validate(req.body, { stripUnknown: true });
     if (err) {
       return res.status(422).json({
         success: false,
@@ -81,7 +81,7 @@ const getTransferById = async (req, res, next) => {
 
 const updateTransfer = async (req, res, next) => {
   try {
-    const { error: err, value } = updateTransferSchema.validate(req.body);
+    const { error: err, value } = updateTransferSchema.validate(req.body, { stripUnknown: true });
     if (err) {
       return res.status(422).json({
         success: false,

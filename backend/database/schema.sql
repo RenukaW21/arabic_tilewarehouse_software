@@ -944,7 +944,7 @@ CREATE TABLE `stock_ledger` (
   `product_id` varchar(36) NOT NULL,
   `shade_id` varchar(36) DEFAULT NULL,
   `batch_id` varchar(36) DEFAULT NULL,
-  `transaction_type` enum('grn','sale','transfer_in','transfer_out','damage','adjustment','return','opening') NOT NULL,
+  `transaction_type` enum('grn','sale','transfer_in','transfer_out','damage','adjustment','return','opening','rack_assignment') NOT NULL,
   `reference_id` varchar(36) DEFAULT NULL,
   `reference_type` varchar(50) DEFAULT NULL,
   `boxes_in` decimal(10,2) NOT NULL DEFAULT 0.00,
@@ -1001,6 +1001,31 @@ CREATE TABLE `stock_summary` (
   `last_issue_date` date DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `is_dummy` tinyint(1) DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `stock_reservations`
+--
+
+CREATE TABLE IF NOT EXISTS `stock_reservations` (
+  `id` varchar(36) NOT NULL,
+  `tenant_id` varchar(36) NOT NULL,
+  `warehouse_id` varchar(36) NOT NULL,
+  `product_id` varchar(36) NOT NULL,
+  `shade_id` varchar(36) DEFAULT NULL,
+  `batch_id` varchar(36) DEFAULT NULL,
+  `sales_order_id` varchar(36) DEFAULT NULL,
+  `sales_order_item_id` varchar(36) DEFAULT NULL,
+  `boxes_reserved` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `status` enum('active','released','fulfilled') NOT NULL DEFAULT 'active',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_reservations_tenant` (`tenant_id`),
+  KEY `idx_reservations_product` (`product_id`),
+  KEY `idx_reservations_warehouse` (`warehouse_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------

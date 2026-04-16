@@ -11,14 +11,18 @@ const getById = async (id, tenantId) => {
 
   // Attach related entities for detailed view
   const rackService = require('../racks/rack.service');
-  const [vendors, customers, rackAssignments] = await Promise.all([
+  const [vendors, customers, rackAssignments, purchaseReturns, salesReturns] = await Promise.all([
     repo.getProductVendors(id, tenantId),
     repo.getProductCustomers(id, tenantId),
-    rackService.getProductRacks(tenantId, id)
+    rackService.getProductRacks(tenantId, id),
+    repo.getProductPurchaseReturns(id, tenantId),
+    repo.getProductSalesReturns(id, tenantId)
   ]);
   product.vendors = vendors;
   product.customers = customers;
   product.rackAssignments = rackAssignments;
+  product.purchaseReturns = purchaseReturns;
+  product.salesReturns = salesReturns;
 
   return product;
 };

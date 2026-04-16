@@ -98,11 +98,11 @@ async function resolveTenantId(tenantId) {
   try {
     const rows = await query('SELECT DISTINCT tenant_id FROM products LIMIT 1');
     if (rows?.length) return rows[0].tenant_id;
-  } catch (_) {}
+  } catch (_) { }
   try {
     const rows = await query('SELECT id FROM tenants LIMIT 1');
     if (rows?.length) return rows[0].id;
-  } catch (_) {}
+  } catch (_) { }
   return tenantId;
 }
 
@@ -119,11 +119,11 @@ async function fetchUserProfile(userId, tenantId) {
     );
     if (!rows.length) return { warehouseId: null, warehouseName: null, supervisorName: null, supervisorEmail: null };
 
-    const warehouseId   = rows[0].warehouse_id   ?? null;
+    const warehouseId = rows[0].warehouse_id ?? null;
     const warehouseName = rows[0].warehouse_name ?? null;
 
     // Find the supervisor/manager for this warehouse
-    let supervisorName  = null;
+    let supervisorName = null;
     let supervisorEmail = null;
     if (warehouseId) {
       const mgr = await query(
@@ -136,7 +136,7 @@ async function fetchUserProfile(userId, tenantId) {
         [tenantId, warehouseId]
       );
       if (mgr.length) {
-        supervisorName  = mgr[0].name;
+        supervisorName = mgr[0].name;
         supervisorEmail = mgr[0].email;
       }
     }
@@ -152,7 +152,7 @@ async function fetchUserProfile(userId, tenantId) {
 // warehouseId = null  → fetch all warehouses (admin/super_admin)
 // warehouseId = uuid  → restrict to that warehouse only
 async function buildWarehouseContext(tid, warehouseId = null) {
-  const whFilter  = warehouseId ? 'AND ss.warehouse_id = ?' : '';
+  const whFilter = warehouseId ? 'AND ss.warehouse_id = ?' : '';
   const locFilter = warehouseId ? 'AND r.warehouse_id = ?' : '';
   const locParams = warehouseId ? [tid, warehouseId] : [tid];
 
@@ -216,7 +216,7 @@ async function buildWarehouseContext(tid, warehouseId = null) {
 
 // ─── Role-aware system prompt builder ────────────────────────────────────────
 function buildRoleSystemPrompt(role, warehouseName, supervisorContact) {
-  const wh  = warehouseName    ? `"${warehouseName}"` : 'your assigned warehouse(s)';
+  const wh = warehouseName ? `"${warehouseName}"` : 'your assigned warehouse(s)';
   const sup = supervisorContact ?? 'your Supervisor or Admin';
 
   // Shared footer applied to every role block
@@ -454,7 +454,7 @@ const DYNAMIC_KEYWORDS = [
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
 exports.processAI = async (userQuery, tenantId, userContext = {}) => {
-  const tid  = await resolveTenantId(tenantId);
+  const tid = await resolveTenantId(tenantId);
   const role = userContext.role ?? 'user';
   const name = userContext.name ?? '';
 
@@ -508,7 +508,7 @@ exports.processAI = async (userQuery, tenantId, userContext = {}) => {
       }
       if (bestMatch && bestScore >= 0.55) {
         console.log(`[AI] ✅ DB Cache hit (${(bestScore * 100).toFixed(0)}%).`);
-        query(`UPDATE ai_chat_history SET hit_count = hit_count + 1, updated_at = NOW() WHERE id = ? AND tenant_id = ?`, [bestMatch.id, tid]).catch(() => {});
+        query(`UPDATE ai_chat_history SET hit_count = hit_count + 1, updated_at = NOW() WHERE id = ? AND tenant_id = ?`, [bestMatch.id, tid]).catch(() => { });
         return bestMatch.answer;
       }
     } catch (dbErr) {
@@ -525,15 +525,15 @@ exports.processAI = async (userQuery, tenantId, userContext = {}) => {
         model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user',   content: userQuery },
+          { role: 'user', content: userQuery },
         ],
         max_tokens: 450,
         temperature: 0.5,
       });
-
+      console.log("Chatboat response", aiResponse);
       const answer = aiResponse.choices[0].message.content;
       saveToCache(cacheKey, answer);
-      saveOrUpdateDB(userQuery, normalizedQuery, answer, tid).catch(() => {});
+      saveOrUpdateDB(userQuery, normalizedQuery, answer, tid).catch(() => { });
       return answer;
     } catch (err) {
       console.error('[AI] OpenAI static call failed:', err.message);
@@ -547,7 +547,7 @@ exports.processAI = async (userQuery, tenantId, userContext = {}) => {
   const { stockContext, lowStockContext, locationContext } =
     await buildWarehouseContext(tid, scopedWarehouseId);
 
-  const roleBlock   = buildRoleSystemPrompt(role, warehouseName, supervisorContact);
+  const roleBlock = buildRoleSystemPrompt(role, warehouseName, supervisorContact);
   const warehouseScope = scopedWarehouseId
     ? `DATA SCOPE: Only data from warehouse "${warehouseName}" is shown.`
     : 'DATA SCOPE: Data from all warehouses is shown.';
@@ -574,7 +574,7 @@ ${locationContext}
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user',   content: userQuery },
+        { role: 'user', content: userQuery },
       ],
       max_tokens: 350,
       temperature: 0.3,

@@ -17,7 +17,6 @@ const transferItemSchema = Joi.object({
 const createTransferSchema = Joi.object({
   from_warehouse_id: Joi.string().uuid().required(),
   to_warehouse_id: Joi.string().uuid().required(),
-  status: Joi.string().valid(...statusEnum).default('draft'),
   transfer_date: Joi.date().iso().required(),
   received_date: Joi.date().iso().allow(null),
   vehicle_number: Joi.string().max(50).allow(null, ''),
@@ -29,7 +28,6 @@ const updateTransferSchema = Joi.object({
   transfer_number: Joi.string().max(50),
   from_warehouse_id: Joi.string().uuid(),
   to_warehouse_id: Joi.string().uuid(),
-  status: Joi.string().valid(...statusEnum),
   transfer_date: Joi.date().iso(),
   received_date: Joi.date().iso().allow(null),
   vehicle_number: Joi.string().max(50).allow(null, ''),

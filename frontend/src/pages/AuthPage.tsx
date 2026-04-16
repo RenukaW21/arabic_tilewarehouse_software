@@ -67,7 +67,8 @@ export default function AuthPage() {
       }
 
     } catch (err: any) {
-      toast.error(err.response?.data?.error?.message || t('auth.somethingWentWrong'));
+      const errorMessage = err.response?.data?.message || err.response?.data?.error?.message || t('auth.somethingWentWrong');
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
