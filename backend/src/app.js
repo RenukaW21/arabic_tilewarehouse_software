@@ -142,15 +142,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 // ─── Global Middleware ─────────────────────────────────────────────────────────
 const corsOptions = {
   origin(origin, callback) {
-    if (!origin || env.security.corsOrigin === '*') {
-      return callback(null, true);
-    }
-
-    if (Array.isArray(env.security.corsOrigin) && env.security.corsOrigin.includes(origin)) {
-      return callback(null, true);
-    }
-
-    return callback(new Error(`CORS blocked for origin: ${origin}`));
+    return callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
