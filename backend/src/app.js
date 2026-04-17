@@ -140,14 +140,26 @@ const API = `/api/${env.API_VERSION}`;
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // ─── Global Middleware ─────────────────────────────────────────────────────────
-app.set('trust proxy', 1);
-app.use(helmet());
-app.use(cors({
-  origin: env.security.corsOrigin,
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin || env.security.corsOrigin === '*') {
+      return callback(null, true);
+    }
+
+    if (Array.isArray(env.security.corsOrigin) && env.security.corsOrigin.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant-ID'],
-}));
+};
+
+app.set('trust proxy', 1);
+app.use(helmet());
+app.use(cors(corsOptions));
 app.use(compression());
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
