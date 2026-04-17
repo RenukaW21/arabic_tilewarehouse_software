@@ -17,10 +17,16 @@ const findAll = async (tenantId, queryParams) => {
   const orderBy = ALLOWED_SORT.includes(sortBy) ? sortBy : 'created_at';
   const whereSql = conditions.join(' AND ');
   const baseSql = `
-    SELECT sa.*, p.name AS product_name, p.code AS product_code, w.name AS warehouse_name
+    SELECT sa.*, 
+           p.name AS product_name, p.code AS product_code, 
+           w.name AS warehouse_name,
+           s.shade_name,
+           r.name AS rack_name
     FROM stock_adjustments sa
     JOIN products p ON sa.product_id = p.id AND p.tenant_id = sa.tenant_id
     JOIN warehouses w ON sa.warehouse_id = w.id AND w.tenant_id = sa.tenant_id
+    LEFT JOIN shades s ON sa.shade_id = s.id AND s.tenant_id = sa.tenant_id
+    LEFT JOIN racks r ON sa.rack_id = r.id AND r.tenant_id = sa.tenant_id
     WHERE ${whereSql}
   `;
   const [rows, countRows] = await Promise.all([
@@ -32,10 +38,16 @@ const findAll = async (tenantId, queryParams) => {
 
 const findById = async (id, tenantId) => {
   const rows = await query(
-    `SELECT sa.*, p.name AS product_name, p.code AS product_code, w.name AS warehouse_name
+    `SELECT sa.*, 
+            p.name AS product_name, p.code AS product_code, 
+            w.name AS warehouse_name,
+            s.shade_name,
+            r.name AS rack_name
      FROM stock_adjustments sa
      JOIN products p ON sa.product_id = p.id AND p.tenant_id = sa.tenant_id
      JOIN warehouses w ON sa.warehouse_id = w.id AND w.tenant_id = sa.tenant_id
+     LEFT JOIN shades s ON sa.shade_id = s.id AND s.tenant_id = sa.tenant_id
+     LEFT JOIN racks r ON sa.rack_id = r.id AND r.tenant_id = sa.tenant_id
      WHERE sa.id = ? AND sa.tenant_id = ?`,
     [id, tenantId]
   );

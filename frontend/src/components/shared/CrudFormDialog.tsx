@@ -41,9 +41,10 @@ interface CrudFormDialogProps {
   autoNumber?: AutoNumberConfig;
   onValueChange?: (key: string, value: any) => void;
   values?: Record<string, any>;
+  readOnly?: boolean;
 }
 
-export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initialData, loading, autoNumber, onValueChange, values }: CrudFormDialogProps) {
+export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initialData, loading, autoNumber, onValueChange, values, readOnly }: CrudFormDialogProps) {
   const { t } = useTranslation();
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -151,9 +152,9 @@ export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initial
             <div key={f.key} className="space-y-1.5">
               <Label htmlFor={f.key}>{f.label}{f.required && <span className="text-destructive ml-0.5">*</span>}</Label>
               {f.type === 'textarea' ? (
-                <Textarea id={f.key} value={formData[f.key] || ''} onChange={e => setValue(f.key, e.target.value)} placeholder={f.placeholder} required={f.required} className={errors[f.key] ? 'border-destructive' : ''} />
+                <Textarea id={f.key} value={formData[f.key] || ''} onChange={e => setValue(f.key, e.target.value)} placeholder={f.placeholder} required={f.required} className={errors[f.key] ? 'border-destructive' : ''} disabled={readOnly} />
               ) : f.type === 'select' ? (
-                <Select value={formData[f.key] || (f.required ? '' : 'none')} onValueChange={v => setValue(f.key, v)}>
+                <Select value={formData[f.key] || (f.required ? '' : 'none')} onValueChange={v => setValue(f.key, v)} disabled={readOnly}>
                   <SelectTrigger className={errors[f.key] ? 'border-destructive' : ''}><SelectValue placeholder={f.placeholder || t('common.select')} /></SelectTrigger>
                   <SelectContent>
                     {!f.required && <SelectItem value="none">{t('common.none')}</SelectItem>}
@@ -166,6 +167,7 @@ export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initial
                     <Button
                       variant="outline"
                       role="combobox"
+                      disabled={readOnly}
                       className={cn(
                         "w-full justify-between font-normal text-left",
                         !formData[f.key] && "text-muted-foreground",
@@ -208,7 +210,7 @@ export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initial
                 </Popover>
               ) : f.type === 'switch' ? (
                 <div className="flex items-center gap-2">
-                  <Switch id={f.key} checked={!!formData[f.key]} onCheckedChange={v => setValue(f.key, v)} />
+                  <Switch id={f.key} checked={!!formData[f.key]} onCheckedChange={v => setValue(f.key, v)} disabled={readOnly} />
                   <span className="text-sm text-muted-foreground">{formData[f.key] ? t('crudForm.active') : t('crudForm.inactive')}</span>
                 </div>
               ) : (
@@ -227,16 +229,19 @@ export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initial
                   placeholder={f.placeholder}
                   required={f.required && (f.type === 'file' ? !initialData : true)}
                   step={f.type === 'number' ? 'any' : undefined}
-                  readOnly={f.readOnly || isAutoNumberField(f.key)}
-                  className={cn((f.readOnly || isAutoNumberField(f.key)) && 'bg-muted font-mono', errors[f.key] && 'border-destructive')}
+                  readOnly={f.readOnly || isAutoNumberField(f.key) || readOnly}
+                  disabled={readOnly}
+                  className={cn((f.readOnly || isAutoNumberField(f.key) || readOnly) && 'bg-muted font-mono', errors[f.key] && 'border-destructive')}
                 />
               )}
               {errors[f.key] && <p className="text-xs text-destructive">{errors[f.key]}</p>}
             </div>
           ))}
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={onClose}>{t('crudForm.cancel')}</Button>
-            <Button type="submit" disabled={loading}>{loading ? t('crudForm.saving') : initialData ? t('crudForm.update') : t('crudForm.create')}</Button>
+            <Button type="button" variant="outline" onClick={onClose}>{readOnly ? t('common.close', 'Close') : t('crudForm.cancel')}</Button>
+            {!readOnly && (
+              <Button type="submit" disabled={loading}>{loading ? t('crudForm.saving') : initialData ? t('crudForm.update') : t('crudForm.create')}</Button>
+            )}
           </div>
         </form>
       </DialogContent>

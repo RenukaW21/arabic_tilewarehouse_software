@@ -21,6 +21,8 @@ export interface StockAdjustment {
   product_name?: string;
   product_code?: string;
   warehouse_name?: string;
+  shade_name?: string;
+  rack_name?: string;
 }
 
 export interface CreateStockAdjustmentPayload {
