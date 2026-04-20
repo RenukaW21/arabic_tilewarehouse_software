@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   salesOrdersApi,
@@ -8,6 +8,7 @@ import {
 import { customerApi } from '@/api/customerApi';
 import { warehouseApi } from '@/api/warehouseApi';
 import { productApi } from '@/api/productApi';
+import { inventoryApi } from '@/api/inventoryApi';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTableShell } from '@/components/shared/DataTableShell';
 import { StatusBadge } from '@/components/shared/StatusBadge';
@@ -38,6 +39,7 @@ export default function SalesOrdersPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [paymentFilter, setPaymentFilter] = useState<string>('');
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string | null>(null);
   const applySearch = useCallback((value: string) => {
     setSearch(value);
     setPage(1);
@@ -67,7 +69,24 @@ export default function SalesOrdersPage() {
   });
   const customers = customersRes?.data ?? [];
   const warehouses = warehousesRes?.data ?? [];
-  const products = productsRes?.data ?? [];
+  const allProducts = productsRes?.data ?? [];
+
+  const { data: warehouseStockRes } = useQuery({
+    queryKey: ['warehouse-stock', selectedWarehouseId],
+    queryFn: () => inventoryApi.getStockList({ warehouse_id: selectedWarehouseId!, limit: 500 }),
+    enabled: !!selectedWarehouseId,
+  });
+
+  const filteredProducts = useMemo(() => {
+    if (!selectedWarehouseId) return allProducts;
+    // If we have a warehouse selected, only show products that have available stock there.
+    // If stock data hasn't loaded yet or is empty, show no products for that warehouse.
+    const stockRows = warehouseStockRes?.data ?? [];
+    return allProducts.filter(p => 
+      stockRows.some(s => s.product_id === p.id && Number(s.available_boxes) > 0)
+    );
+  }, [selectedWarehouseId, warehouseStockRes?.data, allProducts]);
+
 
   const { data, isLoading } = useQuery({
     queryKey: ['sales-orders', listParams],
@@ -76,11 +95,11 @@ export default function SalesOrdersPage() {
   const orders: SalesOrder[] = data?.data ?? [];
   const meta = data?.meta ?? null;
 
-  const statusReopenOptions: FieldDef[] =
+  const statusReopenOptions: FieldDef[] = useMemo(() =>
     editing?.status === 'cancelled'
       ? [{ key: 'status', label: 'Reopen as status', type: 'select', required: false, options: [{ value: 'pick_ready', label: 'Pick Ready' }, { value: 'confirmed', label: 'Confirmed' }], defaultValue: 'pick_ready' }]
-      : [];
-  const headerFields: FieldDef[] = [
+      : [], [editing?.status]);
+  const headerFields: FieldDef[] = useMemo(() => [
     ...statusReopenOptions,
     { key: 'customer_id', label: 'Customer', type: 'select', required: true, options: customers.map((c) => ({ value: c.id, label: c.name })) },
     { key: 'warehouse_id', label: 'Warehouse', type: 'select', required: true, options: warehouses.map((w) => ({ value: w.id, label: w.name })) },
@@ -90,7 +109,7 @@ export default function SalesOrdersPage() {
     { key: 'delivery_address', label: 'Delivery Address', type: 'textarea' },
     { key: 'discount_amount', label: 'Discount (₹)', type: 'number', defaultValue: 0 },
     { key: 'notes', label: 'Notes', type: 'textarea' },
-  ];
+  ], [statusReopenOptions, customers, warehouses]);
 
   const buildPayload = (header: Record<string, unknown>, items: LineItem[]): CreateSalesOrderDto & { status?: string } => ({
     customerId: String(header.customer_id),
@@ -272,7 +291,12 @@ export default function SalesOrdersPage() {
         initialData={editing ? { ...editing, so_number: editing.so_number, ...(editing.status === 'cancelled' ? { status: 'pick_ready' } : {}) } : undefined}
         initialItems={editingItems}
         loading={saveMutation.isPending}
-        products={products}
+        products={filteredProducts}
+        onChange={(formData) => {
+          if (formData.warehouse_id !== selectedWarehouseId) {
+            setSelectedWarehouseId(formData.warehouse_id === 'none' ? null : formData.warehouse_id);
+          }
+        }}
       />
       <DeleteConfirmDialog
         open={!!deleting}

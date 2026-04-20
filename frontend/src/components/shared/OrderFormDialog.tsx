@@ -22,6 +22,7 @@ interface OrderFormDialogProps {
   open: boolean;
   onClose: () => void;
   onSubmit: (headerData: Record<string, any>, lineItems: LineItem[]) => Promise<void>;
+  onChange?: (formData: Record<string, any>) => void;
   headerFields: FieldDef[];
   title: string;
   initialData?: Record<string, any> | null;
@@ -41,7 +42,7 @@ const emptyItem = (): LineItem => ({
 });
 
 export function OrderFormDialog({
-  open, onClose, onSubmit, headerFields, title, initialData, initialItems, loading, autoNumber, products,
+  open, onClose, onSubmit, onChange, headerFields, title, initialData, initialItems, loading, autoNumber, products,
 }: OrderFormDialogProps) {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [lineItems, setLineItems] = useState<LineItem[]>([emptyItem()]);
@@ -57,11 +58,18 @@ export function OrderFormDialog({
         }
       });
       setFormData(defaults);
+      if (onChange) onChange(defaults);
       setLineItems(initialItems && initialItems.length > 0 ? initialItems : [emptyItem()]);
 
       if (!initialData && autoNumber) {
         fetchNextDocNumber(autoNumber.docType)
-          .then(num => setFormData(prev => ({ ...prev, [autoNumber.fieldKey]: num })))
+          .then(num => {
+            setFormData(prev => {
+              const next = { ...prev, [autoNumber.fieldKey]: num };
+              if (onChange) onChange(next);
+              return next;
+            });
+          })
           .catch(() => {});
       }
     }
@@ -118,7 +126,13 @@ export function OrderFormDialog({
     }
   };
 
-  const setValue = (key: string, value: any) => setFormData(prev => ({ ...prev, [key]: value }));
+  const setValue = (key: string, value: any) => {
+    setFormData(prev => {
+      const next = { ...prev, [key]: value };
+      if (onChange) onChange(next);
+      return next;
+    });
+  };
   const isAutoNumberField = (key: string) => !initialData && autoNumber?.fieldKey === key;
   const isCalculatedField = (key: string) => ['total_amount', 'sub_total', 'tax_amount', 'grand_total'].includes(key);
 
