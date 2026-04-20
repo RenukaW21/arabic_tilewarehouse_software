@@ -57,7 +57,9 @@ export const authApi = {
    * Requires valid Bearer token (attached automatically by interceptor).
    */
   getProfile: async (): Promise<ApiResponse<AuthUser>> => {
-    const res = await axiosInstance.get<ApiResponse<AuthUser>>('/auth/profile');
+    const res = await axiosInstance.get<ApiResponse<AuthUser>>('/auth/profile', {
+      timeout: 5000,
+    });
     return res.data;
   },
 

@@ -42,6 +42,7 @@ export interface DashboardRecentGRN {
 
 export interface DashboardRecentTransfer {
   id: string;
+  transfer_number: string;
   transfer_date: string;
   status: string;
   created_at: string;
