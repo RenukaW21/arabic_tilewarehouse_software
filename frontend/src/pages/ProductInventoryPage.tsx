@@ -47,8 +47,8 @@ export default function ProductInventoryPage() {
     }, [dialogOpen, autoDialogOpen, editing]);
 
     const { data: productsData } = useQuery({
-        queryKey: ["products", { limit: 1000 }],
-        queryFn: () => productApi.getAll({ limit: 1000 }),
+        queryKey: ["products", { limit: 1000, relevantOnly: true }],
+        queryFn: () => productApi.getAll({ limit: 1000, relevantOnly: 'true' }),
     });
 
     const { data: warehousesData } = useQuery({

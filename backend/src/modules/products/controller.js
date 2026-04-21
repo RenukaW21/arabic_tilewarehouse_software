@@ -20,6 +20,17 @@ const create = async (req, res, next) => {
     if (req.file) {
       req.body.imageUrl = `/uploads/${req.file.filename}`;
     }
+
+    if (!req.body.mrp || Number(req.body.mrp) <= 0) {
+       return res.status(400).json({ 
+         success: false, 
+         error: { 
+           code: 'VALIDATION_ERROR', 
+           message: 'MRP is required and must be greater than zero.' 
+         } 
+       });
+    }
+
     const product = await service.create(req.tenantId, req.body);
 
     const meta = extractRequestMeta(req);

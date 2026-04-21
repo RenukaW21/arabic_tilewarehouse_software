@@ -88,7 +88,7 @@ export default function ProductsPage() {
     { key: "sqft_per_box", label: t('products.sqftPerBox'), type: "number", required: true },
     { key: "brand", label: t('products.brand'), type: "text" },
     { key: "gst_rate", label: t('products.gstRate'), type: "number", defaultValue: 18 },
-    { key: "mrp", label: t('products.mrp'), type: "number" },
+    { key: "mrp", label: t('products.mrp'), type: "number", required: true },
     { key: "reorder_level_boxes", label: t('products.reorderLevel'), type: "number", defaultValue: 0 },
     { key: "description", label: t('common.description'), type: "textarea" },
     { key: "is_active", label: t('products.status'), type: "switch", defaultValue: true },

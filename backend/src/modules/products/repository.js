@@ -8,6 +8,7 @@ const findAll = async (tenantId, queryParams) => {
   const { clauses: filterClauses, params: filterParams } = buildFilterClauses({
     'p.category_id': queryParams.categoryId,
     'p.is_active':   queryParams.isActive !== undefined ? queryParams.isActive : undefined,
+    'relevantOnly':  queryParams.relevantOnly,
   });
 
   const conditions = [`p.tenant_id = ?`];
@@ -19,8 +20,17 @@ const findAll = async (tenantId, queryParams) => {
   }
 
   filterClauses.forEach((c, i) => {
-    conditions.push(c);
-    params.push(filterParams[i]);
+    if (c === 'relevantOnly = ?') {
+       if (filterParams[i] === 'true' || filterParams[i] === true) {
+         conditions.push(`(p.id IN (SELECT DISTINCT product_id FROM purchase_order_items poi 
+                          JOIN purchase_orders po ON poi.purchase_order_id = po.id 
+                          WHERE po.status NOT IN ('draft', 'cancelled'))
+                          OR p.id IN (SELECT DISTINCT product_id FROM stock_summary WHERE total_boxes > 0))`);
+       }
+    } else {
+      conditions.push(c);
+      params.push(filterParams[i]);
+    }
   });
 
   const where = conditions.join(' AND ');
