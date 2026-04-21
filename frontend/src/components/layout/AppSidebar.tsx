@@ -197,12 +197,14 @@ export function AppSidebar({ collapsed }: AppSidebarProps) {
             icon: AlertTriangle,
             allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor"],
           },
+/*
           {
             labelKey: "nav.stockCount",
             path: "/inventory/counts",
             icon: ClipboardCheck,
             allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "warehouse_staff"],
           },
+*/
         ],
       },
 

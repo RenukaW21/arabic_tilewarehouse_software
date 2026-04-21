@@ -111,8 +111,10 @@ function AppRoutes() {
         <Route path="/inventory/transfers" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor","viewer"]}><StockTransfersPage /></RoleGuard>} />
         <Route path="/inventory/adjustments" element={<RoleGuard allow={["super_admin","admin","warehouse_manager"]}><StockAdjustmentsPage /></RoleGuard>} />
         <Route path="/inventory/damage" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor"]}><DamageEntriesPage /></RoleGuard>} />
+{/* 
         <Route path="/inventory/counts" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor","warehouse_staff"]}><StockCountsPage /></RoleGuard>} />
         <Route path="/inventory/counts/:id" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor","warehouse_staff"]}><StockCountDetailPage /></RoleGuard>} />
+*/}
 
         {/* ── Sales ── */}
         <Route path="/sales/orders" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor","sales","accountant","viewer"]}><SalesOrdersPage /></RoleGuard>} />
