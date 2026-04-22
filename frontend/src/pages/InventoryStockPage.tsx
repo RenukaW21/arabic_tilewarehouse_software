@@ -1,12 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { inventoryApi, type StockSummaryRow, type OpeningStockPayload, type AdjustStockPayload } from '@/api/inventoryApi';
+import { inventoryApi, type StockSummaryRow, type OpeningStockPayload } from '@/api/inventoryApi';
 import { warehouseApi } from '@/api/warehouseApi';
 import { productApi } from '@/api/productApi';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTableShell } from '@/components/shared/DataTableShell';
 import { Button } from '@/components/ui/button';
-import { Plus, SlidersHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -36,10 +35,7 @@ export default function InventoryStockPage() {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'code' | 'product_name' | 'warehouse_name' | 'total_boxes' | 'total_pieces' | 'total_sqft' | 'updated_at'>('updated_at');
   const [sortOrder, setSortOrder] = useState<'ASC' | 'DESC'>('DESC');
-
   const [openingModalOpen, setOpeningModalOpen] = useState(false);
-  const [adjustModalOpen, setAdjustModalOpen] = useState(false);
-  const [adjustingRow, setAdjustingRow] = useState<StockSummaryRow | null>(null);
 
   const applySearch = useCallback((value: string) => {
     setSearch(value);
@@ -63,6 +59,7 @@ export default function InventoryStockPage() {
     queryKey: ['warehouses', { limit: 500 }],
     queryFn: () => warehouseApi.getAll({ limit: 500 }),
   });
+
   const { data: productsData } = useQuery({
     queryKey: ['products', { limit: 500 }],
     queryFn: () => productApi.getAll({ page: 1, limit: 500 }),
@@ -93,28 +90,14 @@ export default function InventoryStockPage() {
     },
   });
 
-  const adjustMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: AdjustStockPayload }) =>
-      inventoryApi.adjustStock(id, payload),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['inventory-stock'] });
-      setAdjustModalOpen(false);
-      setAdjustingRow(null);
-      toast.success('Stock adjusted');
-    },
-    onError: (e: { response?: { data?: { error?: { message?: string } } } }) => {
-      toast.error(e?.response?.data?.error?.message ?? 'Failed to adjust stock');
-    },
-  });
-
   const columns = [
     {
       key: 'code',
       label: t('stockSummary.code'),
-      render: (r: StockSummaryRow) => <span className="font-mono text-sm">{r.code ?? '—'}</span>,
+      render: (r: StockSummaryRow) => <span className="font-mono text-sm">{r.code ?? '-'}</span>,
     },
-    { key: 'product_name', label: t('stockSummary.product'), render: (r: StockSummaryRow) => r.product_name ?? '—' },
-    { key: 'warehouse_name', label: t('stockSummary.warehouse'), render: (r: StockSummaryRow) => r.warehouse_name ?? '—' },
+    { key: 'product_name', label: t('stockSummary.product'), render: (r: StockSummaryRow) => r.product_name ?? '-' },
+    { key: 'warehouse_name', label: t('stockSummary.warehouse'), render: (r: StockSummaryRow) => r.warehouse_name ?? '-' },
     {
       key: 'total_boxes',
       label: 'Total (boxes)',
@@ -153,22 +136,6 @@ export default function InventoryStockPage() {
       key: 'total_sqft',
       label: t('stockSummary.totalSqft'),
       render: (r: StockSummaryRow) => Number(r.total_sqft ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 }),
-    },
-    {
-      key: 'actions',
-      label: t('common.actions'),
-      render: (r: StockSummaryRow) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            setAdjustingRow(r);
-            setAdjustModalOpen(true);
-          }}
-        >
-          <SlidersHorizontal className="h-4 w-4 mr-1" /> {t('inventoryStock.adjust')}
-        </Button>
-      ),
     },
   ];
 
@@ -241,28 +208,13 @@ export default function InventoryStockPage() {
         isLoading={isLoading}
       />
 
-      {/* Add Opening Stock Modal */}
       <OpeningStockModal
         open={openingModalOpen}
         onClose={() => setOpeningModalOpen(false)}
         onSubmit={(payload) => createOpeningMutation.mutateAsync(payload)}
         loading={createOpeningMutation.isPending}
         warehouses={warehouses.map((w) => ({ value: w.id, label: w.name }))}
-        products={products.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
-      />
-
-      {/* Adjust Stock Modal */}
-      <AdjustStockModal
-        open={adjustModalOpen}
-        onClose={() => {
-          setAdjustModalOpen(false);
-          setAdjustingRow(null);
-        }}
-        row={adjustingRow}
-        onSubmit={(payload) =>
-          adjustingRow && adjustMutation.mutateAsync({ id: adjustingRow.id, payload })
-        }
-        loading={adjustMutation.isPending}
+        products={products.map((p) => ({ value: p.id, label: `${p.code} - ${p.name}` }))}
       />
     </div>
   );
@@ -292,6 +244,20 @@ function OpeningStockModal({
   const [pieces, setPieces] = useState('0');
   const [notes, setNotes] = useState('');
 
+  const { data: warehouseProductsData } = useQuery({
+    queryKey: ['opening-stock-warehouse-products', warehouse_id],
+    queryFn: () => inventoryApi.getStockList({ warehouse_id, limit: 1000 }),
+    enabled: !!warehouse_id,
+  });
+
+  const filteredProducts = useMemo(() => {
+    if (!warehouse_id) return [];
+    const warehouseRows = warehouseProductsData?.data ?? [];
+    return products.filter((product) =>
+      warehouseRows.some((row) => row.product_id === product.value)
+    );
+  }, [warehouse_id, warehouseProductsData?.data, products]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const b = Number(boxes) || 0;
@@ -319,7 +285,14 @@ function OpeningStockModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label>{t('inventory.warehouse')}</Label>
-            <Select value={warehouse_id} onValueChange={setWarehouseId} required>
+            <Select
+              value={warehouse_id}
+              onValueChange={(value) => {
+                setWarehouseId(value);
+                setProductId('');
+              }}
+              required
+            >
               <SelectTrigger><SelectValue placeholder={t('inventoryStock.selectWarehouse')} /></SelectTrigger>
               <SelectContent>
                 {warehouses.map((w) => (
@@ -330,14 +303,17 @@ function OpeningStockModal({
           </div>
           <div className="space-y-2">
             <Label>{t('inventory.product')}</Label>
-            <Select value={product_id} onValueChange={setProductId} required>
-              <SelectTrigger><SelectValue placeholder={t('inventoryStock.selectProduct')} /></SelectTrigger>
+            <Select value={product_id} onValueChange={setProductId} required disabled={!warehouse_id || filteredProducts.length === 0}>
+              <SelectTrigger><SelectValue placeholder={!warehouse_id ? t('inventoryStock.selectWarehouse') : t('inventoryStock.selectProduct')} /></SelectTrigger>
               <SelectContent>
-                {products.map((p) => (
+                {filteredProducts.map((p) => (
                   <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {warehouse_id && filteredProducts.length === 0 && (
+              <p className="text-xs text-muted-foreground">Selected warehouse me abhi koi product available nahi hai.</p>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -371,116 +347,6 @@ function OpeningStockModal({
             <Button type="submit" disabled={loading}>{loading ? t('common.saving') : t('common.create')}</Button>
           </DialogFooter>
         </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-interface AdjustStockModalProps {
-  open: boolean;
-  onClose: () => void;
-  row: StockSummaryRow | null;
-  onSubmit: (payload: AdjustStockPayload) => Promise<void>;
-  loading: boolean;
-}
-
-function AdjustStockModal({ open, onClose, row, onSubmit, loading }: AdjustStockModalProps) {
-  const { t } = useTranslation();
-  const [boxes_in, setBoxesIn] = useState('');
-  const [boxes_out, setBoxesOut] = useState('');
-  const [pieces_in, setPiecesIn] = useState('');
-  const [pieces_out, setPiecesOut] = useState('');
-  const [notes, setNotes] = useState('');
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const bi = Number(boxes_in) || 0;
-    const bo = Number(boxes_out) || 0;
-    const pi = Number(pieces_in) || 0;
-    const po = Number(pieces_out) || 0;
-    if (bi === 0 && bo === 0 && pi === 0 && po === 0) return;
-    await onSubmit({
-      boxes_in: bi,
-      boxes_out: bo,
-      pieces_in: pi,
-      pieces_out: po,
-      notes: notes.trim() || null,
-    });
-    setBoxesIn('');
-    setBoxesOut('');
-    setPiecesIn('');
-    setPiecesOut('');
-    setNotes('');
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>{t('inventoryStock.adjustStock')}</DialogTitle>
-          {row && (
-            <p className="text-sm text-muted-foreground">
-              {row.product_name} @ {row.warehouse_name} — Current: {Number(row.total_boxes)} boxes
-            </p>
-          )}
-        </DialogHeader>
-        {!row ? (
-          <p className="text-muted-foreground">No row selected.</p>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>{t('inventoryStock.boxesIn')}</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  step={0.01}
-                  value={boxes_in}
-                  onChange={(e) => setBoxesIn(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>{t('inventoryStock.boxesOut')}</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  step={0.01}
-                  value={boxes_out}
-                  onChange={(e) => setBoxesOut(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>{t('inventoryStock.piecesIn')}</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  step={0.01}
-                  value={pieces_in}
-                  onChange={(e) => setPiecesIn(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>{t('inventoryStock.piecesOut')}</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  step={0.01}
-                  value={pieces_out}
-                  onChange={(e) => setPiecesOut(e.target.value)}
-                />
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground">Enter at least one non-zero value. Adjustment will update ledger and summary.</p>
-            <div className="space-y-2">
-              <Label>{t('inventoryStock.notesOptional')}</Label>
-              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t('inventoryStock.placeholderAdjustmentReason')} />
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={onClose} disabled={loading}>{t('common.cancel')}</Button>
-              <Button type="submit" disabled={loading}>{loading ? t('common.saving') : t('inventoryStock.applyAdjustment')}</Button>
-            </DialogFooter>
-          </form>
-        )}
       </DialogContent>
     </Dialog>
   );

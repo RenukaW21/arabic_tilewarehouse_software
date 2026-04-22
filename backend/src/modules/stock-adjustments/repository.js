@@ -9,6 +9,10 @@ const findAll = async (tenantId, queryParams) => {
   const { page, limit, offset, sortBy, sortOrder, search } = parsePagination(queryParams, ALLOWED_SORT);
   const conditions = ['sa.tenant_id = ?'];
   const params = [tenantId];
+  if (queryParams.productId) {
+    conditions.push('sa.product_id = ?');
+    params.push(queryParams.productId);
+  }
   const { clause: searchClause, params: searchParams } = buildSearchClause(search, ['sa.reason', 'p.name', 'p.code']);
   if (searchClause) {
     conditions.push(searchClause);

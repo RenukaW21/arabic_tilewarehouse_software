@@ -22,24 +22,38 @@ const findAll = async (tenantId, queryParams) => {
   }
 
   const sortColumnMap = {
-    code: 'p.code',
-    product_name: 'p.name',
-    warehouse_name: 'w.name',
-    total_boxes: 'ss.total_boxes',
-    total_pieces: 'ss.total_pieces',
-    total_sqft: 'ss.total_sqft',
-    updated_at: 'ss.updated_at',
+    code: 'code',
+    product_name: 'product_name',
+    warehouse_name: 'warehouse_name',
+    total_boxes: 'total_boxes',
+    total_pieces: 'total_pieces',
+    total_sqft: 'total_sqft',
+    updated_at: 'updated_at',
   };
-  const orderBy = sortColumnMap[sortBy] || 'ss.updated_at';
+  const orderBy = sortColumnMap[sortBy] || 'updated_at';
   const whereSql = conditions.join(' AND ');
 
   const baseSql = `
-    SELECT ss.id, ss.tenant_id, ss.warehouse_id, ss.rack_id, ss.product_id, ss.shade_id, ss.batch_id,
-           ss.total_boxes, ss.total_pieces, ss.total_sqft, ss.avg_cost_per_box, ss.updated_at,
+    SELECT MIN(ss.id) AS id,
+           ss.tenant_id,
+           ss.warehouse_id AS warehouse_id,
+           NULL AS rack_id,
+           ss.product_id,
+           NULL AS shade_id,
+           NULL AS batch_id,
+           SUM(ss.total_boxes) AS total_boxes,
+           SUM(ss.total_pieces) AS total_pieces,
+           SUM(ss.total_sqft) AS total_sqft,
+           CASE
+             WHEN SUM(ss.total_boxes) > 0
+               THEN SUM(ss.total_boxes * COALESCE(ss.avg_cost_per_box, 0)) / SUM(ss.total_boxes)
+             ELSE NULL
+           END AS avg_cost_per_box,
+           MAX(ss.updated_at) AS updated_at,
            p.code, p.name AS product_name, p.sqft_per_box,
-           w.name AS warehouse_name,
-           COALESCE(res.reserved_boxes, 0) AS reserved_boxes,
-           GREATEST(0, ss.total_boxes - COALESCE(res.reserved_boxes, 0)) AS available_boxes
+           MAX(w.name) AS warehouse_name,
+           COALESCE(SUM(res.reserved_boxes), 0) AS reserved_boxes,
+           GREATEST(0, SUM(ss.total_boxes) - COALESCE(SUM(res.reserved_boxes), 0)) AS available_boxes
     FROM stock_summary ss
     JOIN products p ON ss.product_id = p.id AND p.tenant_id = ss.tenant_id
     JOIN warehouses w ON ss.warehouse_id = w.id AND w.tenant_id = ss.tenant_id
@@ -54,11 +68,23 @@ const findAll = async (tenantId, queryParams) => {
           AND (res.shade_id <=> ss.shade_id)
           AND (res.batch_id <=> ss.batch_id)
     WHERE ${whereSql}
+    GROUP BY ss.tenant_id, ss.warehouse_id, ss.product_id, p.code, p.name, p.sqft_per_box
   `;
 
   const [rows, countRows] = await Promise.all([
     query(`${baseSql} ORDER BY ${orderBy} ${sortOrder} LIMIT ${limit} OFFSET ${offset}`, params),
-    query(`SELECT COUNT(*) AS total FROM stock_summary ss JOIN products p ON ss.product_id = p.id AND p.tenant_id = ss.tenant_id JOIN warehouses w ON ss.warehouse_id = w.id AND w.tenant_id = ss.tenant_id WHERE ${whereSql}`, params),
+    query(
+      `SELECT COUNT(*) AS total
+       FROM (
+         SELECT ss.product_id
+         FROM stock_summary ss
+         JOIN products p ON ss.product_id = p.id AND p.tenant_id = ss.tenant_id
+         JOIN warehouses w ON ss.warehouse_id = w.id AND w.tenant_id = ss.tenant_id
+         WHERE ${whereSql}
+         GROUP BY ss.product_id, ss.warehouse_id
+       ) grouped_stock`,
+      params
+    ),
   ]);
 
   return { rows, total: countRows[0].total };

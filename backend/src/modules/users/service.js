@@ -8,6 +8,7 @@ const { AppError } = require('../../middlewares/error.middleware');
 const { ROLE_HIERARCHY } = require('../../constants/roles');
 const { checkUserLinked } = require('../../utils/deleteGuard');
 const { VALID_ROLES } = require('./validation');
+const { normalizeEmail } = require('../../utils/normalizeEmail');
 
 /**
  * Parse role filter from query: role=warehouse_manager,sales | role[]=a&role[]=b | roles=a,b
@@ -43,7 +44,8 @@ const getById = async (id, tenantId) => {
 };
 
 const create = async (tenantId, data) => {
-  const existing = await repo.findByEmail(data.email, tenantId);
+  const normalizedEmail = normalizeEmail(data.email);
+  const existing = await repo.findByEmail(normalizedEmail, tenantId);
 
   if (existing) {
     throw new AppError(
@@ -64,7 +66,7 @@ const create = async (tenantId, data) => {
     id,
     tenant_id: tenantId,
     name: data.name,
-    email: data.email,
+    email: normalizedEmail,
     password_hash: passwordHash,
     role: data.role,
     phone: data.phone || null,

@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export interface FieldDef {
   key: string;
@@ -48,6 +49,7 @@ export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initial
   const { t } = useTranslation();
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState<string>('');
   const prevOpen = useRef(open);
   const prevInitialData = useRef(initialData);
 
@@ -60,6 +62,7 @@ export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initial
 
       if (shouldReset) {
         setErrors({});
+        setFormError('');
         const defaults: Record<string, any> = {};
         fields.forEach(f => {
           let val = initialData?.[f.key] ?? f.defaultValue ?? (f.type === 'switch' ? true : f.type === 'number' ? '' : '');
@@ -97,11 +100,29 @@ export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initial
 
   const validate = (): boolean => {
     const next: Record<string, string> = {};
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     fields.forEach(f => {
-      if (!f.required) return;
       const val = formData[f.key];
       const empty = val === undefined || val === null || val === '' || (f.type === 'select' && (val === 'none' || val === ''));
-      if (empty) next[f.key] = `${f.label} ${t('crudForm.isRequired')}`;
+      
+      if (f.required && empty) {
+        next[f.key] = `${f.label} ${t('crudForm.isRequired')}`;
+        return;
+      }
+      
+      if (!empty && (f.key.toLowerCase().includes('phone') || f.key.toLowerCase().includes('mobile'))) {
+        const digitsOnly = String(val).replace(/\D/g, '');
+        if (digitsOnly.length !== 10) {
+          next[f.key] = t('common.phoneValidation', 'Phone number must be exactly 10 digits');
+        }
+      }
+
+      if (!empty && (f.type === 'email' || f.key.toLowerCase().includes('email'))) {
+        const normalizedEmail = String(val).trim().toLowerCase();
+        if (!emailRegex.test(normalizedEmail)) {
+          next[f.key] = t('common.validEmail', 'Put valid email');
+        }
+      }
     });
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -115,10 +136,13 @@ export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initial
       submitData[key] = formData[key] === 'none' ? '' : formData[key];
     }
     setErrors({});
+    setFormError('');
     try {
       await onSubmit(submitData);
     } catch (err: any) {
-      const details = err?.response?.data?.error?.details as Array<{ path?: string[]; message?: string }> | undefined;
+      const details =
+        err?.response?.data?.error?.details ??
+        err?.response?.data?.details as Array<{ path?: string[]; field?: string; message?: string }> | undefined;
       if (Array.isArray(details) && details.length) {
         const next: Record<string, string> = {};
         details.forEach(d => {
@@ -128,8 +152,18 @@ export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initial
         });
         setErrors(next);
       }
-      const msg = err?.response?.data?.error?.message ?? err?.response?.data?.message ?? err?.message ?? 'Request failed';
-      toast.error(msg);
+      const msg =
+        err?.response?.data?.error?.message ??
+        err?.response?.data?.message ??
+        err?.message ??
+        'Request failed';
+      const suggestion =
+        err?.response?.data?.error?.suggestion ??
+        err?.response?.data?.suggestion;
+      setFormError(suggestion ? `${msg} ${suggestion}` : msg);
+      if (!Array.isArray(details) || details.length === 0) {
+        toast.error(msg);
+      }
     }
   };
 
@@ -148,6 +182,11 @@ export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initial
           <DialogTitle className="font-display">{title}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
+          {formError && (
+            <Alert variant="destructive" className="border-destructive/40 bg-destructive/5">
+              <AlertDescription className="text-sm leading-6">{formError}</AlertDescription>
+            </Alert>
+          )}
           {fields.map(f => (
             <div key={f.key} className="space-y-1.5">
               <Label htmlFor={f.key}>{f.label}{f.required && <span className="text-destructive ml-0.5">*</span>}</Label>
@@ -214,7 +253,7 @@ export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initial
                   <span className="text-sm text-muted-foreground">{formData[f.key] ? t('crudForm.active') : t('crudForm.inactive')}</span>
                 </div>
               ) : (
-                <Input
+                  <Input
                   id={f.key}
                   type={f.type}
                   value={f.type === 'date' && formData[f.key] ? String(formData[f.key]).slice(0, 10) : (f.type === 'file' ? undefined : (formData[f.key] ?? ''))}
@@ -223,7 +262,11 @@ export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initial
                       const file = (e.target as HTMLInputElement).files?.[0];
                       if (file) setValue(f.key, file);
                     } else {
-                      setValue(f.key, e.target.value);
+                      const inputValue =
+                        f.type === 'email' || f.key.toLowerCase().includes('email')
+                          ? e.target.value.toLowerCase()
+                          : e.target.value;
+                      setValue(f.key, inputValue);
                     }
                   }}
                   placeholder={f.placeholder}

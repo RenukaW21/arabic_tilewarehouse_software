@@ -49,6 +49,21 @@ const errorHandler = (err, req, res, next) => {
     );
   }
 
+  // MySQL / protocol packet issues
+  if (
+    err.code === 'ER_MALFORMED_PACKET' ||
+    err.code === 'PROTOCOL_PACKETS_OUT_OF_ORDER' ||
+    /Malformed communication packet/i.test(err.message || '')
+  ) {
+    return res.status(500).json(
+      errBody(
+        'DATABASE_REQUEST_FAILED',
+        'We could not save your changes because the server could not process the warehouse request.',
+        'Please try again. If it happens again, contact support.'
+      )
+    );
+  }
+
   // Custom AppError
   if (err.statusCode) {
     return res.status(err.statusCode).json(

@@ -4,7 +4,7 @@ import type { ApiResponse, ApiPaginatedResponse, PaginationParams } from '@/type
 export interface StockSummaryRow {
   id: string;
   tenant_id: string;
-  warehouse_id: string;
+  warehouse_id: string | null;
   rack_id: string | null;
   product_id: string;
   shade_id: string | null;

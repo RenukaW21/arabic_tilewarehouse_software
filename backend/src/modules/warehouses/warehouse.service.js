@@ -26,6 +26,13 @@ const createWarehouse = async (data) => {
     data.pincode ?? null,
     data.is_active !== false ? 1 : 0,
   ]);
+
+  // Automatically provision an "Overflow Area" rack with infinite capacity
+  await pool.execute(
+    `INSERT INTO racks (id, tenant_id, warehouse_id, name, capacity_boxes, is_active)
+     VALUES (UUID(), ?, ?, 'Overflow Area', NULL, 1)`,
+    [data.tenant_id, data.id]
+  );
 };
 
 const getAllWarehouses = async (tenantId, options = {}) => {

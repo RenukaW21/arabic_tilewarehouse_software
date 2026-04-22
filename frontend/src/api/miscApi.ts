@@ -284,6 +284,14 @@ export interface PurchaseReturnListParams extends PaginationParams {
   warehouse_id?: string;
 }
 
+export interface EligiblePurchaseReturnProduct {
+  product_id: string;
+  code: string;
+  product_name: string;
+  unit_price: number;
+  available_boxes: number;
+}
+
 export const purchaseReturnApi = {
   getAll: async (params?: PurchaseReturnListParams): Promise<ApiPaginatedResponse<PurchaseReturn>> => {
     const res = await axiosInstance.get<ApiPaginatedResponse<PurchaseReturn>>('/purchase-returns', { params });
@@ -291,6 +299,12 @@ export const purchaseReturnApi = {
   },
   getById: async (id: string): Promise<ApiResponse<PurchaseReturn>> => {
     const res = await axiosInstance.get<ApiResponse<PurchaseReturn>>(`/purchase-returns/${id}`);
+    return res.data;
+  },
+  getEligibleProducts: async (vendor_id: string, warehouse_id: string): Promise<ApiResponse<EligiblePurchaseReturnProduct[]>> => {
+    const res = await axiosInstance.get<ApiResponse<EligiblePurchaseReturnProduct[]>>('/purchase-returns/eligible-products', {
+      params: { vendor_id, warehouse_id },
+    });
     return res.data;
   },
   create: async (data: CreatePurchaseReturnDto): Promise<ApiResponse<PurchaseReturn>> => {

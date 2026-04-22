@@ -3,6 +3,7 @@
 const { getPool, query } = require('../../config/db');
 const { checkVendorLinked } = require('../../utils/deleteGuard');
 const { parsePagination, buildSearchClause, buildFilterClauses } = require('../../utils/pagination');
+const { normalizeEmail } = require('../../utils/normalizeEmail');
 
 /** Columns selected for list/get — avoid SELECT * for performance */
 const SELECT_COLUMNS = [
@@ -23,6 +24,7 @@ const createVendor = async (data) => {
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
   const pool = getPool();
+  const normalizedEmail = normalizeEmail(data.email);
   await pool.execute(sql, [
     data.id,
     data.tenant_id,
@@ -30,7 +32,7 @@ const createVendor = async (data) => {
     data.code ?? null,
     data.contact_person ?? null,
     data.phone ?? null,
-    data.email ?? null,
+    normalizedEmail,
     data.address ?? null,
     data.gstin ?? null,
     data.pan ?? null,
@@ -107,6 +109,8 @@ const updateVendor = async (id, tenantId, fields) => {
     setParts.push(`${key} = ?`);
     if (key === 'is_active') {
       values.push(fields[key] === true || fields[key] === 1 ? 1 : 0);
+    } else if (key === 'email') {
+      values.push(normalizeEmail(fields[key]));
     } else {
       values.push(fields[key]);
     }

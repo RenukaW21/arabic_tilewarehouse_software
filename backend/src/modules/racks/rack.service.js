@@ -1,8 +1,12 @@
 'use strict';
 
+const { v4: uuidv4 } = require('uuid');
 const { getPool, query, beginTransaction } = require('../../config/db');
 const { parsePagination, buildSearchClause, buildFilterClauses } = require('../../utils/pagination');
 const { syncRackProductInventory } = require('../../utils/stockHelper');
+
+const OVERFLOW_RACK_SENTINEL = '__overflow_area__';
+const OVERFLOW_RACK_NAME = 'Overflow Area';
 
 const SELECT_COLUMNS = [
   'id',
@@ -334,12 +338,21 @@ const assignProductToRack = async (tenantId, data) => {
 
   const trx = await beginTransaction();
   try {
+    let targetRackId = data.rack_id;
+    if (targetRackId === OVERFLOW_RACK_SENTINEL) {
+      if (!data.warehouse_id) {
+        throw new Error('warehouse_id is required when assigning to Overflow Area');
+      }
+      const overflowRack = await ensureOverflowRack(tenantId, data.warehouse_id, trx.query.bind(trx));
+      targetRackId = overflowRack.id;
+    }
+
     const rackRows = await trx.query(
       `SELECT id, warehouse_id, capacity_boxes
        FROM racks
        WHERE id = ? AND tenant_id = ?
        FOR UPDATE`,
-      [data.rack_id, tenantId]
+      [targetRackId, tenantId]
     );
     const rack = rackRows[0];
     if (!rack) throw new Error('Rack not found');
@@ -348,7 +361,7 @@ const assignProductToRack = async (tenantId, data) => {
        FROM product_racks pr
        LEFT JOIN products p ON p.id = pr.product_id
        WHERE pr.rack_id = ? AND pr.tenant_id = ?`,
-      [data.rack_id, tenantId]
+      [targetRackId, tenantId]
     );
     rack.occupied_boxes = parseFloat(rackOccupancyRows[0]?.occupied_boxes) || 0;
 
@@ -378,11 +391,11 @@ const assignProductToRack = async (tenantId, data) => {
     }
 
     // Capacity check (same semantics as before, but under lock)
-    const diffForTarget = isEditing && oldRackId === data.rack_id
+    const diffForTarget = isEditing && oldRackId === targetRackId
       ? boxesInput - oldBoxes
       : boxesInput;
     if (rack.capacity_boxes !== null && (Number(rack.occupied_boxes) || 0) + diffForTarget > rack.capacity_boxes) {
-      const avail = rack.capacity_boxes - (Number(rack.occupied_boxes) || 0) + (isEditing && oldRackId === data.rack_id ? oldBoxes : 0);
+      const avail = rack.capacity_boxes - (Number(rack.occupied_boxes) || 0) + (isEditing && oldRackId === targetRackId ? oldBoxes : 0);
       throw new Error(`Insufficient capacity in target rack. Max available: ${avail} boxes.`);
     }
 
@@ -390,30 +403,30 @@ const assignProductToRack = async (tenantId, data) => {
     if (isEditing) {
       if (oldProductId !== data.product_id) {
         await moveStockBetweenRacks(trx, tenantId, oldWarehouseId || rack.warehouse_id, oldProductId, oldRackId, null, oldBoxes);
-        await moveStockBetweenRacks(trx, tenantId, rack.warehouse_id, data.product_id, null, data.rack_id, boxesInput);
-      } else if (oldRackId === data.rack_id) {
+        await moveStockBetweenRacks(trx, tenantId, rack.warehouse_id, data.product_id, null, targetRackId, boxesInput);
+      } else if (oldRackId === targetRackId) {
         const diff = boxesInput - oldBoxes;
         if (diff > 0) {
-          await moveStockBetweenRacks(trx, tenantId, rack.warehouse_id, data.product_id, null, data.rack_id, diff);
+          await moveStockBetweenRacks(trx, tenantId, rack.warehouse_id, data.product_id, null, targetRackId, diff);
         } else if (diff < 0) {
-          await moveStockBetweenRacks(trx, tenantId, rack.warehouse_id, data.product_id, data.rack_id, null, -diff);
+          await moveStockBetweenRacks(trx, tenantId, rack.warehouse_id, data.product_id, targetRackId, null, -diff);
         }
       } else {
         await moveStockBetweenRacks(trx, tenantId, oldWarehouseId || rack.warehouse_id, data.product_id, oldRackId, null, oldBoxes);
-        await moveStockBetweenRacks(trx, tenantId, rack.warehouse_id, data.product_id, null, data.rack_id, boxesInput);
+        await moveStockBetweenRacks(trx, tenantId, rack.warehouse_id, data.product_id, null, targetRackId, boxesInput);
       }
     } else {
-      await moveStockBetweenRacks(trx, tenantId, rack.warehouse_id, data.product_id, null, data.rack_id, boxesInput);
+      await moveStockBetweenRacks(trx, tenantId, rack.warehouse_id, data.product_id, null, targetRackId, boxesInput);
     }
 
     // Derive product_racks from stock_summary for all touched racks.
-    if (isEditing && oldRackId && oldRackId !== data.rack_id) {
+    if (isEditing && oldRackId && oldRackId !== targetRackId) {
       await syncRackProductInventory(trx, { tenantId, rackId: oldRackId, productId: oldProductId });
     }
-    if (isEditing && oldProductId !== data.product_id && oldRackId === data.rack_id) {
-      await syncRackProductInventory(trx, { tenantId, rackId: data.rack_id, productId: oldProductId });
+    if (isEditing && oldProductId !== data.product_id && oldRackId === targetRackId) {
+      await syncRackProductInventory(trx, { tenantId, rackId: targetRackId, productId: oldProductId });
     }
-    await syncRackProductInventory(trx, { tenantId, rackId: data.rack_id, productId: data.product_id });
+    await syncRackProductInventory(trx, { tenantId, rackId: targetRackId, productId: data.product_id });
 
     await trx.commit();
     return { success: true };
@@ -458,8 +471,45 @@ const getProductRacks = async (tenantId, productId) => {
   );
 };
 
+const ensureOverflowRack = async (tenantId, warehouseId, exec = query) => {
+  if (!tenantId || !warehouseId) {
+    throw new Error('tenantId and warehouseId are required to resolve overflow area');
+  }
+
+  const existingRows = await exec(
+    `SELECT id, name, capacity_boxes, occupied_boxes, available_boxes, rack_status, is_active
+     FROM racks
+     WHERE tenant_id = ? AND warehouse_id = ? AND capacity_boxes IS NULL AND is_active = 1
+     ORDER BY created_at ASC
+     LIMIT 1`,
+    [tenantId, warehouseId]
+  );
+
+  if (existingRows[0]) return existingRows[0];
+
+  const id = uuidv4();
+  await exec(
+    `INSERT INTO racks (id, tenant_id, warehouse_id, name, capacity_boxes, is_active)
+     VALUES (?, ?, ?, ?, NULL, 1)`,
+    [id, tenantId, warehouseId, OVERFLOW_RACK_NAME]
+  );
+
+  return {
+    id,
+    tenant_id: tenantId,
+    warehouse_id: warehouseId,
+    name: OVERFLOW_RACK_NAME,
+    capacity_boxes: null,
+    occupied_boxes: 0,
+    available_boxes: null,
+    rack_status: 'ACTIVE',
+    is_active: 1,
+  };
+};
+
 module.exports = {
   createRack,
+  ensureOverflowRack,
   getAllRacks,
   getRackById,
   updateRack,

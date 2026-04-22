@@ -71,6 +71,40 @@ const findItemsByReturnId = async (returnId, tenantId) => {
   );
 };
 
+const findEligibleProducts = async (tenantId, vendorId, warehouseId) => {
+  return query(
+    `SELECT
+        gi.product_id,
+        p.code,
+        p.name AS product_name,
+        MAX(gi.unit_price) AS unit_price,
+        MAX(COALESCE(stock.available_boxes, 0)) AS available_boxes
+     FROM grn g
+     JOIN grn_items gi
+       ON gi.grn_id = g.id
+      AND gi.tenant_id = g.tenant_id
+     JOIN products p
+       ON p.id = gi.product_id
+      AND p.tenant_id = gi.tenant_id
+     LEFT JOIN (
+       SELECT tenant_id, warehouse_id, product_id, SUM(total_boxes) AS available_boxes
+       FROM stock_summary
+       GROUP BY tenant_id, warehouse_id, product_id
+     ) stock
+       ON stock.tenant_id = gi.tenant_id
+      AND stock.warehouse_id = g.warehouse_id
+      AND stock.product_id = gi.product_id
+     WHERE g.tenant_id = ?
+       AND g.vendor_id = ?
+       AND g.warehouse_id = ?
+       AND g.status IN ('posted', 'verified')
+     GROUP BY gi.product_id, p.code, p.name
+     HAVING available_boxes > 0
+     ORDER BY p.name ASC`,
+    [tenantId, vendorId, warehouseId]
+  );
+};
+
 const createReturn = async (data, trx) => {
   const id = uuidv4();
   const run = trx ? (sql, params) => trx.query(sql, params) : (sql, params) => query(sql, params);
@@ -232,6 +266,7 @@ module.exports = {
   findAll,
   findById,
   findItemsByReturnId,
+  findEligibleProducts,
   createReturn,
   createReturnItem,
   deleteReturnItems,

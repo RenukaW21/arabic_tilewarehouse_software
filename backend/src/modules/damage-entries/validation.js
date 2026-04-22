@@ -33,6 +33,7 @@ const listQuerySchema = Joi.object({
   page: Joi.number().integer().min(1).optional(),
   limit: Joi.number().integer().min(1).max(500).optional(),
   search: Joi.string().allow('').optional(),
+  productId: Joi.string().uuid().optional(),
   sortBy: Joi.string().valid('damage_date', 'created_at', 'damaged_boxes').optional(),
   sortOrder: Joi.string().valid('asc', 'desc', 'ASC', 'DESC').optional(),
 });

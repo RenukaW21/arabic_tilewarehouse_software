@@ -106,6 +106,31 @@ const postStockMovement = async (trx, {
     );
   }
 
+  if (rackId && boxesIn > boxesOut) {
+    const netIncoming = boxesIn - boxesOut;
+    const rackCheck = await trx.query(
+      `SELECT name, capacity_boxes, occupied_boxes FROM racks WHERE id = ? AND tenant_id = ?`,
+      [rackId, tenantId]
+    );
+
+    if (rackCheck.length > 0) {
+      const r = rackCheck[0];
+      if (r.capacity_boxes !== null) {
+        const capacity = parseFloat(r.capacity_boxes);
+        const occupied = parseFloat(r.occupied_boxes) || 0;
+        
+        if (occupied + netIncoming > capacity) {
+          const available = capacity - occupied;
+          throw new AppError(
+            `Rack capacity exceeded: "${r.name}" can hold ${capacity} boxes (currently ${occupied} occupied, only ${available} available). Tried to add ${netIncoming} boxes. Please use the "Overflow Area" rack instead.`,
+            400,
+            'RACK_CAPACITY_EXCEEDED'
+          );
+        }
+      }
+    }
+  }
+
   const balanceBoxes = Math.max(0, prevBoxesNum + boxesIn - boxesOut);
   const balancePieces = parseFloat(prev.total_pieces) + piecesIn - piecesOut;
   const sqftIn = boxesIn * sqftPerBox;

@@ -38,6 +38,7 @@ export interface CreateStockAdjustmentPayload {
 }
 
 export interface StockAdjustmentListParams extends PaginationParams {
+  productId?: string;
   sortBy?: string;
   sortOrder?: 'ASC' | 'DESC';
   status?: string;

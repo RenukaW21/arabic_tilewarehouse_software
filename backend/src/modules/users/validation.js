@@ -9,7 +9,9 @@ const createUserSchema = Joi.object({
   email: Joi.string().email().max(255).required(),
   password: Joi.string().min(6).required(),
   role: Joi.string().valid(...ROLES).required(),
-  phone: Joi.string().max(20).allow(null, '').optional(),
+  phone: Joi.string().pattern(/^\d{10}$/).allow(null, '').optional().messages({
+    'string.pattern.base': 'Phone number must be exactly 10 digits'
+  }),
    warehouse_id: Joi.string().uuid().allow(null, '').optional(),
 });
 
@@ -17,7 +19,9 @@ const updateUserSchema = Joi.object({
   name: Joi.string().min(1).max(255).optional(),
   password: Joi.string().min(6).allow(null, '').optional(),
   role: Joi.string().valid(...ROLES).optional(),
-  phone: Joi.string().max(20).allow(null, '').optional(),
+  phone: Joi.string().pattern(/^\d{10}$/).allow(null, '').optional().messages({
+    'string.pattern.base': 'Phone number must be exactly 10 digits'
+  }),
   is_active: Joi.boolean().optional(),
    warehouse_id: Joi.string().uuid().allow(null, '').optional(),
 }).min(1);

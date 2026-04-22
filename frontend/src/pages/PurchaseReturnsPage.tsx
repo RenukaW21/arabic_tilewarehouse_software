@@ -1,16 +1,15 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { purchaseReturnApi } from '@/api/miscApi';
+import { purchaseReturnApi, type EligiblePurchaseReturnProduct } from '@/api/miscApi';
 import { vendorApi } from '@/api/vendorApi';
 import { warehouseApi } from '@/api/warehouseApi';
-import { productApi } from '@/api/productApi';
 import type { PurchaseReturn, CreatePurchaseReturnDto, CreatePurchaseReturnItemDto } from '@/types/misc.types';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTableShell } from '@/components/shared/DataTableShell';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { DeleteConfirmDialog } from '@/components/shared/DeleteConfirmDialog';
 import { Button } from '@/components/ui/button';
-import { Pencil, Trash2, Truck, Loader2 } from 'lucide-react';
+import { Pencil, Trash2, Truck, Loader2, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -40,6 +39,7 @@ export default function PurchaseReturnsPage() {
   const [editing, setEditing] = useState<PurchaseReturn | null>(null);
   const [deleting, setDeleting] = useState<PurchaseReturn | null>(null);
   const [dispatchingId, setDispatchingId] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<PurchaseReturn | null>(null);
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -79,11 +79,18 @@ export default function PurchaseReturnsPage() {
   });
   const warehouses = warehousesData?.data ?? [];
 
-  const { data: productsData } = useQuery({
-    queryKey: ['products', { limit: 500 }],
-    queryFn: () => productApi.getAll({ page: 1, limit: 500 }),
+  const { data: eligibleProductsData, isLoading: eligibleProductsLoading } = useQuery({
+    queryKey: ['purchase-return-eligible-products', formVendorId, formWarehouseId],
+    queryFn: () => purchaseReturnApi.getEligibleProducts(formVendorId, formWarehouseId),
+    enabled: !!formVendorId && !!formWarehouseId && !editing,
   });
-  const products = productsData?.data ?? [];
+  const eligibleProducts: EligiblePurchaseReturnProduct[] = eligibleProductsData?.data ?? [];
+  const products = eligibleProducts.map((p) => ({
+    id: p.product_id,
+    code: p.code,
+    name: p.product_name,
+    mrp: Number(p.unit_price ?? 0),
+  }));
 
   const { data, isLoading } = useQuery({
     queryKey: ['purchase-returns', listParams],
@@ -256,6 +263,10 @@ export default function PurchaseReturnsPage() {
       label: t('common.actions'),
       render: (r: PurchaseReturn) => (
         <div className="flex gap-1">
+          {/* View button — visible for ALL statuses */}
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600" onClick={() => setViewing(r)} title="View Details">
+            <Eye className="h-4 w-4" />
+          </Button>
           {r.status === 'draft' && (
             <>
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(r)} title="Edit">
@@ -332,7 +343,15 @@ export default function PurchaseReturnsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>{t('purchaseReturns.vendor')}</Label>
-                <Select value={formVendorId} onValueChange={setFormVendorId} required disabled={isEdit}>
+                <Select
+                  value={formVendorId}
+                  onValueChange={(value) => {
+                    setFormVendorId(value);
+                    if (!isEdit) setFormItems([{ product_id: '', returned_boxes: 1, unit_price: 0 }]);
+                  }}
+                  required
+                  disabled={isEdit}
+                >
                   <SelectTrigger><SelectValue placeholder={t('purchaseReturns.selectVendor')} /></SelectTrigger>
                   <SelectContent>
                     {vendorOptions.map((v) => (
@@ -343,7 +362,15 @@ export default function PurchaseReturnsPage() {
               </div>
               <div className="space-y-2">
                 <Label>{t('purchaseReturns.warehouse')}</Label>
-                <Select value={formWarehouseId} onValueChange={setFormWarehouseId} required disabled={isEdit}>
+                <Select
+                  value={formWarehouseId}
+                  onValueChange={(value) => {
+                    setFormWarehouseId(value);
+                    if (!isEdit) setFormItems([{ product_id: '', returned_boxes: 1, unit_price: 0 }]);
+                  }}
+                  required
+                  disabled={isEdit}
+                >
                   <SelectTrigger><SelectValue placeholder={t('purchaseReturns.selectWarehouse')} /></SelectTrigger>
                   <SelectContent>
                     {warehouseOptions.map((w) => (
@@ -396,14 +423,27 @@ export default function PurchaseReturnsPage() {
                               value={item.product_id || 'none'}
                               onValueChange={(v) => {
                                 if (v === 'none') return;
-                                const p = products.find((x) => x.id === v);
-                                updateReturnItem(idx, { product_id: v, unit_price: p?.mrp ?? 0 });
+                                const p = eligibleProducts.find((x) => x.product_id === v);
+                                updateReturnItem(idx, { product_id: v, unit_price: Number(p?.unit_price ?? 0) });
                               }}
+                              disabled={!formVendorId || !formWarehouseId || eligibleProductsLoading}
                             >
-                              <SelectTrigger className="h-8"><SelectValue placeholder={t('common.product')} /></SelectTrigger>
+                              <SelectTrigger className="h-8">
+                                <SelectValue
+                                  placeholder={
+                                    !formVendorId || !formWarehouseId
+                                      ? 'Select vendor and warehouse first'
+                                      : eligibleProductsLoading
+                                        ? 'Loading products...'
+                                        : t('common.product')
+                                  }
+                                />
+                              </SelectTrigger>
                               <SelectContent>
                                 {products.map((p) => (
-                                  <SelectItem key={p.id} value={p.id}>{p.code} — {p.name}</SelectItem>
+                                  <SelectItem key={p.id} value={p.id}>
+                                    {p.code} — {p.name || 'Unnamed product'}
+                                  </SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
@@ -438,6 +478,11 @@ export default function PurchaseReturnsPage() {
                     </tbody>
                   </table>
                 </div>
+                {formVendorId && formWarehouseId && !eligibleProductsLoading && eligibleProducts.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Only products received from this vendor into this warehouse and still available in stock are shown for return. No eligible products were found right now.
+                  </p>
+                )}
               </div>
             )}
 
@@ -461,6 +506,58 @@ export default function PurchaseReturnsPage() {
         title="Delete purchase return?"
         description="This will permanently delete this draft return. Only draft returns can be deleted."
       />
+
+      {/* ── View Details Dialog ───────────────────────────────────────── */}
+      <Dialog open={!!viewing} onOpenChange={(o) => !o && setViewing(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Return Details — {viewing?.return_number}</DialogTitle>
+          </DialogHeader>
+          {viewing && (
+            <div className="space-y-4 text-sm">
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">Vendor</p>
+                  <p className="font-medium">{viewing.vendor_name ?? '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">Warehouse</p>
+                  <p className="font-medium">{viewing.warehouse_name ?? '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">Return Date</p>
+                  <p className="font-medium">{viewing.return_date ? new Date(viewing.return_date).toLocaleDateString() : '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">Status</p>
+                  <StatusBadge status={viewing.status} />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">Total Boxes</p>
+                  <p className="font-medium font-mono">{viewing.total_boxes ?? 0}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">Vehicle Number</p>
+                  <p className="font-medium">{(viewing as any).vehicle_number ?? '—'}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-xs text-muted-foreground mb-0.5">Reason</p>
+                  <p className="font-medium">{(viewing as any).reason ?? '—'}</p>
+                </div>
+                {(viewing as any).notes && (
+                  <div className="col-span-2">
+                    <p className="text-xs text-muted-foreground mb-0.5">Notes</p>
+                    <p className="font-medium">{(viewing as any).notes}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewing(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -17,15 +17,23 @@ import { Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 const gstConfigSchema = z.object({
-  gstin: z.string().min(1, 'GSTIN is required'),
+  gstin: z.string()
+    .min(1, 'GSTIN is required')
+    .regex(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/, 'Invalid GSTIN format'),
   legal_name: z.string().min(1, 'Legal name is required'),
-  trade_name: z.string().optional(),
-  state_code: z.string().min(1, 'State code is required').length(2, 'State code must be 2 digits'),
+  trade_name: z.string().nullish(),
+  state_code: z.string()
+    .min(1, 'State code is required')
+    .regex(/^[0-9]{2}$/, 'State code must be 2 digits'),
   state_name: z.string().min(1, 'State name is required'),
-  pan: z.string().optional(),
-  default_gst_rate: z.coerce.number().min(0, 'Must be 0 or more').max(100, 'Must be 100 or less'),
-  fiscal_year_start: z.string().optional(),
-  invoice_prefix: z.string().optional(),
+  pan: z.string()
+    .nullish()
+    .refine(val => !val || /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(val), {
+      message: 'Invalid PAN format (e.g., ABCDE1234F)'
+    }),
+  default_gst_rate: z.coerce.number().min(0).max(100),
+  fiscal_year_start: z.string().nullish(),
+  invoice_prefix: z.string().nullish(),
   is_composition_scheme: z.boolean(),
 });
 
@@ -109,9 +117,9 @@ export default function GstConfigurationPage() {
       qc.invalidateQueries({ queryKey: ['gst-config'] });
       toast.success(t('gstConfig.created'));
     },
-    onError: (e: { response?: { data?: { error?: { message?: string }; status?: number } } }) => {
+    onError: (e: any) => {
       const msg = e?.response?.data?.error?.message;
-      const status = e?.response?.data?.status ?? e?.response?.status;
+      const status = e?.response?.status;
       if (status === 404) {
         toast.error(t('gstConfig.notFound'));
         return;
@@ -120,11 +128,7 @@ export default function GstConfigurationPage() {
         toast.error(t('gstConfig.serverError'));
         return;
       }
-      if (e?.response?.data?.error?.message) {
-        toast.error(msg);
-        return;
-      }
-      toast.error(t('gstConfig.failedToCreate'));
+      toast.error(msg || t('gstConfig.failedToCreate'));
     },
   });
 
@@ -134,7 +138,7 @@ export default function GstConfigurationPage() {
       qc.invalidateQueries({ queryKey: ['gst-config'] });
       toast.success(t('gstConfig.updated'));
     },
-    onError: (e: { response?: { data?: { error?: { message?: string } }; status?: number } }) => {
+    onError: (e: any) => {
       const msg = e?.response?.data?.error?.message;
       const status = e?.response?.status;
       if (status === 404) {
@@ -157,7 +161,7 @@ export default function GstConfigurationPage() {
       form.reset(formDefaultValues(null));
       toast.success(t('gstConfig.deleted'));
     },
-    onError: (e: { response?: { data?: { error?: { message?: string } }; status?: number } }) => {
+    onError: (e: any) => {
       const status = e?.response?.status;
       if (status === 404) {
         toast.error(t('gstConfig.configNotFound'));
@@ -234,7 +238,11 @@ export default function GstConfigurationPage() {
                     <FormItem>
                       <FormLabel>{t('gstConfig.gstin')} *</FormLabel>
                       <FormControl>
-                        <Input placeholder={t('gstConfig.placeholderGstin')} {...field} />
+                        <Input
+                          placeholder={t('gstConfig.placeholderGstin')}
+                          {...field}
+                          onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -305,7 +313,11 @@ export default function GstConfigurationPage() {
                   <FormItem>
                     <FormLabel>{t('gstConfig.pan')}</FormLabel>
                     <FormControl>
-                      <Input placeholder={t('gstConfig.placeholderPan')} {...field} />
+                      <Input
+                        placeholder={t('gstConfig.placeholderPan')}
+                        {...field}
+                        onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

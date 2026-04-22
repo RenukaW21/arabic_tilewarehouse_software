@@ -5,6 +5,7 @@
 const service = require('./customer.service');
 const { v4: uuidv4 } = require('uuid');
 const { AppError } = require('../../middlewares/error.middleware');
+const { normalizeEmail } = require('../../utils/normalizeEmail');
 
 function parseCsv(csvText) {
   const lines = csvText.split(/\r?\n/).filter((l) => l.trim());
@@ -47,7 +48,7 @@ const importFromCsv = async (tenantId, csvText) => {
         code: row.code || null,
         contact_person: row.contact_person || null,
         phone: row.phone || null,
-        email: row.email || null,
+        email: normalizeEmail(row.email),
         billing_address: row.billing_address || null,
         shipping_address: row.shipping_address || null,
         gstin: row.gstin || null,

@@ -3,6 +3,7 @@
 const { getPool, query } = require('../../config/db');
 const { checkCustomerLinked } = require('../../utils/deleteGuard');
 const { parsePagination, buildSearchClause } = require('../../utils/pagination');
+const { normalizeEmail } = require('../../utils/normalizeEmail');
 
 const SELECT_COLUMNS = [
   'id', 'tenant_id', 'name', 'code', 'contact_person', 'phone', 'email',
@@ -21,6 +22,7 @@ const createCustomer = async (data) => {
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
   const pool = getPool();
+  const normalizedEmail = normalizeEmail(data.email);
   await pool.execute(sql, [
     data.id,
     data.tenant_id,
@@ -28,7 +30,7 @@ const createCustomer = async (data) => {
     data.code ?? null,
     data.contact_person ?? null,
     data.phone ?? null,
-    data.email ?? null,
+    normalizedEmail,
     data.billing_address ?? null,
     data.shipping_address ?? null,
     data.gstin ?? null,
@@ -98,6 +100,8 @@ const updateCustomer = async (id, tenantId, fields) => {
     setParts.push(`${key} = ?`);
     if (key === 'is_active') {
       values.push(fields[key] === true || fields[key] === 1 ? 1 : 0);
+    } else if (key === 'email') {
+      values.push(normalizeEmail(fields[key]));
     } else {
       values.push(fields[key]);
     }

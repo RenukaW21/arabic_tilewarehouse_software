@@ -80,9 +80,6 @@ export default function WarehousesPage() {
       setEditing(null);
       toast.success(editing ? t('warehouses.warehouseUpdated') : t('warehouses.warehouseCreated'));
     },
-    onError: (e: any) => {
-      toast.error(e?.response?.data?.error?.message ?? e?.response?.data?.message ?? "Operation failed");
-    },
   });
 
   const deleteMutation = useMutation({

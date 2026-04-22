@@ -64,6 +64,30 @@ const approve = async (id, tenantId, userId) => {
     const productRows = await trx.query('SELECT sqft_per_box FROM products WHERE id = ? AND tenant_id = ?', [existing.product_id, tenantId]);
     const sqftPerBox = productRows[0] ? parseFloat(productRows[0].sqft_per_box) || 0 : 0;
 
+    // ── Friendly stock check for "deduct" type ──────────────────────────────
+    if (existing.adjustment_type === 'deduct' && boxesOut > 0) {
+      const stockRows = await trx.query(
+        `SELECT COALESCE(SUM(total_boxes), 0) AS available
+         FROM stock_summary
+         WHERE tenant_id = ? AND warehouse_id = ? AND product_id = ?
+           AND (rack_id <=> ?)`,
+        [tenantId, existing.warehouse_id, existing.product_id, existing.rack_id || null]
+      );
+      const availableBoxes = parseFloat(stockRows[0]?.available) || 0;
+
+      if (availableBoxes + 1e-9 < boxesOut) {
+        const rackLabel = existing.rack_name ? `rack "${existing.rack_name}"` : 'the selected rack';
+        throw new AppError(
+          `Cannot deduct ${boxesOut} box(es) from ${rackLabel} — ` +
+          `only ${availableBoxes} box(es) available for "${existing.product_name}". ` +
+          `Please correct the quantity before approving.`,
+          400,
+          'INSUFFICIENT_STOCK'
+        );
+      }
+    }
+    // ───────────────────────────────────────────────────────────────────────
+
     await postStockMovement(trx, {
       tenantId,
       warehouseId: existing.warehouse_id,

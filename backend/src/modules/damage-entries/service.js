@@ -12,6 +12,47 @@ const getById = async (id, tenantId) => {
   return row;
 };
 
+const fetchDamageSourceRows = async (trx, { tenantId, warehouseId, productId, shadeId, batchId, rackId, boxesNeeded }) => {
+  const conditions = ['tenant_id = ?', 'warehouse_id = ?', 'product_id = ?', 'total_boxes > 0'];
+  const params = [tenantId, warehouseId, productId];
+
+  if (rackId) {
+    conditions.push('rack_id = ?');
+    params.push(rackId);
+  }
+
+  if (shadeId !== undefined && shadeId !== null) {
+    conditions.push('(shade_id <=> ?)');
+    params.push(shadeId);
+  }
+
+  if (batchId !== undefined && batchId !== null) {
+    conditions.push('(batch_id <=> ?)');
+    params.push(batchId);
+  }
+
+  const rows = await trx.query(
+    `SELECT id, rack_id, shade_id, batch_id, total_boxes
+     FROM stock_summary
+     WHERE ${conditions.join(' AND ')}
+     ORDER BY (rack_id IS NOT NULL), total_boxes DESC
+     FOR UPDATE`,
+    params
+  );
+
+  const totalAvailable = rows.reduce((sum, row) => sum + (parseFloat(row.total_boxes) || 0), 0);
+  if (totalAvailable + 1e-9 < boxesNeeded) {
+    throw new AppError(
+      `Insufficient stock in warehouse: need ${boxesNeeded} boxes, have ${totalAvailable} ` +
+      `(product:${productId} warehouse:${warehouseId} type:damage).`,
+      400,
+      'INSUFFICIENT_STOCK'
+    );
+  }
+
+  return rows;
+};
+
 /** Returns true if this damage entry has been posted to stock_ledger (no edit/delete allowed). */
 const isPostedToLedger = async (id, tenantId) => {
   const rows = await query(
@@ -49,25 +90,56 @@ const create = async (tenantId, userId, data) => {
     const productRows = await trx.query('SELECT sqft_per_box FROM products WHERE id = ? AND tenant_id = ?', [data.product_id, tenantId]);
     const sqftPerBox = productRows[0] ? parseFloat(productRows[0].sqft_per_box) || 0 : 0;
 
-    await postStockMovement(trx, {
+    const sourceRows = await fetchDamageSourceRows(trx, {
       tenantId,
       warehouseId: data.warehouse_id,
-      rackId: data.rack_id || null,
       productId: data.product_id,
       shadeId: data.shade_id || null,
       batchId: data.batch_id || null,
-      transactionType: 'damage',
-      referenceId: id,
-      referenceType: 'damage_entry',
-      boxesIn: 0,
-      boxesOut,
-      piecesIn: 0,
-      piecesOut,
-      sqftPerBox,
-      unitPrice: null,
-      notes: data.damage_reason || null,
-      createdBy: userId,
+      rackId: data.rack_id || null,
+      boxesNeeded: boxesOut,
     });
+
+    let remainingBoxes = boxesOut;
+    let remainingPieces = piecesOut;
+    for (const sourceRow of sourceRows) {
+      if (remainingBoxes <= 0 && remainingPieces <= 0) break;
+
+      const availableBoxes = parseFloat(sourceRow.total_boxes) || 0;
+      const boxesBefore = remainingBoxes;
+      const boxesToDeduct = boxesBefore > 0 ? Math.min(boxesBefore, availableBoxes) : 0;
+      if (boxesBefore > 0 && boxesToDeduct <= 0) continue;
+
+      const piecesToDeduct = remainingPieces > 0
+        ? (boxesBefore > 0 && boxesBefore - boxesToDeduct > 0
+          ? Math.floor(remainingPieces * boxesToDeduct / boxesBefore)
+          : remainingPieces)
+        : 0;
+      if (boxesToDeduct <= 0 && piecesToDeduct <= 0) continue;
+
+      await postStockMovement(trx, {
+        tenantId,
+        warehouseId: data.warehouse_id,
+        rackId: sourceRow.rack_id || null,
+        productId: data.product_id,
+        shadeId: sourceRow.shade_id != null ? sourceRow.shade_id : null,
+        batchId: sourceRow.batch_id != null ? sourceRow.batch_id : null,
+        transactionType: 'damage',
+        referenceId: id,
+        referenceType: 'damage_entry',
+        boxesIn: 0,
+        boxesOut: boxesToDeduct,
+        piecesIn: 0,
+        piecesOut: piecesToDeduct,
+        sqftPerBox,
+        unitPrice: null,
+        notes: data.damage_reason || null,
+        createdBy: userId,
+      });
+
+      remainingBoxes -= boxesToDeduct;
+      remainingPieces -= piecesToDeduct;
+    }
 
     await trx.commit();
     return repo.findById(id, tenantId);

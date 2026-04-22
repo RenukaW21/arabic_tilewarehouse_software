@@ -9,6 +9,10 @@ const findAll = async (tenantId, queryParams) => {
   const { page, limit, offset, sortBy, sortOrder, search } = parsePagination(queryParams, ALLOWED_SORT);
   const conditions = ['de.tenant_id = ?'];
   const params = [tenantId];
+  if (queryParams.productId) {
+    conditions.push('de.product_id = ?');
+    params.push(queryParams.productId);
+  }
   const { clause: searchClause, params: searchParams } = buildSearchClause(search, ['de.damage_reason', 'p.name', 'p.code']);
   if (searchClause) {
     conditions.push(searchClause);
@@ -17,10 +21,14 @@ const findAll = async (tenantId, queryParams) => {
   const orderBy = ALLOWED_SORT.includes(sortBy) ? sortBy : 'created_at';
   const whereSql = conditions.join(' AND ');
   const baseSql = `
-    SELECT de.*, p.name AS product_name, p.code AS product_code, w.name AS warehouse_name
+    SELECT de.*, p.name AS product_name, p.code AS product_code, w.name AS warehouse_name,
+           r.name AS rack_name,
+           s.shade_name
     FROM damage_entries de
     JOIN products p ON de.product_id = p.id AND p.tenant_id = de.tenant_id
     JOIN warehouses w ON de.warehouse_id = w.id AND w.tenant_id = de.tenant_id
+    LEFT JOIN racks r ON de.rack_id = r.id AND r.tenant_id = de.tenant_id
+    LEFT JOIN shades s ON de.shade_id = s.id AND s.tenant_id = de.tenant_id
     WHERE ${whereSql}
   `;
   const [rows, countRows] = await Promise.all([
@@ -32,10 +40,14 @@ const findAll = async (tenantId, queryParams) => {
 
 const findById = async (id, tenantId) => {
   const rows = await query(
-    `SELECT de.*, p.name AS product_name, p.code AS product_code, w.name AS warehouse_name
+    `SELECT de.*, p.name AS product_name, p.code AS product_code, w.name AS warehouse_name,
+            r.name AS rack_name,
+            s.shade_name
      FROM damage_entries de
      JOIN products p ON de.product_id = p.id AND p.tenant_id = de.tenant_id
      JOIN warehouses w ON de.warehouse_id = w.id AND w.tenant_id = de.tenant_id
+     LEFT JOIN racks r ON de.rack_id = r.id AND r.tenant_id = de.tenant_id
+     LEFT JOIN shades s ON de.shade_id = s.id AND s.tenant_id = de.tenant_id
      WHERE de.id = ? AND de.tenant_id = ?`,
     [id, tenantId]
   );

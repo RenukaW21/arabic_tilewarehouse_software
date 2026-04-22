@@ -1,13 +1,15 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { productApi } from "@/api/productApi";
+import { damageEntriesApi, type DamageEntry } from "@/api/damageEntriesApi";
+import { stockAdjustmentsApi, type StockAdjustment } from "@/api/stockAdjustmentsApi";
 import { stockTransferApi } from "@/api/stockTransferApi";
 import type { ProductTransferRow } from "@/types/stock.types";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Package, User, ShoppingCart, Info, MapPin, Maximize2, ArrowRight, Truck } from "lucide-react";
+import { ArrowLeft, Package, User, ShoppingCart, Info, MapPin, Maximize2, ArrowRight, Truck, BadgeAlert, TriangleAlert } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useTranslation } from "react-i18next";
 
@@ -31,11 +33,25 @@ export default function ProductDetailsPage() {
         enabled: !!id,
     });
 
+    const { data: damageResponse, isLoading: damageLoading } = useQuery({
+        queryKey: ["product-damage-entries", id],
+        queryFn: () => damageEntriesApi.getAll({ page: 1, limit: 500, productId: id!, sortBy: "created_at", sortOrder: "DESC" }),
+        enabled: !!id,
+    });
+
+    const { data: adjustmentsResponse, isLoading: adjustmentsLoading } = useQuery({
+        queryKey: ["product-stock-adjustments", id],
+        queryFn: () => stockAdjustmentsApi.getAll({ page: 1, limit: 500, productId: id!, sortBy: "created_at", sortOrder: "DESC" }),
+        enabled: !!id,
+    });
+
     if (isLoading) return <div className="p-8 text-center text-muted-foreground">{t('productDetails.loading')}</div>;
     if (isError || !data?.data) return <div className="p-8 text-center text-destructive">{t('productDetails.loadFailed')}</div>;
 
     const product = data.data as any;
     const productImg = product.image_url || product.imageUrl || product.image;
+    const damageEntries: DamageEntry[] = damageResponse?.data ?? [];
+    const adjustments: StockAdjustment[] = adjustmentsResponse?.data ?? [];
 
     return (
         <div className="space-y-6">
@@ -273,6 +289,104 @@ export default function ProductDetailsPage() {
                         ) : (
                             <div className="text-sm text-muted-foreground bg-muted/50 p-4 rounded text-center border border-dashed">
                                 {t('productDetails.noSalesReturns', 'No sales returns')}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* Damage History */}
+                <Card className="shadow-sm md:col-span-2">
+                    <CardHeader className="flex flex-row items-center gap-2 pb-4 border-b">
+                        <TriangleAlert className="h-5 w-5 text-destructive" />
+                        <CardTitle className="text-lg">{t('productDetails.damageHistory', 'Damage History')}</CardTitle>
+                        <span className="ml-auto text-xs font-medium bg-muted px-2 py-0.5 rounded-full text-muted-foreground">
+                            {damageEntries.length} item{damageEntries.length !== 1 ? 's' : ''}
+                        </span>
+                    </CardHeader>
+                    <CardContent className="pt-4">
+                        {damageLoading ? (
+                            <div className="text-sm text-muted-foreground text-center py-6">Loading...</div>
+                        ) : damageEntries.length === 0 ? (
+                            <div className="text-sm text-muted-foreground bg-muted/50 p-4 rounded text-center border border-dashed">
+                                {t('productDetails.noDamageHistory', 'No damage entries found for this product.')}
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {damageEntries.map((entry) => (
+                                    <div key={entry.id} className="rounded border border-border/50 bg-muted/20 p-3 text-sm">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="space-y-1">
+                                                <div className="font-semibold">
+                                                    {entry.damaged_boxes} box{Number(entry.damaged_boxes) !== 1 ? 'es' : ''} damaged
+                                                    {Number(entry.damaged_pieces) > 0 ? `, ${entry.damaged_pieces} pieces` : ''}
+                                                </div>
+                                                <div className="text-muted-foreground text-xs">
+                                                    {entry.warehouse_name ?? '-'}
+                                                    {entry.rack_name ? ` | Rack: ${entry.rack_name}` : ''}
+                                                    {entry.shade_name ? ` | Shade: ${entry.shade_name}` : ''}
+                                                </div>
+                                            </div>
+                                            <div className="text-right text-xs text-muted-foreground">
+                                                <div>{entry.damage_date ? new Date(entry.damage_date).toLocaleDateString() : '-'}</div>
+                                                {entry.estimated_loss != null && (
+                                                    <div className="font-medium text-foreground">₹{Number(entry.estimated_loss).toLocaleString()}</div>
+                                                )}
+                                            </div>
+                                        </div>
+                                        {entry.damage_reason && (
+                                            <p className="mt-2 text-xs text-muted-foreground leading-5">
+                                                {entry.damage_reason}
+                                            </p>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* Adjustment History */}
+                <Card className="shadow-sm md:col-span-2">
+                    <CardHeader className="flex flex-row items-center gap-2 pb-4 border-b">
+                        <BadgeAlert className="h-5 w-5 text-primary" />
+                        <CardTitle className="text-lg">{t('productDetails.adjustmentHistory', 'Adjustment History')}</CardTitle>
+                        <span className="ml-auto text-xs font-medium bg-muted px-2 py-0.5 rounded-full text-muted-foreground">
+                            {adjustments.length} item{adjustments.length !== 1 ? 's' : ''}
+                        </span>
+                    </CardHeader>
+                    <CardContent className="pt-4">
+                        {adjustmentsLoading ? (
+                            <div className="text-sm text-muted-foreground text-center py-6">Loading...</div>
+                        ) : adjustments.length === 0 ? (
+                            <div className="text-sm text-muted-foreground bg-muted/50 p-4 rounded text-center border border-dashed">
+                                {t('productDetails.noAdjustmentHistory', 'No stock adjustments found for this product.')}
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {adjustments.map((adjustment) => (
+                                    <div key={adjustment.id} className="rounded border border-border/50 bg-muted/20 p-3 text-sm">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="space-y-1">
+                                                <div className="font-semibold">
+                                                    {adjustment.adjustment_type === 'add' ? 'Added' : 'Deducted'} {adjustment.boxes} box{Number(adjustment.boxes) !== 1 ? 'es' : ''}
+                                                    {Number(adjustment.pieces) > 0 ? `, ${adjustment.pieces} pieces` : ''}
+                                                </div>
+                                                <div className="text-muted-foreground text-xs">
+                                                    {adjustment.warehouse_name ?? '-'}
+                                                    {adjustment.rack_name ? ` | Rack: ${adjustment.rack_name}` : ''}
+                                                    {adjustment.shade_name ? ` | Shade: ${adjustment.shade_name}` : ''}
+                                                </div>
+                                            </div>
+                                            <div className="text-right text-xs text-muted-foreground">
+                                                <StatusBadge status={adjustment.status} />
+                                                <div className="mt-1">{adjustment.created_at ? new Date(adjustment.created_at).toLocaleDateString() : '-'}</div>
+                                            </div>
+                                        </div>
+                                        <p className="mt-2 text-xs text-muted-foreground leading-5">
+                                            {adjustment.reason}
+                                        </p>
+                                    </div>
+                                ))}
                             </div>
                         )}
                     </CardContent>

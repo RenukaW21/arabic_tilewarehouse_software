@@ -20,6 +20,8 @@ export interface DamageEntry {
   product_name?: string;
   product_code?: string;
   warehouse_name?: string;
+  rack_name?: string | null;
+  shade_name?: string | null;
 }
 
 export interface CreateDamageEntryPayload {
@@ -37,6 +39,7 @@ export interface CreateDamageEntryPayload {
 }
 
 export interface DamageEntryListParams extends PaginationParams {
+  productId?: string;
   sortBy?: string;
   sortOrder?: 'ASC' | 'DESC';
 }

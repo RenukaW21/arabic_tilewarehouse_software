@@ -5,6 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 const env = require('../../config/env');
 const repo = require('./repository');
 const { AppError } = require('../../middlewares/error.middleware');
+const { normalizeEmail } = require('../../utils/normalizeEmail');
 
 const generateTokens = (user) => {
   const payload = {
@@ -24,6 +25,7 @@ const generateTokens = (user) => {
 };
 
 const login = async ({ email, password, tenantSlug }) => {
+  const normalizedEmail = normalizeEmail(email);
   // Resolve tenant
   if (!tenantSlug) throw new AppError('Tenant slug is required', 400, 'TENANT_MISSING');
 
@@ -31,7 +33,7 @@ const login = async ({ email, password, tenantSlug }) => {
   if (!tenant) throw new AppError('Workspace not found. Please ensure your company is registered first.', 404, 'TENANT_NOT_FOUND');
   if (tenant.status === 'suspended') throw new AppError('Tenant account is suspended', 403, 'TENANT_SUSPENDED');
 
-  const user = await repo.findUserByEmail(email, tenant.id);
+  const user = await repo.findUserByEmail(normalizedEmail, tenant.id);
   if (!user) throw new AppError('Account not found in this workspace. Please register or ask your admin to invite you.', 401, 'INVALID_CREDENTIALS');
 
   const passwordMatch = await bcrypt.compare(password, user.password_hash);
@@ -90,6 +92,7 @@ const logout = async (refreshToken) => {
 };
 
 const registerTenant = async ({ tenantName, tenantSlug, plan, adminName, adminEmail, adminPassword, adminPhone }) => {
+  const normalizedAdminEmail = normalizeEmail(adminEmail);
   const existing = await repo.findTenantBySlug(tenantSlug);
   if (existing) throw new AppError(`Slug '${tenantSlug}' is already taken`, 409, 'SLUG_TAKEN');
 
@@ -99,7 +102,7 @@ const registerTenant = async ({ tenantName, tenantSlug, plan, adminName, adminEm
 
   await repo.createTenantWithAdmin({
     tenantId, tenantName, slug: tenantSlug, plan: plan || 'basic',
-    adminId, name: adminName, email: adminEmail, passwordHash, phone: adminPhone,
+    adminId, name: adminName, email: normalizedAdminEmail, passwordHash, phone: adminPhone,
   });
 
   return { tenantId, tenantSlug, adminId, message: 'Tenant registered successfully' };

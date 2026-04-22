@@ -24,6 +24,13 @@ const getById = async (id, tenantId) => {
   return { ...pr, items };
 };
 
+const getEligibleProducts = async (tenantId, vendorId, warehouseId) => {
+  if (!vendorId || !warehouseId) {
+    throw new AppError('Vendor and warehouse are required', 400, 'VALIDATION_ERROR');
+  }
+  return repo.findEligibleProducts(tenantId, vendorId, warehouseId);
+};
+
 /**
  * Create purchase return: insert header + items in one transaction.
  */
@@ -288,6 +295,7 @@ const remove = async (id, tenantId) => {
 module.exports = {
   getAll,
   getById,
+  getEligibleProducts,
   create,
   update,
   dispatch,

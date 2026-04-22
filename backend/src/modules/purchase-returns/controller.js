@@ -41,6 +41,16 @@ const getById = async (req, res, next) => {
   }
 };
 
+const getEligibleProducts = async (req, res, next) => {
+  try {
+    const { vendor_id, warehouse_id } = req.query;
+    const data = await service.getEligibleProducts(req.tenantId, vendor_id, warehouse_id);
+    return success(res, data, 'Eligible purchase return products fetched');
+  } catch (err) {
+    next(err);
+  }
+};
+
 const create = async (req, res, next) => {
   try {
     const data = await service.create(req.tenantId, req.user.id, req.body);
@@ -80,6 +90,7 @@ const remove = async (req, res, next) => {
 module.exports = {
   getAll,
   getById,
+  getEligibleProducts,
   create,
   update,
   dispatch,

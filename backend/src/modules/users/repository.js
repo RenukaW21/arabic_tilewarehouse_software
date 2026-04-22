@@ -57,7 +57,7 @@ const findById = async (id, tenantId) => {
 
 const findByEmail = async (email, tenantId) => {
   const rows = await query(
-    `SELECT id, tenant_id, name, email, password_hash, role, phone, is_active FROM users WHERE email = ? AND tenant_id = ?`,
+    `SELECT id, tenant_id, name, email, password_hash, role, phone, is_active FROM users WHERE LOWER(email) = ? AND tenant_id = ?`,
     [email, tenantId]
   );
   return rows[0] || null;

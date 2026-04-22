@@ -162,7 +162,8 @@
     "updateFailed": "Failed to update",
     "deleteFailed": "Failed to delete",
     "approveFailed": "Failed to approve",
-    "operationFailed": "Operation failed"
+    "operationFailed": "Operation failed",
+    "validEmail": "Put valid email"
   },
   "deleteDialog": {
     "title": "Delete Record",
@@ -530,6 +531,7 @@
     "selectWarehouse": "Select warehouse",
     "placeholderReason": "Reason for return",
     "placeholderOptional": "Optional",
+    "noEligibleProducts": "Only products received from this vendor into this warehouse and still available in stock are shown for return. No eligible products were found right now.",
     "returnUpdated": "Return updated",
     "returnCreated": "Return created",
     "returnDeleted": "Return deleted"

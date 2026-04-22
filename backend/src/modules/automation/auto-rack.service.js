@@ -16,6 +16,7 @@
  */
 const { query } = require('../../config/db');
 const { AppError } = require('../../middlewares/error.middleware');
+const { ensureOverflowRack } = require('../racks/rack.service');
 
 /**
  * Find the best available rack(s) for placing `boxesNeeded` boxes.
@@ -47,7 +48,13 @@ const findAvailableRacks = async (tenantId, warehouseId, boxesNeeded, allowSplit
   );
 
   if (racks.length === 0) {
-    throw new AppError('No racks with available capacity found in this warehouse', 400, 'NO_AVAILABLE_RACK');
+    const overflowRack = await ensureOverflowRack(tenantId, warehouseId);
+    return [{
+      rackId: overflowRack.id,
+      rackName: overflowRack.name,
+      availableBoxes: Infinity,
+      allocate: boxesNeeded,
+    }];
   }
 
   let remaining = boxesNeeded;
@@ -76,11 +83,13 @@ const findAvailableRacks = async (tenantId, warehouseId, boxesNeeded, allowSplit
   }
 
   if (remaining > 0) {
-    if (allowSplit) {
-      throw new AppError(`Insufficient total rack capacity. Still need ${remaining} more boxes.`, 400, 'INSUFFICIENT_CAPACITY');
-    } else {
-      throw new AppError(`No single rack has capacity for ${boxesNeeded} boxes. Try enabling split allocation.`, 400, 'INSUFFICIENT_SINGLE_RACK');
-    }
+    const overflowRack = await ensureOverflowRack(tenantId, warehouseId);
+    return [{
+      rackId: overflowRack.id,
+      rackName: overflowRack.name,
+      availableBoxes: Infinity,
+      allocate: boxesNeeded,
+    }];
   }
 
   return plan;

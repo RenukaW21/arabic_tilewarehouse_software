@@ -89,14 +89,25 @@ export default function StockAdjustmentsPage() {
 
   const productOptions = filteredProducts.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }));
   const shadeOptions = (shadesData?.data ?? []).map((s: any) => ({ value: s.id, label: s.shade_name || s.shade_code || s.name }));
-  const rackOptions = (racksData?.data ?? []).map((r: any) => ({ value: r.id, label: `${r.name} (${r.available_boxes ?? 0} avail)` }));
+
+  // Fix: show ∞ for Overflow Area (capacity_boxes = null), otherwise show available/capacity
+  const rackOptions = (racksData?.data ?? []).map((r: any) => ({
+    value: r.id,
+    label: r.capacity_boxes === null
+      ? `${r.name} (∞ unlimited)`
+      : `${r.name} (${Math.max(0, r.available_boxes ?? 0)} avail / ${r.capacity_boxes} cap)`
+  }));
 
   const fields: FieldDef[] = [
     { key: 'warehouse_id', label: t('stockAdjustments.warehouse'), type: 'select', required: true, options: warehouseOptions },
     { key: 'product_id', label: t('stockAdjustments.product'), type: 'select', required: true, options: productOptions },
     { key: 'shade_id', label: t('common.shade', 'Shade'), type: 'select', options: shadeOptions, placeholder: t('common.selectShade', 'Select Shade') },
-    { key: 'rack_id', label: t('common.rack', 'Rack'), type: 'select', options: rackOptions, placeholder: t('common.selectRack', 'Select Rack') },
+    // Type moved above Rack
     { key: 'adjustment_type', label: t('stockAdjustments.type'), type: 'select', required: true, options: [{ value: 'add', label: t('stockAdjustments.typeAdd') }, { value: 'deduct', label: t('stockAdjustments.typeDeduct') }], defaultValue: 'add' },
+    // Rack is now required
+    { key: 'rack_id', label: t('common.rack', 'Rack'), type: 'select', required: true, options: rackOptions, placeholder: t('common.selectRack', 'Select Rack') },
+    // Second rack: optional — boxes are split (Rack 1 fills to capacity, remainder goes to Rack 2)
+    { key: 'rack2_id', label: 'Second Rack (Optional — gets overflow boxes)', type: 'select', options: rackOptions, placeholder: '— None —' },
     { key: 'boxes', label: t('stockAdjustments.boxes'), type: 'number', defaultValue: 0, required: true },
     { key: 'pieces', label: t('common.pieces', 'Pieces'), type: 'number', defaultValue: 0 },
     { key: 'reason', label: t('stockAdjustments.reason'), type: 'text', required: true },
@@ -104,7 +115,7 @@ export default function StockAdjustmentsPage() {
 
   const saveMutation = useMutation({
     mutationFn: async (fd: Record<string, unknown>) => {
-      const payload: CreateStockAdjustmentPayload = {
+      const basePayload: CreateStockAdjustmentPayload = {
         warehouse_id: String(fd.warehouse_id),
         product_id: String(fd.product_id),
         shade_id: fd.shade_id ? String(fd.shade_id) : undefined,
@@ -114,8 +125,38 @@ export default function StockAdjustmentsPage() {
         pieces: Number(fd.pieces) || 0,
         reason: String(fd.reason),
       };
-      if (editing) return stockAdjustmentsApi.update(editing.id, payload);
-      return stockAdjustmentsApi.create(payload);
+
+      if (editing) return stockAdjustmentsApi.update(editing.id, basePayload);
+
+      const rack2Id = fd.rack2_id && fd.rack2_id !== 'none' && fd.rack2_id !== '' ? String(fd.rack2_id) : null;
+
+      // If second rack selected and type is "add": smart-split boxes between two racks
+      if (rack2Id && basePayload.adjustment_type === 'add') {
+        const rack1Data = (racksData?.data ?? []).find((r: any) => r.id === basePayload.rack_id);
+        const totalBoxes = basePayload.boxes;
+        
+        // How many can fit in Rack 1
+        const rack1Available = rack1Data?.capacity_boxes === null
+          ? totalBoxes // unlimited → all go to Rack 1
+          : Math.max(0, rack1Data?.available_boxes ?? 0);
+        
+        const rack1Boxes = Math.min(totalBoxes, rack1Available);
+        const rack2Boxes = totalBoxes - rack1Boxes;
+
+        // Create adjustment for Rack 1 (if it can take any)
+        const result = await stockAdjustmentsApi.create({ ...basePayload, boxes: rack1Boxes > 0 ? rack1Boxes : totalBoxes, rack_id: basePayload.rack_id });
+        
+        // Create adjustment for Rack 2 (overflow boxes)
+        if (rack2Boxes > 0) {
+          await stockAdjustmentsApi.create({ ...basePayload, rack_id: rack2Id, boxes: rack2Boxes });
+          toast.info(`Split: ${rack1Boxes} boxes → Rack 1, ${rack2Boxes} boxes → Rack 2`);
+        }
+        
+        return result;
+      }
+
+      // Default: single rack adjustment
+      return stockAdjustmentsApi.create(basePayload);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['stock-adjustments'] });
@@ -126,7 +167,8 @@ export default function StockAdjustmentsPage() {
       toast.success(editing ? t('stockAdjustments.updated') : t('stockAdjustments.created'));
     },
     onError: (e: any) => {
-      toast.error(e?.response?.data?.error?.message ?? t('common.operationFailed', 'Operation Failed'));
+      const msg = e?.response?.data?.error?.message ?? t('common.operationFailed', 'Operation Failed');
+      toast.error(msg);
     },
   });
 

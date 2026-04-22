@@ -162,7 +162,8 @@
     "updateFailed": "فشل التحديث",
     "deleteFailed": "فشل الحذف",
     "approveFailed": "فشل الاعتماد",
-    "operationFailed": "فشلت العملية"
+    "operationFailed": "فشلت العملية",
+    "validEmail": "أدخل بريدًا إلكترونيًا صحيحًا"
   },
   "deleteDialog": {
     "title": "حذف السجل",

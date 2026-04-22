@@ -337,6 +337,13 @@ function CreateUserDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (phone.trim()) {
+      const digitsOnly = phone.replace(/\D/g, '');
+      if (digitsOnly.length !== 10) {
+        toast.error(t('common.phoneValidation', 'Phone number must be exactly 10 digits'));
+        return;
+      }
+    }
     onSubmit({
       name,
       email,
@@ -504,6 +511,13 @@ function EditUserDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (phone.trim()) {
+      const digitsOnly = phone.replace(/\D/g, '');
+      if (digitsOnly.length !== 10) {
+        toast.error(t('common.phoneValidation', 'Phone number must be exactly 10 digits'));
+        return;
+      }
+    }
     const payload: UpdateUserDto & { warehouse_id?: string | null } = {
       name,
       role,

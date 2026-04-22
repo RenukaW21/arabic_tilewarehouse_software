@@ -13,6 +13,8 @@ import { toast } from "sonner";
 import api from "@/lib/api";
 import { useTranslation } from "react-i18next";
 
+const OVERFLOW_RACK_VALUE = "__overflow_area__";
+
 export default function ProductInventoryPage() {
     const { t } = useTranslation();
     const qc = useQueryClient();
@@ -110,23 +112,39 @@ export default function ProductInventoryPage() {
         })) ?? [];
 
     const warehouseOptions =
-        warehousesData?.data?.map((w: any) => ({
-            value: w.id,
-            label: `${w.name} (${w.code})`,
-        })) ?? [];
+        warehousesData?.data
+            ?.filter((w: any) => {
+                if (!selectedProductId) return true;
+                if (editing && editing.warehouse_id === w.id) return true;
+                const stockRows: any[] = stockData?.data ?? [];
+                return stockRows.some((r: any) => 
+                    r.product_id === selectedProductId && 
+                    r.warehouse_id === w.id && 
+                    (parseFloat(r.total_boxes) || 0) > 0
+                );
+            })
+            .map((w: any) => ({
+                value: w.id,
+                label: `${w.name} (${w.code})`,
+            })) ?? [];
 
     const rackOptions =
         racksData?.data
             ?.filter((r: any) => {
                 const isWarehouseMatch = !selectedWarehouseId || r.warehouse_id === selectedWarehouseId;
+                const isActive = r.is_active === true || r.is_active === 1;
                 const isNotFull = (r.available_boxes ?? 0) > 0;
                 const isCurrentRack = editing && r.id === editing.rack_id;
-                return isWarehouseMatch && (isNotFull || isCurrentRack);
+                return isWarehouseMatch && (isActive ? isNotFull : isCurrentRack);
             })
             .map((r: any) => ({
                 value: r.id,
-                label: `${r.name} (${r.available_boxes ?? r.capacity_boxes ?? 0} avail)`,
+                label: `${r.name}${r.is_active === false || r.is_active === 0 ? ' [Inactive]' : ''} (${r.available_boxes ?? r.capacity_boxes ?? 0} avail)`,
             })) ?? [];
+
+    const rackOptionsForForm = rackOptions.length > 0
+        ? rackOptions
+        : [{ value: OVERFLOW_RACK_VALUE, label: 'Overflow Area (unlimited)' }];
 
     const { data, isLoading } = useQuery({
         queryKey: ["productInventory", listParams],
@@ -158,6 +176,7 @@ export default function ProductInventoryPage() {
                 id: editing?.id,
                 product_id: String(fd.product_id),
                 rack_id: String(fd.rack_id),
+                warehouse_id: String(fd.warehouse_id),
                 boxes_stored: boxesStored,
             };
             return rackApi.assignProduct(payload);
@@ -274,7 +293,7 @@ export default function ProductInventoryPage() {
     const formFields: FieldDef[] = [
         { key: "product_id", label: t('productInventory.product'), type: "combobox", required: true, options: productOptions },
         { key: "warehouse_id", label: t('productInventory.warehouse'), type: "select", required: true, options: warehouseOptions },
-        { key: "rack_id", label: t('productInventory.rack'), type: "select", required: true, options: rackOptions, placeholder: selectedWarehouseId ? t('productInventory.selectRack') : t('productInventory.selectWarehouseFirst') },
+        { key: "rack_id", label: t('productInventory.rack'), type: "select", required: true, options: rackOptionsForForm, placeholder: selectedWarehouseId ? t('productInventory.selectRack') : t('productInventory.selectWarehouseFirst') },
         {
             key: "boxes_stored",
             label: t('productInventory.boxesStored'),
