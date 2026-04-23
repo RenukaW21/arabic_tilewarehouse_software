@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { pickListsApi, type PickList } from '@/api/salesApi';
 import { usersApi } from '@/api/usersApi';
@@ -32,6 +32,8 @@ export default function PickListsPage() {
   const [assignedTo, setAssignedTo] = useState('');
   const [detailId, setDetailId] = useState<string | null>(null);
   const [pickingItem, setPickingItem] = useState<{ pickId: string; itemId: string } | null>(null);
+  const [pickedDrafts, setPickedDrafts] = useState<Record<string, string>>({});
+  const [savedPickedDrafts, setSavedPickedDrafts] = useState<Record<string, string>>({});
   const [deleting, setDeleting] = useState<PickList | null>(null);
   const applySearch = useCallback((value: string) => {
     setSearch(value);
@@ -61,6 +63,21 @@ export default function PickListsPage() {
   });
   const detail: PickList | null = detailData?.data ?? null;
 
+  useEffect(() => {
+    if (!detail?.items?.length) {
+      setPickedDrafts({});
+      setSavedPickedDrafts({});
+      return;
+    }
+
+    const nextDrafts: Record<string, string> = {};
+    detail.items.forEach((item) => {
+      nextDrafts[item.id] = String(item.picked_boxes ?? 0);
+    });
+    setPickedDrafts(nextDrafts);
+    setSavedPickedDrafts(nextDrafts);
+  }, [detail?.id, detail?.items]);
+
   const { data: assignableUsersData } = useQuery({
     queryKey: ['users-assignable'],
     queryFn: () => usersApi.lookup('warehouse_manager,sales'),
@@ -84,8 +101,12 @@ export default function PickListsPage() {
   const updatePickedMutation = useMutation({
     mutationFn: ({ pickId, itemId, picked_boxes }: { pickId: string; itemId: string; picked_boxes: number }) =>
       pickListsApi.updateItemPicked(pickId, itemId, picked_boxes),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       if (detailId) qc.invalidateQueries({ queryKey: ['pick-lists', detailId] });
+      setSavedPickedDrafts((current) => ({
+        ...current,
+        [variables.itemId]: String(variables.picked_boxes),
+      }));
       setPickingItem(null);
       toast.success('Updated');
     },
@@ -93,6 +114,27 @@ export default function PickListsPage() {
       toast.error(e?.response?.data?.error?.message ?? 'Update failed');
       setPickingItem(null);
     },
+  });
+
+  const flushPickedDrafts = useCallback(async () => {
+    if (!detail) return;
+
+    for (const item of detail.items ?? []) {
+      const draftValue = pickedDrafts[item.id];
+      const savedValue = savedPickedDrafts[item.id];
+      if (draftValue === undefined || savedValue === undefined) continue;
+
+      const picked_boxes = Number(draftValue) || 0;
+      if (picked_boxes === Number(savedValue)) continue;
+
+      setPickingItem({ pickId: detail.id, itemId: item.id });
+      await updatePickedMutation.mutateAsync({ pickId: detail.id, itemId: item.id, picked_boxes });
+    }
+  }, [detail, pickedDrafts, savedPickedDrafts, updatePickedMutation]);
+
+  const canComplete = (detail?.items ?? []).some((item) => {
+    const draftValue = pickedDrafts[item.id];
+    return Number(draftValue ?? item.picked_boxes ?? 0) > 0;
   });
 
   const completeMutation = useMutation({
@@ -106,6 +148,15 @@ export default function PickListsPage() {
     onError: (e: { response?: { data?: { error?: { message?: string } } } }) =>
       toast.error(e?.response?.data?.error?.message ?? 'Complete failed'),
   });
+
+  const handleComplete = useCallback(async () => {
+    try {
+      await flushPickedDrafts();
+      completeMutation.mutate(detail!.id);
+    } catch {
+      // updatePickedMutation already shows an error toast
+    }
+  }, [completeMutation, detail, flushPickedDrafts]);
 
   const reopenMutation = useMutation({
     mutationFn: (id: string) => pickListsApi.reopen(id),
@@ -234,8 +285,14 @@ export default function PickListsPage() {
                             min={0}
                             step={0.01}
                             className="h-8 w-24 text-right"
-                            defaultValue={item.picked_boxes}
+                            value={pickedDrafts[item.id] ?? String(item.picked_boxes ?? 0)}
                             disabled={pickingItem?.itemId === item.id}
+                            onChange={(e) => {
+                              setPickedDrafts((current) => ({
+                                ...current,
+                                [item.id]: e.target.value,
+                              }));
+                            }}
                             onBlur={(e) => {
                               const v = Number(e.target.value) || 0;
                               if (v === item.picked_boxes) return;
@@ -257,12 +314,12 @@ export default function PickListsPage() {
               <DialogFooter className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
                 {!(detail.items ?? []).some((item) => Number(item.picked_boxes) > 0) && (
                   <p className="text-sm text-amber-600 dark:text-amber-400">
-                    Enter picked quantities for at least one item, then blur the field to save, before completing.
+                    Enter picked quantities for at least one item, then save the field before completing.
                   </p>
                 )}
                 <Button
-                  onClick={() => completeMutation.mutate(detail.id)}
-                  disabled={completeMutation.isPending || !(detail.items ?? []).some((item) => Number(item.picked_boxes) > 0)}
+                  onClick={handleComplete}
+                  disabled={completeMutation.isPending || updatePickedMutation.isPending || !canComplete}
                 >
                   {completeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
                   {t('common.confirm')}
