@@ -46,6 +46,7 @@ const gstConfigRoutes = require('./modules/gst-config/routes');
 const rackInventoryRoutes = require('./modules/rack-inventory/routes');
 const vendorPaymentsRoutes = require('./modules/vendor-payments/routes');
 const customerPaymentsRoutes = require('./modules/customer-payments/routes');
+const dashboardConfigRoutes = require('./modules/dashboard-config/routes');
 
 // Inline route handlers for CRUD modules (same pattern as products)
 const buildCrudRouter = (tableName, allowedSortFields = ['created_at']) => {
@@ -220,6 +221,7 @@ app.use(`${API}/vendor-payments`, vendorPaymentsRoutes);
 app.use(`${API}/alerts`, buildCrudRouter('low_stock_alerts', ['alerted_at']));
 app.use(`${API}/notifications`, buildCrudRouter('notifications', ['created_at']));
 app.use(`${API}/audit-logs`, buildCrudRouter('audit_logs', ['created_at']));
+app.use(`${API}/dashboard-config`, dashboardConfigRoutes);
 
 // ─── Debug Stock Endpoint ─────────────────────────────────────────────────────
 // GET /api/v1/debug/stock?product_id=X[&warehouse_id=Y]

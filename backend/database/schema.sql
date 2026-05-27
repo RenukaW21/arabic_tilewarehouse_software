@@ -1928,6 +1928,25 @@ ALTER TABLE `vendor_payments`
 --
 ALTER TABLE `warehouses`
   ADD CONSTRAINT `fk_warehouse_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `user_dashboard_config`
+--
+
+CREATE TABLE IF NOT EXISTS `user_dashboard_config` (
+  `id` varchar(36) NOT NULL,
+  `user_id` varchar(36) NOT NULL,
+  `tenant_id` varchar(36) NOT NULL,
+  `config` json NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_user_dashboard` (`user_id`,`tenant_id`),
+  KEY `idx_udc_tenant` (`tenant_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

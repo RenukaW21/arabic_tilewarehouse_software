@@ -109,7 +109,7 @@ const postStockMovement = async (trx, {
   if (rackId && boxesIn > boxesOut) {
     const netIncoming = boxesIn - boxesOut;
     const rackCheck = await trx.query(
-      `SELECT name, capacity_boxes, occupied_boxes FROM racks WHERE id = ? AND tenant_id = ?`,
+      `SELECT name, capacity_boxes, occupied_boxes FROM racks WHERE id = ? AND tenant_id = ? FOR UPDATE`,
       [rackId, tenantId]
     );
 

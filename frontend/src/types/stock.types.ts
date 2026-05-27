@@ -289,3 +289,40 @@ export interface CreateStockTransferDto {
 }
 
 export type UpdateStockTransferDto = Partial<CreateStockTransferDto>;
+
+// ─── Dashboard Customization ───────────────────────────────────────────────────
+
+export interface DashboardWidgets {
+  kpi_summary: boolean;
+  kpi_secondary: boolean;
+  chart_stock_by_category: boolean;
+  table_recent_sales: boolean;
+  table_recent_purchases: boolean;
+  table_recent_grns: boolean;
+  table_recent_transfers: boolean;
+  table_low_stock: boolean;
+  quick_actions: boolean;
+}
+
+export interface DashboardKpiVisibility {
+  warehouses: boolean;
+  products: boolean;
+  vendors: boolean;
+  customers: boolean;
+  pending_pos: boolean;
+  total_stock: boolean;
+  monthly_sales: boolean;
+  monthly_purchases: boolean;
+  today_sales: boolean;
+  month_revenue: boolean;
+  unpaid_invoices: boolean;
+  low_stock_count: boolean;
+  active_pos: boolean;
+  ledger_entries: boolean;
+}
+
+export interface DashboardConfig {
+  widgets: DashboardWidgets;
+  kpis: DashboardKpiVisibility;
+  quick_actions: string[];
+}

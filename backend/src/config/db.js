@@ -77,7 +77,11 @@ const testConnection = async () => {
     await query('SELECT 1');
     logger.info('Database connection verified');
   } catch (err) {
-    logger.error('Database connection failed', { error: err.message });
+    logger.error('Database connection failed', {
+      error: err.message || err.sqlMessage || String(err),
+      code: err.code,
+      errno: err.errno,
+    });
     process.exit(1);
   }
 };

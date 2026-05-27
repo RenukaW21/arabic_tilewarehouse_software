@@ -169,7 +169,7 @@ export function StockCountDetailPage() {
       qc.invalidateQueries({ queryKey: ['stock-counts', id] });
       setUpdating(null);
     },
-    onError: () => { setUpdating(null); },
+    onError: () => { setUpdating(null); toast.error(t('stockCounts.updateFailed')); },
   });
 
   const count = countData?.data;

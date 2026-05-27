@@ -59,6 +59,12 @@
     "gstReport": "GST Report",
     "revenue": "Revenue",
     "aging": "Aging",
+    "production": "Production",
+    "productionOrders": "Production Orders",
+    "productionBatches": "Batches",
+    "rawMaterials": "Raw Materials",
+    "finishedGoods": "Finished Goods",
+    "productionCosts": "Cost Analysis",
     "alerts": "Alerts",
     "settings": "Settings",
     "logout": "Logout"
@@ -714,7 +720,9 @@
     "back": "Back",
     "system": "System",
     "counted": "Counted",
-    "noItems": "No items"
+    "noItems": "No items",
+    "updateFailed": "Failed to save count item",
+    "variance": "Variance"
   },
   "stockSummary": {
     "title": "Stock Summary",
@@ -1493,5 +1501,50 @@
       "How do I create a purchase order?",
       "Show me the top stocked items"
     ]
+  },
+  "dashboardConfig": {
+    "customize": "Customize Dashboard",
+    "saved": "Dashboard layout saved",
+    "saveFailed": "Failed to save layout",
+    "reset": "Layout reset to default",
+    "sections": "Sections",
+    "kpiCards": "KPI Cards",
+    "kpiCardsHint": "Applies when Summary or Secondary KPI rows are visible.",
+    "quickActions": "Quick Actions",
+    "quickActionsHint": "Select which shortcut buttons appear at the top of your dashboard.",
+    "resetToDefault": "Reset to Default",
+    "widgets": {
+      "kpi_summary": "Summary KPI Cards",
+      "kpi_secondary": "Secondary KPI Cards",
+      "chart_stock_by_category": "Stock by Category Chart",
+      "table_recent_sales": "Recent Sales",
+      "table_recent_purchases": "Recent Purchases",
+      "table_recent_grns": "Recent GRNs",
+      "table_recent_transfers": "Recent Transfers",
+      "table_low_stock": "Low Stock List",
+      "quick_actions": "Quick Actions Panel"
+    },
+    "kpis": {
+      "warehouses": "Warehouses",
+      "products": "Products",
+      "vendors": "Vendors",
+      "customers": "Customers",
+      "pending_pos": "Pending Purchase Orders",
+      "total_stock": "Total Stock",
+      "monthly_sales": "Sales This Month",
+      "monthly_purchases": "Purchases This Month",
+      "today_sales": "Today's Sales",
+      "month_revenue": "Month Revenue",
+      "unpaid_invoices": "Unpaid Invoices",
+      "low_stock_count": "Low Stock Items",
+      "active_pos": "Active POs",
+      "ledger_entries": "Ledger Entries (30d)"
+    },
+    "actions": {
+      "new_sale": "New Sale Order",
+      "new_purchase_order": "New Purchase Order",
+      "new_grn": "New GRN",
+      "new_stock_transfer": "New Stock Transfer"
+    }
   }
 }

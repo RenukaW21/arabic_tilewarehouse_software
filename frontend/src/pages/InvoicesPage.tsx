@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, FileCheck, Trash2, Pencil, Download } from 'lucide-react';
 import { generateInvoicePDF } from '@/utils/pdfGenerator';
+import { extractApiError } from '@/utils/apiError';
 import { toast } from 'sonner';
 import { DeleteConfirmDialog } from '@/components/shared/DeleteConfirmDialog';
 import { useTranslation } from 'react-i18next';
@@ -85,8 +86,7 @@ export default function InvoicesPage() {
       setSalesOrderId('');
       toast.success('Invoice created from sales order');
     },
-    onError: (e: { response?: { data?: { error?: { message?: string } } } }) =>
-      toast.error(e?.response?.data?.error?.message ?? 'Create failed'),
+    onError: (e: unknown) => toast.error(extractApiError(e, 'Create failed')),
   });
 
   const issueMutation = useMutation({
@@ -96,8 +96,7 @@ export default function InvoicesPage() {
       if (detailId) qc.invalidateQueries({ queryKey: ['invoices', detailId] });
       toast.success('Invoice issued');
     },
-    onError: (e: { response?: { data?: { error?: { message?: string } } } }) =>
-      toast.error(e?.response?.data?.error?.message ?? 'Issue failed'),
+    onError: (e: unknown) => toast.error(extractApiError(e, 'Issue failed')),
   });
 
   const deleteMutation = useMutation({
@@ -108,8 +107,7 @@ export default function InvoicesPage() {
       setDeleting(null);
       toast.success('Invoice deleted');
     },
-    onError: (e: { response?: { data?: { error?: { message?: string } } } }) =>
-      toast.error(e?.response?.data?.error?.message ?? 'Delete failed'),
+    onError: (e: unknown) => toast.error(extractApiError(e, 'Delete failed')),
   });
 
   const updateMutation = useMutation({
@@ -127,8 +125,7 @@ export default function InvoicesPage() {
       setEditingInvoice(null);
       toast.success('Invoice updated');
     },
-    onError: (e: { response?: { data?: { error?: { message?: string } } } }) =>
-      toast.error(e?.response?.data?.error?.message ?? 'Update failed'),
+    onError: (e: unknown) => toast.error(extractApiError(e, 'Update failed')),
   });
 
   const updatePaymentMutation = useMutation({
@@ -141,8 +138,7 @@ export default function InvoicesPage() {
       setPaymentDialogInvoice(null);
       toast.success('Payment status updated');
     },
-    onError: (e: { response?: { data?: { error?: { message?: string } } } }) =>
-      toast.error(e?.response?.data?.error?.message ?? 'Update failed'),
+    onError: (e: unknown) => toast.error(extractApiError(e, 'Update failed')),
   });
 
   const columns = [
@@ -397,7 +393,7 @@ export default function InvoicesPage() {
                 </table>
               </div>
               <div className="flex flex-col items-end gap-1 border-t pt-2">
-                <div className="flex gap-8"><span className="text-muted-foreground w-32">{t('invoicesPage.subTotal')}</span><span>₹{Number((detail as { sub_total?: number }).sub_total ?? detail.subtotal ?? 0).toLocaleString()}</span></div>
+                <div className="flex gap-8"><span className="text-muted-foreground w-32">{t('invoicesPage.subTotal')}</span><span>₹{(Number((detail as { sub_total?: number }).sub_total ?? detail.subtotal ?? 0) || 0).toLocaleString()}</span></div>
                 <div className="flex gap-8"><span className="text-muted-foreground w-32">{t('invoicesPage.discount')}</span><span>₹{Number(detail.discount_amount ?? 0).toLocaleString()}</span></div>
                 <div className="flex gap-8"><span className="text-muted-foreground w-32">{t('gstReport.cgst')}</span><span>₹{Number(detail.cgst_amount ?? 0).toLocaleString()}</span></div>
                 <div className="flex gap-8"><span className="text-muted-foreground w-32">{t('gstReport.sgst')}</span><span>₹{Number(detail.sgst_amount ?? 0).toLocaleString()}</span></div>

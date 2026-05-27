@@ -34,7 +34,31 @@ export function usePaginatedApi<T>(
     }
   }, [fetchFn, params]);
 
-  useEffect(() => { fetch(); }, [fetch]);
+  useEffect(() => {
+    let cancelled = false;
+
+    setLoading(true);
+    setError(null);
+    fetchFn(params)
+      .then((res) => {
+        if (!cancelled) {
+          setData(res.data);
+          setMeta(res.meta);
+          setLoading(false);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          const message = (err as { response?: { data?: { error?: { message?: string } } } })
+            ?.response?.data?.error?.message ?? 'Failed to load data';
+          setError(message);
+          setLoading(false);
+        }
+      });
+
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetch]);
 
   return { data, meta, loading, error, setParams, refetch: fetch };
 }

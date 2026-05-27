@@ -28,6 +28,9 @@ import {
   LogOut,
   ScrollText,
   Factory,
+  Hammer,
+  Cpu,
+  PackageCheck,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -205,6 +208,45 @@ export function AppSidebar({ collapsed }: AppSidebarProps) {
             allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "warehouse_staff"],
           },
 */
+        ],
+      },
+
+      // ── Production ─────────────────────────────────────────────────────────
+      {
+        labelKey: "nav.production",
+        icon: Hammer,
+        allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "warehouse_staff", "viewer"],
+        children: [
+          {
+            labelKey: "nav.productionOrders",
+            path: "/production/orders",
+            icon: ClipboardList,
+            allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "viewer"],
+          },
+          {
+            labelKey: "nav.productionBatches",
+            path: "/production/batches",
+            icon: Layers,
+            allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "warehouse_staff", "viewer"],
+          },
+          {
+            labelKey: "nav.rawMaterials",
+            path: "/production/materials",
+            icon: Package,
+            allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "warehouse_staff", "viewer"],
+          },
+          {
+            labelKey: "nav.finishedGoods",
+            path: "/production/finished-goods",
+            icon: PackageCheck,
+            allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "warehouse_staff", "viewer"],
+          },
+          {
+            labelKey: "nav.productionCosts",
+            path: "/production/costs",
+            icon: Cpu,
+            allowedRoles: ["super_admin", "admin", "warehouse_manager", "accountant", "viewer"],
+          },
         ],
       },
 

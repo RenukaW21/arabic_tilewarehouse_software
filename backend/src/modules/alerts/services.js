@@ -14,8 +14,8 @@ exports.getLowStockAlerts = async (tenantId) => {
       a.status,
       a.alerted_at
     FROM low_stock_alerts a
-    JOIN products p ON p.id = a.product_id
-    LEFT JOIN warehouses w ON w.id = a.warehouse_id
+    JOIN products p ON p.id = a.product_id AND p.tenant_id = a.tenant_id
+    LEFT JOIN warehouses w ON w.id = a.warehouse_id AND w.tenant_id = a.tenant_id
     WHERE a.tenant_id = ? AND a.status != 'resolved'
     ORDER BY a.alerted_at DESC
   `, [tenantId]);
@@ -52,8 +52,8 @@ exports.updateAlertStatus = async (id, status, tenantId) => {
        a.status,
        a.alerted_at
      FROM low_stock_alerts a
-     JOIN products p ON p.id = a.product_id
-     LEFT JOIN warehouses w ON w.id = a.warehouse_id
+     JOIN products p ON p.id = a.product_id AND p.tenant_id = a.tenant_id
+     LEFT JOIN warehouses w ON w.id = a.warehouse_id AND w.tenant_id = a.tenant_id
      WHERE a.id = ? AND a.tenant_id = ?`,
     [id, tenantId]
   );

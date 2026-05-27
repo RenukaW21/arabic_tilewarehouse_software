@@ -47,16 +47,16 @@ exports.getAll = async (tenantId, { page = 1, limit = 25, offset = 0, sortBy = '
   const safeSortOrder = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
   const rows = await query(`
-  SELECT cp.*, 
+  SELECT cp.*,
     c.name as customer_name,
     inv.invoice_number
   FROM customer_payments cp
-  LEFT JOIN customers c ON cp.customer_id = c.id
-  LEFT JOIN invoices inv ON cp.invoice_id = inv.id
-  WHERE cp.tenant_id = ? 
-  ORDER BY cp.${safeSortBy} ${safeSortOrder} 
-  LIMIT ${Number(limit)} OFFSET ${Number(offset)}
-`, [tenantId]);
+  LEFT JOIN customers c ON cp.customer_id = c.id AND c.tenant_id = cp.tenant_id
+  LEFT JOIN invoices inv ON cp.invoice_id = inv.id AND inv.tenant_id = cp.tenant_id
+  WHERE cp.tenant_id = ?
+  ORDER BY cp.${safeSortBy} ${safeSortOrder}
+  LIMIT ? OFFSET ?
+`, [tenantId, Number(limit), Number(offset)]);
 
   for(let row of rows) {
     if (row.invoice_id) {

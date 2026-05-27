@@ -55,6 +55,11 @@ import RevenueReportPage from "@/pages/RevenueReportPage";
 import AgingReportPage from "@/pages/AgingReportPage";
 import WarehouseDetailPage from "@/pages/WarehouseDetailPage";
 import NotFound from "@/pages/NotFound";
+import ProductionOrdersPage from "@/pages/production/ProductionOrdersPage";
+import ProductionBatchesPage from "@/pages/production/ProductionBatchesPage";
+import ProductionMaterialsPage from "@/pages/production/ProductionMaterialsPage";
+import ProductionFinishedGoodsPage from "@/pages/production/ProductionFinishedGoodsPage";
+import ProductionCostsPage from "@/pages/production/ProductionCostsPage";
 
 const queryClient = new QueryClient();
 
@@ -115,6 +120,13 @@ function AppRoutes() {
         <Route path="/inventory/counts" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor","warehouse_staff"]}><StockCountsPage /></RoleGuard>} />
         <Route path="/inventory/counts/:id" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor","warehouse_staff"]}><StockCountDetailPage /></RoleGuard>} />
 */}
+
+        {/* ── Production ── */}
+        <Route path="/production/orders"       element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor","viewer"]}><ProductionOrdersPage /></RoleGuard>} />
+        <Route path="/production/batches"      element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor","warehouse_staff","viewer"]}><ProductionBatchesPage /></RoleGuard>} />
+        <Route path="/production/materials"    element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor","warehouse_staff","viewer"]}><ProductionMaterialsPage /></RoleGuard>} />
+        <Route path="/production/finished-goods" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor","warehouse_staff","viewer"]}><ProductionFinishedGoodsPage /></RoleGuard>} />
+        <Route path="/production/costs"        element={<RoleGuard allow={["super_admin","admin","warehouse_manager","accountant","viewer"]}><ProductionCostsPage /></RoleGuard>} />
 
         {/* ── Sales ── */}
         <Route path="/sales/orders" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor","sales","accountant","viewer"]}><SalesOrdersPage /></RoleGuard>} />

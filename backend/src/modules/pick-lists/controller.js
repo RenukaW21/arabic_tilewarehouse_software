@@ -55,7 +55,10 @@ const updateItemPicked = async (req, res, next) => {
 const complete = async (req, res, next) => {
   try {
     const data = await service.complete(req.params.id, req.tenantId, req.user?.id, scopedWarehouseOpts(req));
-    return success(res, data, 'Pick list completed');
+    const msg = data._dcWarning
+      ? `Pick list completed. Warning: ${data._dcWarning}`
+      : 'Pick list completed';
+    return success(res, data, msg);
   } catch (err) {
     next(err);
   }

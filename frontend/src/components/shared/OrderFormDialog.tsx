@@ -47,6 +47,25 @@ export function OrderFormDialog({
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [lineItems, setLineItems] = useState<LineItem[]>([emptyItem()]);
 
+  const calcTotals = (items: LineItem[]) => {
+    const subTotal = items.reduce((sum, i) => {
+      const base = i.ordered_boxes * i.unit_price;
+      return sum + base * (1 - (i.discount_pct || 0) / 100);
+    }, 0);
+    const taxTotal = items.reduce((sum, i) => {
+      const base = i.ordered_boxes * i.unit_price;
+      const afterDiscount = base * (1 - (i.discount_pct || 0) / 100);
+      return sum + afterDiscount * ((i.tax_pct || 0) / 100);
+    }, 0);
+    const grandTotal = items.reduce((sum, i) => sum + i.line_total, 0);
+    return {
+      total_amount: Math.round(subTotal * 100) / 100,
+      sub_total: Math.round(subTotal * 100) / 100,
+      tax_amount: Math.round(taxTotal * 100) / 100,
+      grand_total: Math.round(grandTotal * 100) / 100,
+    };
+  };
+
   useEffect(() => {
     if (open) {
       const defaults: Record<string, any> = {};
@@ -57,9 +76,14 @@ export function OrderFormDialog({
           defaults[f.key] = initialData?.[f.key] ?? f.defaultValue ?? (f.type === 'number' ? '' : '');
         }
       });
-      setFormData(defaults);
-      if (onChange) onChange(defaults);
-      setLineItems(initialItems && initialItems.length > 0 ? initialItems : [emptyItem()]);
+      const newItems = initialItems && initialItems.length > 0 ? initialItems : [emptyItem()];
+      setLineItems(newItems);
+
+      // Compute totals from the items being loaded so formData is consistent from the first render
+      const totals = calcTotals(newItems);
+      const initial = { ...defaults, ...totals };
+      setFormData(initial);
+      if (onChange) onChange(initial);
 
       if (!initialData && autoNumber) {
         fetchNextDocNumber(autoNumber.docType)
@@ -70,31 +94,18 @@ export function OrderFormDialog({
               return next;
             });
           })
-          .catch(() => {});
+          .catch(() => {
+            toast.error('Could not load document number. Please enter it manually.');
+          });
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialData, initialItems, headerFields, autoNumber]);
 
-  // Auto-calculate totals from line items
+  // Recalculate totals whenever the user edits line items after the form has opened
   useEffect(() => {
-    const subTotal = lineItems.reduce((sum, i) => {
-      const base = i.ordered_boxes * i.unit_price;
-      return sum + base * (1 - (i.discount_pct || 0) / 100);
-    }, 0);
-    const taxTotal = lineItems.reduce((sum, i) => {
-      const base = i.ordered_boxes * i.unit_price;
-      const afterDiscount = base * (1 - (i.discount_pct || 0) / 100);
-      return sum + afterDiscount * ((i.tax_pct || 0) / 100);
-    }, 0);
-    const grandTotal = lineItems.reduce((sum, i) => sum + i.line_total, 0);
-
-    setFormData(prev => ({
-      ...prev,
-      total_amount: Math.round(subTotal * 100) / 100,
-      sub_total: Math.round(subTotal * 100) / 100,
-      tax_amount: Math.round(taxTotal * 100) / 100,
-      grand_total: Math.round(grandTotal * 100) / 100,
-    }));
+    setFormData(prev => ({ ...prev, ...calcTotals(lineItems) }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lineItems]);
 
   const handleSubmit = async (e: React.FormEvent) => {

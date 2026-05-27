@@ -59,8 +59,8 @@ const calcLineTotal = (item) => {
   const price = parseFloat(item.unitPrice ?? item.unit_price) || 0;
   const discountPct = parseFloat(item.discountPct ?? item.discount_pct) || 0;
   const taxPct = parseFloat(item.taxPct ?? item.tax_pct) || 0;
-  const afterDiscount = qty * price * (1 - discountPct / 100);
-  return afterDiscount * (1 + taxPct / 100);
+  const afterDiscount = Math.max(0, qty * price * (1 - discountPct / 100));
+  return Math.max(0, afterDiscount * (1 + taxPct / 100));
 };
 
 const create = async (tenantId, userId, data) => {

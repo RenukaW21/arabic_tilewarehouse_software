@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
+import { isAxiosError } from 'axios';
 import { cn } from '@/lib/utils';
 import { fetchNextDocNumber } from '@/hooks/useNextDocNumber';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -80,7 +81,9 @@ export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initial
         if (!initialData && autoNumber) {
           fetchNextDocNumber(autoNumber.docType)
             .then(num => setFormData(prev => ({ ...prev, [autoNumber.fieldKey]: num })))
-            .catch(() => {/* keep placeholder */ });
+            .catch(() => {
+              toast.error('Could not load document number. Please enter it manually.');
+            });
         }
       }
     }
@@ -161,7 +164,8 @@ export function CrudFormDialog({ open, onClose, onSubmit, fields, title, initial
         err?.response?.data?.error?.suggestion ??
         err?.response?.data?.suggestion;
       setFormError(suggestion ? `${msg} ${suggestion}` : msg);
-      if (!Array.isArray(details) || details.length === 0) {
+      // Skip manual toast for Axios HTTP errors — the response interceptor already showed one
+      if (!isAxiosError(err) && (!Array.isArray(details) || details.length === 0)) {
         toast.error(msg);
       }
     }

@@ -61,6 +61,22 @@ const getById = async (id, tenantId) => {
 
 // ─── CREATE ───────────────────────────────────────────────────────────────────
 const create = async (tenantId, userId, data) => {
+  // Pre-flight: catch duplicate product+shade combinations before touching the DB
+  const seen = new Set();
+  for (const it of data.items || []) {
+    if (it.product_id) {
+      const key = `${it.product_id}::${it.shade_id || ''}`;
+      if (seen.has(key)) {
+        throw new AppError(
+          'The same product (and shade) appears more than once. Remove the duplicate row before saving.',
+          400,
+          'DUPLICATE_PRODUCT'
+        );
+      }
+      seen.add(key);
+    }
+  }
+
   const poNumber = await generateDocNumber(tenantId, 'PO', 'PO');
   const trx = await beginTransaction();
 

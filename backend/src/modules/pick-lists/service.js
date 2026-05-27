@@ -3,6 +3,7 @@ const repo = require('./repository');
 const { beginTransaction } = require('../../config/db');
 const { AppError } = require('../../middlewares/error.middleware');
 const { isWarehouseScopedRole } = require('../../utils/warehouseScope');
+const logger = require('../../utils/logger');
 
 const getAll = async (tenantId, queryParams, user) => {
   let params = queryParams;
@@ -89,16 +90,19 @@ const complete = async (id, tenantId, userId, opts = {}) => {
 
   // AUTOMATIC DELIVERY CHALLAN GENERATION
   const dcService = require('../delivery-challans/service');
+  let dcWarning = null;
   try {
     await dcService.createFromPickList(id, tenantId, userId, {
       dispatch_date: new Date()
     });
   } catch (err) {
-    console.error('Auto DC creation failed:', err.message);
-    // We don't throw here to avoid blocking the pick list completion if DC fails for some reason
+    logger.error({ err, pickListId: id, tenantId }, 'Auto DC creation failed');
+    dcWarning = err.message || 'Delivery Challan could not be created automatically. Please create it manually.';
   }
 
-  return getById(id, tenantId, opts);
+  const result = await getById(id, tenantId, opts);
+  if (dcWarning) result._dcWarning = dcWarning;
+  return result;
 };
 
 /** Reopen a completed pick list that has no picked items so user can enter quantities and complete again. */

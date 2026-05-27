@@ -84,16 +84,30 @@ export default function ProductInventoryPage() {
         if (!selectedProductId) return { totalStock: null, alreadyStored: 0, availableToStore: null };
 
         const stockRows: any[] = stockData?.data ?? [];
+        const assignedRows: any[] = assignedData?.data ?? [];
+
+        if (!editing) {
+            // New allocation: backend sources stock exclusively from null-rack rows in the
+            // selected warehouse. Count only those rows so the client check matches the backend.
+            const nullRackStock = stockRows
+                .filter((r: any) =>
+                    r.product_id === selectedProductId &&
+                    r.rack_id === null &&
+                    (!selectedWarehouseId || r.warehouse_id === selectedWarehouseId)
+                )
+                .reduce((sum: number, r: any) => sum + (parseFloat(r.total_boxes) || 0), 0);
+            return { totalStock: nullRackStock, alreadyStored: 0, availableToStore: nullRackStock };
+        }
+
+        // Editing: can redistribute across all racks — use total stock minus other entries
         const totalStock = stockRows
             .filter((r: any) => r.product_id === selectedProductId)
             .reduce((sum: number, r: any) => sum + (parseFloat(r.total_boxes) || 0), 0);
 
-        const assignedRows: any[] = assignedData?.data ?? [];
         const alreadyStored = assignedRows
             .filter((r: any) => {
                 if (r.product_id !== selectedProductId) return false;
-                // Exclude current editing entry
-                if (editing && r.id === editing.id) return false;
+                if (editing.id === r.id) return false;
                 return true;
             })
             .reduce((sum: number, r: any) => sum + (parseFloat(r.boxes_stored) || 0), 0);
@@ -287,7 +301,9 @@ export default function ProductInventoryPage() {
 
     // Build helper text for boxes_stored field
     const boxesHelperText = selectedProductId && availableToStore !== null
-        ? `Max: ${availableToStore} boxes  |  Stock: ${totalStock},  Already stored: ${alreadyStored}`
+        ? editing
+            ? `Max: ${availableToStore} boxes  |  Stock: ${totalStock},  Already stored: ${alreadyStored}`
+            : `Max: ${availableToStore} boxes available (unallocated stock in selected warehouse)`
         : undefined;
 
     const formFields: FieldDef[] = [

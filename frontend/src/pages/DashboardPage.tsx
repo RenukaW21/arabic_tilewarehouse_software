@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   IndianRupee,
   ShoppingCart,
@@ -8,11 +9,18 @@ import {
   Users,
   Truck,
   Layers,
+  Settings2,
+  Plus,
+  FileText,
+  ArrowLeftRight,
 } from "lucide-react";
 import { KPICard } from "@/components/shared/KPICard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { useDashboard } from "@/hooks/useDashboardData";
+import { useDashboardConfig } from "@/hooks/useDashboardConfig";
+import { DashboardCustomizeDrawer } from "@/components/dashboard/DashboardCustomizeDrawer";
 import {
   BarChart,
   Bar,
@@ -35,6 +43,7 @@ import type {
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useLowStockAlerts } from "@/hooks/useLowStockAlerts";
+import type { LowStockAlert } from "@/types/misc.types";
 
 const CHART_COLORS = [
   "hsl(217, 91%, 53%)",
@@ -60,13 +69,22 @@ function formatDate(dateStr: string): string {
   });
 }
 
+const QUICK_ACTION_MAP: Record<string, { label: string; route: string; icon: React.ReactNode }> = {
+  new_sale: { label: "New Sale Order", route: "/sales/orders", icon: <Plus className="h-4 w-4" /> },
+  new_purchase_order: { label: "New Purchase Order", route: "/purchase/orders", icon: <ShoppingCart className="h-4 w-4" /> },
+  new_grn: { label: "New GRN", route: "/purchase/grn", icon: <FileText className="h-4 w-4" /> },
+  new_stock_transfer: { label: "New Stock Transfer", route: "/inventory/transfers", icon: <ArrowLeftRight className="h-4 w-4" /> },
+};
+
 export default function DashboardPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const { data: alerts = [] } = useLowStockAlerts();
-
-  const navigate = useNavigate();
   const { data, isLoading, isError, error } = useDashboard();
+  const { config } = useDashboardConfig();
+
+  const [customizeOpen, setCustomizeOpen] = useState(false);
 
   const summary = data?.summary;
   const kpis = data?.kpis;
@@ -89,93 +107,146 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* KPI row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4">
-        {isLoading ? (
-          Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-[100px] rounded-lg" />
-          ))
-        ) : (
-          <>
-            <div onClick={() => navigate("/setup/warehouses")} className="cursor-pointer">
-              <KPICard
-                title={t('dashboard.warehouses')}
-                value={String(summary?.totalWarehouses ?? 0)}
-                icon={<Layers className="h-5 w-5" />}
-                variant="default"
-              />
-            </div>
-
-            <div onClick={() => navigate("/master/products")} className="cursor-pointer">
-              <KPICard
-                title={t('dashboard.products')}
-                value={String(summary?.totalProducts ?? 0)}
-                icon={<Package className="h-5 w-5" />}
-                variant="primary"
-              />
-            </div>
-
-            <div onClick={() => navigate("/master/vendors")} className="cursor-pointer">
-              <KPICard
-                title={t('dashboard.vendors')}
-                value={String(summary?.totalVendors ?? 0)}
-                icon={<Truck className="h-5 w-5" />}
-                variant="default"
-              />
-            </div>
-            <div onClick={() => navigate("/master/customers")} className="cursor-pointer">
-              <KPICard
-                title={t('dashboard.customers')}
-                value={String(summary?.totalCustomers ?? 0)}
-                icon={<Users className="h-5 w-5" />}
-                variant="default"
-              />
-            </div>
-            <div onClick={() => navigate("/purchase/orders")} className="cursor-pointer">
-              <KPICard
-                title={t('dashboard.pendingPOs')}
-                value={String(summary?.pendingPurchaseOrders ?? 0)}
-                icon={<ShoppingCart className="h-5 w-5" />}
-                variant="warning"
-              />
-            </div>
-
-            <div onClick={() => navigate("/inventory/stock")} className="cursor-pointer">
-              <KPICard
-                title={t('dashboard.totalStock')}
-                value={String(summary?.totalStock ?? 0)}
-                icon={<Layers className="h-5 w-5" />}
-                variant="default"
-              />
-            </div>
-
-            <div onClick={() => navigate("/sales/orders")} className="cursor-pointer">
-              <KPICard
-                title={t('dashboard.salesThisMonth')}
-                value={formatCurrency(summary?.monthlySales ?? 0)}
-                icon={<TrendingUp className="h-5 w-5" />}
-                variant="success"
-              />
-            </div>
-
-            <div onClick={() => navigate("/purchase/orders")} className="cursor-pointer">
-              <KPICard
-                title={t('dashboard.purchasesThisMonth')}
-                value={formatCurrency(summary?.monthlyPurchases ?? 0)}
-                icon={<ShoppingCart className="h-5 w-5" />}
-                variant="warning"
-              />
-            </div>
-          </>
-        )}
+      {/* Page header with Customize button */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold text-foreground">{t('nav.dashboard')}</h1>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setCustomizeOpen(true)}
+        >
+          <Settings2 className="h-4 w-4 mr-2" />
+          {t('dashboardConfig.customize')}
+        </Button>
       </div>
 
-      {/* Secondary KPIs */}
-      {!isLoading &&
-        (kpis?.lowStockItems !== undefined ||
-          kpis?.activePOs !== undefined ||
-          summary?.ledgerEntriesLast30Days !== undefined) && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* Quick Actions Panel */}
+      {config.widgets.quick_actions && config.quick_actions.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {config.quick_actions.map((action) => {
+            const def = QUICK_ACTION_MAP[action];
+            if (!def) return null;
+            return (
+              <Button
+                key={action}
+                variant="secondary"
+                size="sm"
+                onClick={() => navigate(def.route)}
+                className="gap-2"
+              >
+                {def.icon}
+                {t(`dashboardConfig.actions.${action}`, { defaultValue: def.label })}
+              </Button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Summary KPI Row */}
+      {config.widgets.kpi_summary && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4">
+          {isLoading ? (
+            Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-[100px] rounded-lg" />
+            ))
+          ) : (
+            <>
+              {config.kpis.warehouses && (
+                <div onClick={() => navigate("/setup/warehouses")} className="cursor-pointer">
+                  <KPICard
+                    title={t('dashboard.warehouses')}
+                    value={String(summary?.totalWarehouses ?? 0)}
+                    icon={<Layers className="h-5 w-5" />}
+                    variant="default"
+                  />
+                </div>
+              )}
+
+              {config.kpis.products && (
+                <div onClick={() => navigate("/master/products")} className="cursor-pointer">
+                  <KPICard
+                    title={t('dashboard.products')}
+                    value={String(summary?.totalProducts ?? 0)}
+                    icon={<Package className="h-5 w-5" />}
+                    variant="primary"
+                  />
+                </div>
+              )}
+
+              {config.kpis.vendors && (
+                <div onClick={() => navigate("/master/vendors")} className="cursor-pointer">
+                  <KPICard
+                    title={t('dashboard.vendors')}
+                    value={String(summary?.totalVendors ?? 0)}
+                    icon={<Truck className="h-5 w-5" />}
+                    variant="default"
+                  />
+                </div>
+              )}
+
+              {config.kpis.customers && (
+                <div onClick={() => navigate("/master/customers")} className="cursor-pointer">
+                  <KPICard
+                    title={t('dashboard.customers')}
+                    value={String(summary?.totalCustomers ?? 0)}
+                    icon={<Users className="h-5 w-5" />}
+                    variant="default"
+                  />
+                </div>
+              )}
+
+              {config.kpis.pending_pos && (
+                <div onClick={() => navigate("/purchase/orders")} className="cursor-pointer">
+                  <KPICard
+                    title={t('dashboard.pendingPOs')}
+                    value={String(summary?.pendingPurchaseOrders ?? 0)}
+                    icon={<ShoppingCart className="h-5 w-5" />}
+                    variant="warning"
+                  />
+                </div>
+              )}
+
+              {config.kpis.total_stock && (
+                <div onClick={() => navigate("/inventory/stock")} className="cursor-pointer">
+                  <KPICard
+                    title={t('dashboard.totalStock')}
+                    value={String(summary?.totalStock ?? 0)}
+                    icon={<Layers className="h-5 w-5" />}
+                    variant="default"
+                  />
+                </div>
+              )}
+
+              {config.kpis.monthly_sales && (
+                <div onClick={() => navigate("/sales/orders")} className="cursor-pointer">
+                  <KPICard
+                    title={t('dashboard.salesThisMonth')}
+                    value={formatCurrency(summary?.monthlySales ?? 0)}
+                    icon={<TrendingUp className="h-5 w-5" />}
+                    variant="success"
+                  />
+                </div>
+              )}
+
+              {config.kpis.monthly_purchases && (
+                <div onClick={() => navigate("/purchase/orders")} className="cursor-pointer">
+                  <KPICard
+                    title={t('dashboard.purchasesThisMonth')}
+                    value={formatCurrency(summary?.monthlyPurchases ?? 0)}
+                    icon={<ShoppingCart className="h-5 w-5" />}
+                    variant="warning"
+                  />
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Secondary KPI Row */}
+      {config.widgets.kpi_secondary && !isLoading && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {config.kpis.low_stock_count && (
             <div onClick={() => navigate("/alerts")} className="cursor-pointer">
               <KPICard
                 title={t('dashboard.lowStockItems')}
@@ -184,437 +255,382 @@ export default function DashboardPage() {
                 variant="danger"
               />
             </div>
+          )}
 
+          {config.kpis.active_pos && (
             <KPICard
               title={t('dashboard.activePOs')}
               value={String(kpis?.activePOs ?? 0)}
               icon={<ShoppingCart className="h-5 w-5" />}
               variant="warning"
             />
+          )}
+
+          {config.kpis.ledger_entries && (
             <KPICard
               title={t('dashboard.ledgerEntries30d')}
               value={String(summary?.ledgerEntriesLast30Days ?? 0)}
               icon={<Layers className="h-5 w-5" />}
               variant="default"
             />
-          </div>
-        )}
-
-      {/* Charts + Recent tables */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Stock by category */}
-        <div className="bg-card rounded-lg border p-4 shadow-sm">
-          <h3 className="font-display font-semibold text-foreground mb-4">
-            {t('dashboard.stockByCategory')}
-          </h3>
-          {isLoading ? (
-            <Skeleton className="h-[200px] w-full rounded-md" />
-          ) : stockByCategory.filter((d) => d.boxes > 0).length > 0 ? (
-            <>
-              <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie
-                    data={stockByCategory
-                      .map((d) => ({
-                        ...d,
-                        boxes: Number(d.boxes),
-                      }))
-                      .filter((d) => d.boxes > 0)}
-                    dataKey="boxes"
-                    nameKey="category"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
-                    paddingAngle={3}
-                  >
-                    {stockByCategory
-                      .filter((d) => d.boxes > 0)
-                      .map((_, i) => (
-                        <Cell
-                          key={i}
-                          fill={CHART_COLORS[i % CHART_COLORS.length]}
-                        />
-                      ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      borderRadius: "8px",
-                      border: "1px solid hsl(214, 32%, 91%)",
-                      fontSize: "12px",
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="space-y-1.5 mt-2">
-                {stockByCategory.map((item, i) => (
-                  <div
-                    key={item.category}
-                    className="flex items-center justify-between text-xs"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="h-2.5 w-2.5 rounded-full"
-                        style={{
-                          backgroundColor:
-                            CHART_COLORS[i % CHART_COLORS.length],
-                        }}
-                      />
-                      <span className="text-muted-foreground">
-                        {item.category}
-                      </span>
-                    </div>
-                    <span className="font-medium text-foreground">
-                      {item.boxes} {t('common.boxes')}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground text-center py-8">
-              {t('dashboard.noStockData')}
-            </p>
           )}
         </div>
+      )}
 
-        {/* Recent Sales */}
-        <div className="lg:col-span-2 bg-card rounded-lg border shadow-sm">
-          <div className="flex items-center justify-between p-4 border-b">
-            <h3 className="font-display font-semibold text-foreground">
-              {t('dashboard.recentSales')}
-            </h3>
-            <Link
-              to="/sales/orders"
-              className="text-xs text-secondary hover:underline flex items-center gap-0.5"
+      {/* Charts + Recent Sales */}
+      {(config.widgets.chart_stock_by_category || config.widgets.table_recent_sales) && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Stock by Category chart */}
+          {config.widgets.chart_stock_by_category && (
+            <div className="bg-card rounded-lg border p-4 shadow-sm">
+              <h3 className="font-display font-semibold text-foreground mb-4">
+                {t('dashboard.stockByCategory')}
+              </h3>
+              {isLoading ? (
+                <Skeleton className="h-[200px] w-full rounded-md" />
+              ) : stockByCategory.filter((d) => d.boxes > 0).length > 0 ? (
+                <>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <PieChart>
+                      <Pie
+                        data={stockByCategory
+                          .map((d) => ({ ...d, boxes: Number(d.boxes) }))
+                          .filter((d) => d.boxes > 0)}
+                        dataKey="boxes"
+                        nameKey="category"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={50}
+                        outerRadius={80}
+                        paddingAngle={3}
+                      >
+                        {stockByCategory
+                          .filter((d) => d.boxes > 0)
+                          .map((_, i) => (
+                            <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                          ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: "8px",
+                          border: "1px solid hsl(214, 32%, 91%)",
+                          fontSize: "12px",
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="space-y-1.5 mt-2">
+                    {stockByCategory.map((item, i) => (
+                      <div
+                        key={`${item.category}-${i}`}
+                        className="flex items-center justify-between text-xs"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="h-2.5 w-2.5 rounded-full"
+                            style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
+                          />
+                          <span className="text-muted-foreground">{item.category}</span>
+                        </div>
+                        <span className="font-medium text-foreground">
+                          {item.boxes} {t('common.boxes')}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  {t('dashboard.noStockData')}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Recent Sales table */}
+          {config.widgets.table_recent_sales && (
+            <div
+              className={
+                config.widgets.chart_stock_by_category
+                  ? "lg:col-span-2 bg-card rounded-lg border shadow-sm"
+                  : "lg:col-span-3 bg-card rounded-lg border shadow-sm"
+              }
             >
-              {t('common.viewAll')} <ArrowUpRight className="h-3 w-3" />
-            </Link>
-          </div>
-          <div className="overflow-x-auto">
-            {isLoading ? (
-              <div className="p-4 space-y-2">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-10 w-full" />
-                ))}
+              <div className="flex items-center justify-between p-4 border-b">
+                <h3 className="font-display font-semibold text-foreground">
+                  {t('dashboard.recentSales')}
+                </h3>
+                <Link
+                  to="/sales/orders"
+                  className="text-xs text-secondary hover:underline flex items-center gap-0.5"
+                >
+                  {t('common.viewAll')} <ArrowUpRight className="h-3 w-3" />
+                </Link>
               </div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-xs text-muted-foreground uppercase bg-muted/30">
-                    <th className="text-start px-4 py-2.5 font-medium">{t('dashboard.order')}</th>
-                    <th className="text-start px-4 py-2.5 font-medium">{t('dashboard.customer')}</th>
-                    <th className="text-start px-4 py-2.5 font-medium">{t('common.date')}</th>
-                    <th className="text-start px-4 py-2.5 font-medium">{t('common.status')}</th>
-                    <th className="text-end px-4 py-2.5 font-medium">{t('common.total')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentSales.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={5}
-                        className="text-center text-muted-foreground py-6 text-sm"
-                      >
-                        {t('dashboard.noSalesOrders')}
-                      </td>
-                    </tr>
-                  ) : (
-                    recentSales.map((so) => (
-                      <tr
-                        key={so.id}
-                        className="border-t border-border hover:bg-muted/20 transition-colors"
-                      >
-                        <td className="px-4 py-2.5 font-mono text-xs font-medium text-foreground">
-                          {so.so_number}
-                        </td>
-                        <td className="px-4 py-2.5 text-foreground">
-                          {so.customer_name ?? "—"}
-                        </td>
-                        <td className="px-4 py-2.5 text-muted-foreground">
-                          {formatDate(so.order_date)}
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <StatusBadge status={so.status} />
-                        </td>
-                        <td className="px-4 py-2.5 text-end font-medium text-foreground">
-                          {formatCurrency(Number(so.grand_total))}
-                        </td>
+              <div className="overflow-x-auto">
+                {isLoading ? (
+                  <div className="p-4 space-y-2">
+                    {[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full" />)}
+                  </div>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-xs text-muted-foreground uppercase bg-muted/30">
+                        <th className="text-start px-4 py-2.5 font-medium">{t('dashboard.order')}</th>
+                        <th className="text-start px-4 py-2.5 font-medium">{t('dashboard.customer')}</th>
+                        <th className="text-start px-4 py-2.5 font-medium">{t('common.date')}</th>
+                        <th className="text-start px-4 py-2.5 font-medium">{t('common.status')}</th>
+                        <th className="text-end px-4 py-2.5 font-medium">{t('common.total')}</th>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            )}
-          </div>
+                    </thead>
+                    <tbody>
+                      {recentSales.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="text-center text-muted-foreground py-6 text-sm">
+                            {t('dashboard.noSalesOrders')}
+                          </td>
+                        </tr>
+                      ) : (
+                        recentSales.map((so) => (
+                          <tr key={so.id} className="border-t border-border hover:bg-muted/20 transition-colors">
+                            <td className="px-4 py-2.5 font-mono text-xs font-medium text-foreground">{so.so_number}</td>
+                            <td className="px-4 py-2.5 text-foreground">{so.customer_name ?? "—"}</td>
+                            <td className="px-4 py-2.5 text-muted-foreground">{formatDate(so.order_date)}</td>
+                            <td className="px-4 py-2.5"><StatusBadge status={so.status} /></td>
+                            <td className="px-4 py-2.5 text-end font-medium text-foreground">
+                              {formatCurrency(Number(so.grand_total ?? 0))}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      )}
 
       {/* Recent GRNs + Recent Transfers */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-card rounded-lg border shadow-sm">
-          <div className="flex items-center justify-between p-4 border-b">
-            <h3 className="font-display font-semibold text-foreground">
-              {t('dashboard.recentGRNs')}
-            </h3>
-            <Link
-              to="/purchase/grn"
-              className="text-xs text-secondary hover:underline flex items-center gap-0.5"
-            >
-              {t('common.viewAll')} <ArrowUpRight className="h-3 w-3" />
-            </Link>
-          </div>
-          <div className="overflow-x-auto">
-            {isLoading ? (
-              <div className="p-4 space-y-2">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-10 w-full" />
-                ))}
+      {(config.widgets.table_recent_grns || config.widgets.table_recent_transfers) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {config.widgets.table_recent_grns && (
+            <div className="bg-card rounded-lg border shadow-sm">
+              <div className="flex items-center justify-between p-4 border-b">
+                <h3 className="font-display font-semibold text-foreground">
+                  {t('dashboard.recentGRNs')}
+                </h3>
+                <Link to="/purchase/grn" className="text-xs text-secondary hover:underline flex items-center gap-0.5">
+                  {t('common.viewAll')} <ArrowUpRight className="h-3 w-3" />
+                </Link>
               </div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-xs text-muted-foreground uppercase bg-muted/30">
-                    <th className="text-start px-4 py-2.5 font-medium">{t('dashboard.grn')}</th>
-                    <th className="text-start px-4 py-2.5 font-medium">{t('dashboard.vendor')}</th>
-                    <th className="text-start px-4 py-2.5 font-medium">{t('dashboard.warehouse')}</th>
-                    <th className="text-start px-4 py-2.5 font-medium">{t('common.date')}</th>
-                    <th className="text-start px-4 py-2.5 font-medium">{t('common.status')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentGRNs.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={5}
-                        className="text-center text-muted-foreground py-6 text-sm"
-                      >
-                        {t('dashboard.noGRNs')}
-                      </td>
-                    </tr>
-                  ) : (
-                    recentGRNs.map((g) => (
-                      <tr
-                        key={g.id}
-                        className="border-t border-border hover:bg-muted/20 transition-colors"
-                      >
-                        <td className="px-4 py-2.5 font-mono text-xs font-medium text-foreground">
-                          {g.grn_number}
-                        </td>
-                        <td className="px-4 py-2.5 text-foreground">
-                          {g.vendor_name ?? "—"}
-                        </td>
-                        <td className="px-4 py-2.5 text-muted-foreground">
-                          {g.warehouse_name ?? "—"}
-                        </td>
-                        <td className="px-4 py-2.5 text-muted-foreground">
-                          {formatDate(g.receipt_date)}
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <StatusBadge status={g.status} />
-                        </td>
+              <div className="overflow-x-auto">
+                {isLoading ? (
+                  <div className="p-4 space-y-2">
+                    {[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full" />)}
+                  </div>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-xs text-muted-foreground uppercase bg-muted/30">
+                        <th className="text-start px-4 py-2.5 font-medium">{t('dashboard.grn')}</th>
+                        <th className="text-start px-4 py-2.5 font-medium">{t('dashboard.vendor')}</th>
+                        <th className="text-start px-4 py-2.5 font-medium">{t('dashboard.warehouse')}</th>
+                        <th className="text-start px-4 py-2.5 font-medium">{t('common.date')}</th>
+                        <th className="text-start px-4 py-2.5 font-medium">{t('common.status')}</th>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
-        <div className="bg-card rounded-lg border shadow-sm">
-          <div className="flex items-center justify-between p-4 border-b">
-            <h3 className="font-display font-semibold text-foreground">
-              {t('dashboard.recentTransfers')}
-            </h3>
-            <Link
-              to="/inventory/transfers"
-              className="text-xs text-secondary hover:underline flex items-center gap-0.5"
-            >
-              {t('common.viewAll')} <ArrowUpRight className="h-3 w-3" />
-            </Link>
-          </div>
-          <div className="overflow-x-auto">
-            {isLoading ? (
-              <div className="p-4 space-y-2">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-10 w-full" />
-                ))}
+                    </thead>
+                    <tbody>
+                      {recentGRNs.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="text-center text-muted-foreground py-6 text-sm">
+                            {t('dashboard.noGRNs')}
+                          </td>
+                        </tr>
+                      ) : (
+                        recentGRNs.map((g) => (
+                          <tr key={g.id} className="border-t border-border hover:bg-muted/20 transition-colors">
+                            <td className="px-4 py-2.5 font-mono text-xs font-medium text-foreground">{g.grn_number}</td>
+                            <td className="px-4 py-2.5 text-foreground">{g.vendor_name ?? "—"}</td>
+                            <td className="px-4 py-2.5 text-muted-foreground">{g.warehouse_name ?? "—"}</td>
+                            <td className="px-4 py-2.5 text-muted-foreground">{formatDate(g.receipt_date)}</td>
+                            <td className="px-4 py-2.5"><StatusBadge status={g.status} /></td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                )}
               </div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-xs text-muted-foreground uppercase bg-muted/30">
-                    <th className="text-start px-4 py-2.5 font-medium">{t('dashboard.transfer')}</th>
-                    <th className="text-start px-4 py-2.5 font-medium">{t('dashboard.fromTo')}</th>
-                    <th className="text-start px-4 py-2.5 font-medium">{t('common.date')}</th>
-                    <th className="text-start px-4 py-2.5 font-medium">{t('common.status')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentTransfers.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={4}
-                        className="text-center text-muted-foreground py-6 text-sm"
-                      >
-                        {t('dashboard.noTransfers')}
-                      </td>
-                    </tr>
-                  ) : (
-                    recentTransfers.map((t_) => (
-                      <tr
-                        key={t_.id}
-                        className="border-t border-border hover:bg-muted/20 transition-colors"
-                      >
-                        <td className="px-4 py-2.5 font-mono text-xs font-medium text-foreground">
-                          {t_.transfer_number}
-                        </td>
-                        <td className="px-4 py-2.5 text-foreground">
-                          {t_.from_warehouse_name ?? "—"} →{" "}
-                          {t_.to_warehouse_name ?? "—"}
-                        </td>
-                        <td className="px-4 py-2.5 text-muted-foreground">
-                          {formatDate(t_.transfer_date)}
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <StatusBadge status={t_.status} />
-                        </td>
+            </div>
+          )}
+
+          {config.widgets.table_recent_transfers && (
+            <div className="bg-card rounded-lg border shadow-sm">
+              <div className="flex items-center justify-between p-4 border-b">
+                <h3 className="font-display font-semibold text-foreground">
+                  {t('dashboard.recentTransfers')}
+                </h3>
+                <Link to="/inventory/transfers" className="text-xs text-secondary hover:underline flex items-center gap-0.5">
+                  {t('common.viewAll')} <ArrowUpRight className="h-3 w-3" />
+                </Link>
+              </div>
+              <div className="overflow-x-auto">
+                {isLoading ? (
+                  <div className="p-4 space-y-2">
+                    {[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full" />)}
+                  </div>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-xs text-muted-foreground uppercase bg-muted/30">
+                        <th className="text-start px-4 py-2.5 font-medium">{t('dashboard.transfer')}</th>
+                        <th className="text-start px-4 py-2.5 font-medium">{t('dashboard.fromTo')}</th>
+                        <th className="text-start px-4 py-2.5 font-medium">{t('common.date')}</th>
+                        <th className="text-start px-4 py-2.5 font-medium">{t('common.status')}</th>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            )}
-          </div>
+                    </thead>
+                    <tbody>
+                      {recentTransfers.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="text-center text-muted-foreground py-6 text-sm">
+                            {t('dashboard.noTransfers')}
+                          </td>
+                        </tr>
+                      ) : (
+                        recentTransfers.map((t_) => (
+                          <tr key={t_.id} className="border-t border-border hover:bg-muted/20 transition-colors">
+                            <td className="px-4 py-2.5 font-mono text-xs font-medium text-foreground">{t_.transfer_number}</td>
+                            <td className="px-4 py-2.5 text-foreground">
+                              {t_.from_warehouse_name ?? "—"} → {t_.to_warehouse_name ?? "—"}
+                            </td>
+                            <td className="px-4 py-2.5 text-muted-foreground">{formatDate(t_.transfer_date)}</td>
+                            <td className="px-4 py-2.5"><StatusBadge status={t_.status} /></td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      )}
 
       {/* Recent Purchases + Low Stock */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Recent Purchases */}
-        <div className="lg:col-span-2 bg-card rounded-lg border shadow-sm">
-          <div className="flex items-center justify-between p-4 border-b">
-            <h3 className="font-display font-semibold text-foreground">
-              {t('dashboard.recentPurchases')}
-            </h3>
-            <Link
-              to="/purchase/orders"
-              className="text-xs text-secondary hover:underline flex items-center gap-0.5"
+      {(config.widgets.table_recent_purchases || config.widgets.table_low_stock) && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {config.widgets.table_recent_purchases && (
+            <div
+              className={
+                config.widgets.table_low_stock
+                  ? "lg:col-span-2 bg-card rounded-lg border shadow-sm"
+                  : "lg:col-span-3 bg-card rounded-lg border shadow-sm"
+              }
             >
-              {t('common.viewAll')} <ArrowUpRight className="h-3 w-3" />
-            </Link>
-          </div>
-          <div className="overflow-x-auto">
-            {isLoading ? (
-              <div className="p-4 space-y-2">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-10 w-full" />
-                ))}
+              <div className="flex items-center justify-between p-4 border-b">
+                <h3 className="font-display font-semibold text-foreground">
+                  {t('dashboard.recentPurchases')}
+                </h3>
+                <Link to="/purchase/orders" className="text-xs text-secondary hover:underline flex items-center gap-0.5">
+                  {t('common.viewAll')} <ArrowUpRight className="h-3 w-3" />
+                </Link>
               </div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-xs text-muted-foreground uppercase bg-muted/30">
-                    <th className="text-start px-4 py-2.5 font-medium">{t('dashboard.po')}</th>
-                    <th className="text-start px-4 py-2.5 font-medium">{t('dashboard.vendor')}</th>
-                    <th className="text-start px-4 py-2.5 font-medium">{t('common.date')}</th>
-                    <th className="text-start px-4 py-2.5 font-medium">{t('common.status')}</th>
-                    <th className="text-end px-4 py-2.5 font-medium">{t('common.total')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentPurchases.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={5}
-                        className="text-center text-muted-foreground py-6 text-sm"
-                      >
-                        {t('dashboard.noPurchaseOrders')}
-                      </td>
-                    </tr>
-                  ) : (
-                    recentPurchases.map((po) => (
-                      <tr
-                        key={po.id}
-                        className="border-t border-border hover:bg-muted/20 transition-colors"
-                      >
-                        <td className="px-4 py-2.5 font-mono text-xs font-medium text-foreground">
-                          <Link
-                            to={`/purchase/orders/${po.id}`}
-                            className="text-primary hover:underline"
-                          >
-                            {po.po_number}
-                          </Link>
-                        </td>
-                        <td className="px-4 py-2.5 text-foreground">
-                          {po.vendor_name ?? "—"}
-                        </td>
-                        <td className="px-4 py-2.5 text-muted-foreground">
-                          {formatDate(po.order_date)}
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <StatusBadge status={po.status} />
-                        </td>
-                        <td className="px-4 py-2.5 text-end font-medium text-foreground">
-                          {formatCurrency(Number(po.grand_total))}
-                        </td>
+              <div className="overflow-x-auto">
+                {isLoading ? (
+                  <div className="p-4 space-y-2">
+                    {[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full" />)}
+                  </div>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-xs text-muted-foreground uppercase bg-muted/30">
+                        <th className="text-start px-4 py-2.5 font-medium">{t('dashboard.po')}</th>
+                        <th className="text-start px-4 py-2.5 font-medium">{t('dashboard.vendor')}</th>
+                        <th className="text-start px-4 py-2.5 font-medium">{t('common.date')}</th>
+                        <th className="text-start px-4 py-2.5 font-medium">{t('common.status')}</th>
+                        <th className="text-end px-4 py-2.5 font-medium">{t('common.total')}</th>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            )}
-          </div>
+                    </thead>
+                    <tbody>
+                      {recentPurchases.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="text-center text-muted-foreground py-6 text-sm">
+                            {t('dashboard.noPurchaseOrders')}
+                          </td>
+                        </tr>
+                      ) : (
+                        recentPurchases.map((po) => (
+                          <tr key={po.id} className="border-t border-border hover:bg-muted/20 transition-colors">
+                            <td className="px-4 py-2.5 font-mono text-xs font-medium text-foreground">
+                              <Link to={`/purchase/orders/${po.id}`} className="text-primary hover:underline">
+                                {po.po_number}
+                              </Link>
+                            </td>
+                            <td className="px-4 py-2.5 text-foreground">{po.vendor_name ?? "—"}</td>
+                            <td className="px-4 py-2.5 text-muted-foreground">{formatDate(po.order_date)}</td>
+                            <td className="px-4 py-2.5"><StatusBadge status={po.status} /></td>
+                            <td className="px-4 py-2.5 text-end font-medium text-foreground">
+                              {formatCurrency(Number(po.grand_total ?? 0))}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          )}
+
+          {config.widgets.table_low_stock && (
+            <div className="bg-card rounded-lg border shadow-sm">
+              <div className="flex items-center justify-between p-4 border-b">
+                <h3 className="font-display font-semibold text-foreground flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-destructive" /> {t('dashboard.lowStock')}
+                </h3>
+                <Link to="/alerts" className="text-xs text-secondary hover:underline">
+                  {t('common.viewAll')}
+                </Link>
+              </div>
+              <div className="p-2 space-y-1">
+                {alerts.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    {t('dashboard.noAlerts')}
+                  </p>
+                ) : (
+                  alerts.slice(0, 5).map((alert: LowStockAlert) => (
+                    <div
+                      key={alert.id}
+                      className="flex items-center justify-between px-6 py-2 rounded-md hover:bg-muted/30 transition-colors"
+                    >
+                      <div>
+                        <p className="text-xs font-medium text-foreground">{alert.product_code ?? '—'}</p>
+                        <p className="text-[10px] text-muted-foreground truncate max-w-[140px]">
+                          {alert.product_name ?? '—'}
+                        </p>
+                      </div>
+                      <div className="text-end">
+                        <p className="text-xs font-mono font-bold text-destructive">
+                          {alert.current_stock_boxes ?? 0}{" "}
+                          <span className="text-[10px] text-muted-foreground">
+                            /{alert.reorder_level_boxes ?? 0}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
         </div>
+      )}
 
-        {/* Low Stock */}
-        <div className="bg-card rounded-lg border shadow-sm">
-          <div className="flex items-center justify-between p-4 border-b">
-            <h3 className="font-display font-semibold text-foreground flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-destructive" /> {t('dashboard.lowStock')}
-            </h3>
-            <Link
-              to="/alerts"
-              className="text-xs text-secondary hover:underline"
-            >
-              {t('common.viewAll')}
-            </Link>
-          </div>
-
-          <div className="p-2 space-y-1">
-            {alerts.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                {t('dashboard.noAlerts')}
-              </p>
-            ) : (
-              alerts.slice(0, 5).map((alert: any) => (
-                <div
-                  key={alert.id}
-                  className="flex items-center justify-between px-6 py-2 rounded-md hover:bg-muted/30 transition-colors "
-                >
-                  <div>
-                    <p className="text-xs font-medium text-foreground">
-                      {alert.product_code}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground truncate max-w-[140px]">
-                      {alert.product_name}
-                    </p>
-                  </div>
-
-                  <div className="text-end">
-                    <p className="text-xs font-mono font-bold text-destructive">
-                      {alert.current_stock_boxes}{" "}
-                      <span className="text-[10px] text-muted-foreground">
-                        /{alert.reorder_level_boxes}
-                      </span>
-                    </p>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
+      {/* Customize Drawer */}
+      <DashboardCustomizeDrawer open={customizeOpen} onClose={() => setCustomizeOpen(false)} />
     </div>
   );
 }

@@ -59,6 +59,12 @@
     "gstReport": "تقرير ضريبة القيمة المضافة",
     "revenue": "الإيرادات",
     "aging": "تقرير الأعمار",
+    "production": "الإنتاج",
+    "productionOrders": "أوامر الإنتاج",
+    "productionBatches": "الدفعات",
+    "rawMaterials": "المواد الخام",
+    "finishedGoods": "البضائع التامة",
+    "productionCosts": "تحليل التكاليف",
     "alerts": "التنبيهات",
     "settings": "الإعدادات",
     "logout": "تسجيل الخروج"
@@ -711,7 +717,8 @@
     "back": "رجوع",
     "system": "النظام",
     "counted": "المعدود",
-    "noItems": "لا توجد عناصر"
+    "noItems": "لا توجد عناصر",
+    "updateFailed": "فشل حفظ عنصر الجرد"
   },
   "stockSummary": {
     "title": "ملخص المخزون",
@@ -1528,5 +1535,50 @@
       "كيف أنشئ أمر شراء؟",
       "أرني أعلى المنتجات مخزوناً"
     ]
+  },
+  "dashboardConfig": {
+    "customize": "تخصيص لوحة التحكم",
+    "saved": "تم حفظ تخطيط لوحة التحكم",
+    "saveFailed": "فشل حفظ التخطيط",
+    "reset": "تم إعادة التخطيط إلى الافتراضي",
+    "sections": "الأقسام",
+    "kpiCards": "بطاقات المؤشرات",
+    "kpiCardsHint": "ينطبق عندما تكون صفوف مؤشرات الأداء الرئيسية مرئية.",
+    "quickActions": "الإجراءات السريعة",
+    "quickActionsHint": "اختر أزرار الاختصار التي تظهر في أعلى لوحة التحكم.",
+    "resetToDefault": "إعادة إلى الافتراضي",
+    "widgets": {
+      "kpi_summary": "بطاقات المؤشرات الرئيسية",
+      "kpi_secondary": "بطاقات المؤشرات الثانوية",
+      "chart_stock_by_category": "مخطط المخزون حسب الفئة",
+      "table_recent_sales": "المبيعات الأخيرة",
+      "table_recent_purchases": "المشتريات الأخيرة",
+      "table_recent_grns": "إيصالات الاستلام الأخيرة",
+      "table_recent_transfers": "التحويلات الأخيرة",
+      "table_low_stock": "قائمة المخزون المنخفض",
+      "quick_actions": "لوحة الإجراءات السريعة"
+    },
+    "kpis": {
+      "warehouses": "المستودعات",
+      "products": "المنتجات",
+      "vendors": "الموردون",
+      "customers": "العملاء",
+      "pending_pos": "أوامر الشراء المعلقة",
+      "total_stock": "إجمالي المخزون",
+      "monthly_sales": "مبيعات هذا الشهر",
+      "monthly_purchases": "مشتريات هذا الشهر",
+      "today_sales": "مبيعات اليوم",
+      "month_revenue": "إيرادات الشهر",
+      "unpaid_invoices": "الفواتير غير المدفوعة",
+      "low_stock_count": "عناصر المخزون المنخفض",
+      "active_pos": "أوامر الشراء النشطة",
+      "ledger_entries": "قيود دفتر الأستاذ (30 يوماً)"
+    },
+    "actions": {
+      "new_sale": "أمر بيع جديد",
+      "new_purchase_order": "أمر شراء جديد",
+      "new_grn": "إيصال استلام جديد",
+      "new_stock_transfer": "تحويل مخزون جديد"
+    }
   }
 }

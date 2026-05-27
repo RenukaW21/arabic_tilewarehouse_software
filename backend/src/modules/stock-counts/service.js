@@ -1,6 +1,6 @@
 'use strict';
 const repo = require('./repository');
-const { beginTransaction } = require('../../config/db');
+const { beginTransaction, query } = require('../../config/db');
 const { generateDocNumber } = require('../../utils/docNumber');
 const { AppError } = require('../../middlewares/error.middleware');
 
@@ -31,6 +31,13 @@ const loadFromStock = async (id, tenantId) => {
   if (!count) throw new AppError('Stock count not found', 404, 'NOT_FOUND');
   if (count.status !== 'draft') {
     throw new AppError('Only draft counts can load from stock', 400, 'INVALID_STATUS');
+  }
+  const warehouseRows = await query(
+    'SELECT id FROM warehouses WHERE id = ? AND tenant_id = ? LIMIT 1',
+    [count.warehouse_id, tenantId]
+  );
+  if (warehouseRows.length === 0) {
+    throw new AppError('Warehouse not found or has been deleted. Please create a new stock count with a valid warehouse.', 404, 'WAREHOUSE_NOT_FOUND');
   }
   const trx = await beginTransaction();
   try {

@@ -10,12 +10,12 @@ const { requireMinRole } = require('../../middlewares/role.middleware');
 router.use(authenticate);
 router.use(attachWarehouseScope);
 
-router.post('/', transferController.createTransfer);
 router.get('/', transferController.getTransfers);
 router.get('/by-product/:productId', transferController.getTransfersByProduct);
 router.get('/:id', transferController.getTransferById);
-router.put('/:id', transferController.updateTransfer);
-router.delete('/:id', transferController.deleteTransfer);
+router.post('/', requireMinRole('warehouse_manager'), transferController.createTransfer);
+router.put('/:id', requireMinRole('warehouse_manager'), transferController.updateTransfer);
+router.delete('/:id', requireMinRole('warehouse_manager'), transferController.deleteTransfer);
 
 // Two-step transfer lifecycle
 router.post('/:id/confirm', requireMinRole('warehouse_manager'), transferController.confirmTransfer);

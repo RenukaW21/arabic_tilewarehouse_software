@@ -267,7 +267,8 @@ const moveStockBetweenRacks = async (trx, tenantId, warehouseId, productId, from
 
   if (totalAvailable + 1e-9 < boxes) {
     throw new Error(
-      `Insufficient source stock to move ${boxes} boxes (available: ${totalAvailable})`
+      `Insufficient unallocated stock: ${boxes} boxes requested but only ${totalAvailable} boxes are available without a rack assignment in this warehouse. ` +
+      `Receive stock via GRN without selecting a rack first, then allocate here.`
     );
   }
 

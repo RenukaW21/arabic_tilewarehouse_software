@@ -2,10 +2,12 @@
 const app = require('./src/app');
 const env = require('./src/config/env');
 const { testConnection } = require('./src/config/db');
+const { runMigrations } = require('./src/config/migrations');
 const logger = require('./src/utils/logger');
 
 const start = async () => {
   await testConnection();
+  await runMigrations();
 
   const server = app.listen(env.PORT, () => {
     logger.info(`Tiles WMS API running on port ${env.PORT} [${env.NODE_ENV}]`);

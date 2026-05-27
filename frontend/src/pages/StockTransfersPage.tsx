@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import { stockTransferApi } from '@/api/stockTransferApi';
 import { warehouseApi } from '@/api/warehouseApi';
 import { inventoryApi } from '@/api/inventoryApi';
@@ -144,6 +145,7 @@ export default function StockTransfersPage() {
   const openEdit = async (r: StockTransfer) => {
     try {
       const full = await stockTransferApi.getById(r.id);
+      if (!full) throw new Error(t('stockTransfers.failedToLoad'));
       setEditing(full);
       setFormHeader({
         transfer_number: full.transfer_number,
@@ -165,7 +167,11 @@ export default function StockTransfersPage() {
       );
       setDialogOpen(true);
     } catch (e) {
-      toast.error(t('stockTransfers.failedToLoad'));
+      // Axios HTTP errors are already toasted by the response interceptor — only
+      // show a toast here for non-HTTP errors (e.g. null data, type mismatches).
+      if (!isAxiosError(e)) {
+        toast.error(e instanceof Error ? e.message : t('stockTransfers.failedToLoad'));
+      }
     }
   };
 

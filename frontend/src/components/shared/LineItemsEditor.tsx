@@ -357,6 +357,7 @@ function ProductCombobox({ products, value, onChange, disabled }: ProductCombobo
     p => p.id === value || p.name === value || p.code === value
   );
 
+  const isUnresolved = !!value && !selectedProduct;
   const displayValue = selectedProduct ? selectedProduct.name : value;
 
   const onSelectHandler = (val: Product | string) => {
@@ -374,9 +375,11 @@ function ProductCombobox({ products, value, onChange, disabled }: ProductCombobo
           aria-expanded={open}
           className={cn(
             "h-8 w-full justify-between px-2 text-xs font-normal",
-            !displayValue && "text-muted-foreground"
+            !displayValue && "text-muted-foreground",
+            isUnresolved && "border-destructive text-destructive"
           )}
           disabled={disabled}
+          title={isUnresolved ? `Product not found: "${value}". Please re-select.` : undefined}
         >
           <span className="truncate">
             {displayValue || t('purchaseOrders.selectOrType')}
