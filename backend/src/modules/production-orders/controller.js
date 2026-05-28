@@ -66,4 +66,37 @@ const remove = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { getAll, getById, create, update, updateStatus, remove, validate };
+const repo = require('./repository');
+
+const getAllMaterials = async (req, res, next) => {
+  try {
+    const { rows, total } = await repo.findAllMaterials(req.tenantId, req.query);
+    const page  = Math.max(1, parseInt(req.query.page)  || 1);
+    const limit = Math.min(500, Math.max(1, parseInt(req.query.limit) || 25));
+    return paginated(res, rows, { page, limit, total }, 'Raw materials fetched');
+  } catch (err) { next(err); }
+};
+
+const getAllOutputs = async (req, res, next) => {
+  try {
+    const { rows, total } = await repo.findAllOutputs(req.tenantId, req.query);
+    const page  = Math.max(1, parseInt(req.query.page)  || 1);
+    const limit = Math.min(500, Math.max(1, parseInt(req.query.limit) || 25));
+    return paginated(res, rows, { page, limit, total }, 'Finished goods fetched');
+  } catch (err) { next(err); }
+};
+
+const getCostSummary = async (req, res, next) => {
+  try {
+    const { rows, total, summary } = await repo.getCostSummary(req.tenantId, req.query);
+    const page  = Math.max(1, parseInt(req.query.page)  || 1);
+    const limit = Math.min(500, Math.max(1, parseInt(req.query.limit) || 25));
+    return res.status(200).json({
+      success: true, message: 'Cost summary fetched',
+      data: rows, summary,
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) || 1 },
+    });
+  } catch (err) { next(err); }
+};
+
+module.exports = { getAll, getById, create, update, updateStatus, remove, validate, getAllMaterials, getAllOutputs, getCostSummary };

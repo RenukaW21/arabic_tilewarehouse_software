@@ -11,5 +11,7 @@ router.get('/dashboard',       ctrl.dashboard);
 router.get('/gst',             requireRole(['super_admin','admin','accountant','warehouse_manager','viewer']), ctrl.gstReport);
 router.get('/revenue',         requireRole(['super_admin','admin','accountant','warehouse_manager','viewer']), ctrl.revenueReport);
 router.get('/aging',           requireRole(['super_admin','admin','accountant','warehouse_manager','viewer']), ctrl.agingReport);
-router.get('/stock-valuation', requireRole(['super_admin','admin','accountant','warehouse_manager', 'viewer']), ctrl.stockValuation);
+router.get('/stock-valuation',              requireRole(['super_admin','admin','accountant','warehouse_manager', 'viewer']), ctrl.stockValuation);
+router.get('/inventory-consumption',        requireRole(['super_admin','admin','accountant','warehouse_manager','viewer']), ctrl.inventoryConsumption);
+router.get('/inventory-consumption/export', requireRole(['super_admin','admin','accountant','warehouse_manager','viewer']), ctrl.inventoryConsumptionExport);
 module.exports = router;

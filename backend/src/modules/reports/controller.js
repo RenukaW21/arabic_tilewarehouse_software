@@ -42,4 +42,36 @@ const stockValuation = async (req, res) => {
   const data = await service.getStockValuation(req.tenantId, warehouseId);
   return success(res, data, 'Stock valuation');
 };
-module.exports = { dashboard, gstReport, revenueReport, agingReport, stockValuation };
+const inventoryConsumption = async (req, res) => {
+  const q = { ...req.query };
+  applyWarehouseScope(req, q);
+  const filters = {
+    from:            q.from            || null,
+    to:              q.to              || null,
+    productId:       q.productId       || null,
+    warehouseId:     q.warehouse_id    || q.warehouseId || null,
+    transactionType: q.transactionType || null,
+  };
+  const data = await service.getInventoryConsumptionReport(req.tenantId, filters);
+  return success(res, data, 'Inventory consumption report');
+};
+
+const inventoryConsumptionExport = async (req, res) => {
+  const q = { ...req.query };
+  applyWarehouseScope(req, q);
+  const filters = {
+    from:            q.from            || null,
+    to:              q.to              || null,
+    productId:       q.productId       || null,
+    warehouseId:     q.warehouse_id    || q.warehouseId || null,
+    transactionType: q.transactionType || null,
+  };
+  const wb = await service.exportInventoryConsumptionExcel(req.tenantId, filters);
+  const date = new Date().toISOString().slice(0, 10);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="inventory-consumption-${date}.xlsx"`);
+  await wb.xlsx.write(res);
+  res.end();
+};
+
+module.exports = { dashboard, gstReport, revenueReport, agingReport, stockValuation, inventoryConsumption, inventoryConsumptionExport };

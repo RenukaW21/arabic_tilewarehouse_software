@@ -8,6 +8,7 @@ const {
   deleteReservationsForSalesOrder,
   replaceReservationsForSalesOrder,
 } = require('../../utils/stockReservation');
+const loyaltyService = require('../loyalty/service');
 
 const getAll = async (tenantId, queryParams) => {
   const { page, limit, offset, sortBy, sortOrder, search } = parsePagination(queryParams, ['order_date', 'created_at', 'so_number']);
@@ -74,7 +75,13 @@ const create = async (tenantId, userId, data) => {
     return { ...item, lineTotal };
   });
   const discountAmountHeader = parseFloat(data.discountAmount) || 0;
-  const finalGrandTotal = subTotal - discountAmountHeader;
+  const loyalty = await loyaltyService.calculateRedemption(
+    tenantId,
+    data.customerId,
+    data.loyaltyPointsRedeemed ?? data.loyalty_points_redeemed,
+    Math.max(0, subTotal - discountAmountHeader)
+  );
+  const finalGrandTotal = Math.max(0, subTotal - discountAmountHeader - loyalty.discount);
 
   const trx = await beginTransaction();
   try {
@@ -82,13 +89,14 @@ const create = async (tenantId, userId, data) => {
       `INSERT INTO sales_orders
          (id, tenant_id, so_number, customer_id, warehouse_id, status, order_date,
           expected_delivery_date, delivery_address, sub_total, discount_amount, tax_amount,
-          grand_total, payment_status, notes, created_by, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+          grand_total, payment_status, notes, loyalty_points_redeemed, loyalty_discount_amount,
+          sales_channel, created_by, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
       [id, tenantId, soNumber, data.customerId, data.warehouseId,
        data.orderDate || new Date(), data.expectedDeliveryDate || null,
        data.deliveryAddress || null, subTotal, discountAmountHeader, 0, finalGrandTotal,
        data.paymentStatus && ['pending', 'partial', 'paid'].includes(data.paymentStatus) ? data.paymentStatus : 'pending',
-       data.notes || null, userId]
+       data.notes || null, loyalty.points, loyalty.discount, data.salesChannel || data.sales_channel || 'offline', userId]
     );
 
     for (const item of itemsWithTotal) {
@@ -125,7 +133,13 @@ const update = async (id, tenantId, userId, data) => {
       return { ...item, lineTotal };
     });
     const discountAmountHeader = parseFloat(data.discountAmount) || 0;
-    const finalGrandTotal = subTotal - discountAmountHeader;
+    const loyalty = await loyaltyService.calculateRedemption(
+      tenantId,
+      data.customerId ?? so.customer_id,
+      data.loyaltyPointsRedeemed ?? data.loyalty_points_redeemed,
+      Math.max(0, subTotal - discountAmountHeader)
+    );
+    const finalGrandTotal = Math.max(0, subTotal - discountAmountHeader - loyalty.discount);
 
     const trx = await beginTransaction();
     try {
@@ -133,13 +147,15 @@ const update = async (id, tenantId, userId, data) => {
         `UPDATE sales_orders SET
            customer_id = ?, warehouse_id = ?, order_date = ?, expected_delivery_date = ?,
            delivery_address = ?, sub_total = ?, discount_amount = ?, tax_amount = ?, grand_total = ?,
-           payment_status = ?, notes = ?, updated_at = NOW()
+           payment_status = ?, notes = ?, loyalty_points_redeemed = ?, loyalty_discount_amount = ?,
+           sales_channel = ?, updated_at = NOW()
          WHERE id = ? AND tenant_id = ?`,
         [data.customerId ?? so.customer_id, data.warehouseId ?? so.warehouse_id,
          data.orderDate || so.order_date, data.expectedDeliveryDate ?? so.expected_delivery_date,
          data.deliveryAddress ?? so.delivery_address, subTotal, discountAmountHeader, 0, finalGrandTotal,
          data.paymentStatus && ['pending', 'partial', 'paid'].includes(data.paymentStatus) ? data.paymentStatus : so.payment_status,
-         data.notes ?? so.notes, id, tenantId]
+         data.notes ?? so.notes, loyalty.points, loyalty.discount,
+         data.salesChannel || data.sales_channel || so.sales_channel || 'offline', id, tenantId]
       );
       await trx.query('DELETE FROM sales_order_items WHERE sales_order_id = ? AND tenant_id = ?', [id, tenantId]);
       for (const item of itemsWithTotal) {
@@ -237,6 +253,7 @@ const confirmOrder = async (id, tenantId, userId) => {
 
     // Soft-reserve stock for this SO — does NOT touch stock_summary
     await replaceReservationsForSalesOrder(trx, tenantId, id, so.warehouse_id, so.items);
+    await loyaltyService.postSalesOrderRewards(trx, tenantId, userId, so);
 
     await trx.query(`UPDATE sales_orders SET status = 'pick_ready', updated_at = NOW() WHERE id = ? AND tenant_id = ?`, [id, tenantId]);
     await trx.commit();

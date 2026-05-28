@@ -430,4 +430,208 @@ const getDashboard = async (tenantId, { warehouseId } = {}) => {
   };
 };
 
-module.exports = { getGSTReport, getRevenueReport, getAgingReport, getStockValuation, getDashboardKPIs, getDashboard };
+// ─── Inventory Consumption Report ────────────────────────────────────────────
+
+const CONSUMPTION_TYPES = ['sale', 'damage', 'adjustment', 'transfer_out', 'production_material'];
+
+const getInventoryConsumptionReport = async (tenantId, { from, to, productId, warehouseId, transactionType } = {}) => {
+  const conditions = ['sl.tenant_id = ?', 'sl.boxes_out > 0'];
+  const params = [tenantId];
+
+  if (from)            { conditions.push('sl.transaction_date >= ?'); params.push(from); }
+  if (to)              { conditions.push('sl.transaction_date <= ?'); params.push(to); }
+  if (productId)       { conditions.push('sl.product_id = ?');        params.push(productId); }
+  if (warehouseId)     { conditions.push('sl.warehouse_id = ?');      params.push(warehouseId); }
+  if (transactionType) { conditions.push('sl.transaction_type = ?');  params.push(transactionType); }
+  else {
+    // default: show all OUT-movement types meaningful for consumption
+    conditions.push(`sl.transaction_type IN (${CONSUMPTION_TYPES.map(() => '?').join(',')})`);
+    params.push(...CONSUMPTION_TYPES);
+  }
+
+  const where = conditions.join(' AND ');
+
+  const rows = await query(
+    `SELECT
+       sl.id,
+       sl.transaction_date,
+       sl.transaction_type,
+       sl.reference_id,
+       sl.reference_type,
+       sl.boxes_out       AS qty_consumed,
+       sl.sqft_out        AS sqft_consumed,
+       sl.balance_boxes,
+       sl.notes,
+       p.id               AS product_id,
+       p.name             AS product_name,
+       p.code             AS product_code,
+       p.hsn_code,
+       p.size_label,
+       w.id               AS warehouse_id,
+       w.name             AS warehouse_name,
+       COALESCE(cost.avg_cost, 0) AS unit_cost,
+       ROUND(sl.boxes_out * COALESCE(cost.avg_cost, 0), 2) AS total_value
+     FROM stock_ledger sl
+     JOIN products   p ON sl.product_id   = p.id
+     JOIN warehouses w ON sl.warehouse_id = w.id
+     LEFT JOIN (
+       SELECT product_id, warehouse_id, AVG(avg_cost_per_box) AS avg_cost
+       FROM   stock_summary
+       WHERE  tenant_id = ?
+       GROUP  BY product_id, warehouse_id
+     ) cost ON cost.product_id = sl.product_id AND cost.warehouse_id = sl.warehouse_id
+     WHERE ${where}
+     ORDER BY sl.transaction_date DESC, sl.id DESC`,
+    [tenantId, ...params]
+  );
+
+  // summary aggregates
+  const summary = rows.reduce((acc, r) => {
+    acc.totalQtyConsumed  += parseFloat(r.qty_consumed  || 0);
+    acc.totalSqftConsumed += parseFloat(r.sqft_consumed || 0);
+    acc.totalValue        += parseFloat(r.total_value   || 0);
+    acc.uniqueProducts.add(r.product_id);
+    return acc;
+  }, { totalQtyConsumed: 0, totalSqftConsumed: 0, totalValue: 0, uniqueProducts: new Set() });
+
+  return {
+    summary: {
+      totalQtyConsumed:  +summary.totalQtyConsumed.toFixed(2),
+      totalSqftConsumed: +summary.totalSqftConsumed.toFixed(2),
+      totalValue:        +summary.totalValue.toFixed(2),
+      uniqueProducts:    summary.uniqueProducts.size,
+      totalRows:         rows.length,
+    },
+    rows,
+  };
+};
+
+const exportInventoryConsumptionExcel = async (tenantId, filters) => {
+  const ExcelJS = require('exceljs');
+  const { summary, rows } = await getInventoryConsumptionReport(tenantId, filters);
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Tiles WMS';
+  wb.created = new Date();
+
+  // ── Summary sheet ────────────────────────────────────────────────────────
+  const ws = wb.addWorksheet('Consumption Report');
+
+  // Title row
+  ws.mergeCells('A1:J1');
+  const titleCell = ws.getCell('A1');
+  titleCell.value = 'Inventory Consumption Report';
+  titleCell.font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
+  titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E40AF' } };
+  titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+  ws.getRow(1).height = 32;
+
+  // Filters row
+  const filterParts = [];
+  if (filters.from || filters.to) filterParts.push(`Period: ${filters.from || '—'} to ${filters.to || '—'}`);
+  if (filters.transactionType)    filterParts.push(`Type: ${filters.transactionType}`);
+
+  ws.mergeCells('A2:J2');
+  ws.getCell('A2').value = filterParts.length ? filterParts.join('   |   ') : 'All periods & movement types';
+  ws.getCell('A2').font  = { italic: true, color: { argb: 'FF555555' } };
+  ws.getRow(2).height = 18;
+
+  // Summary KPI row headers
+  const kpiLabels = ['Total Qty Consumed (boxes)', 'Total Sqft Consumed', 'Total Value (₹)', 'Unique Products', 'Total Entries'];
+  const kpiValues = [summary.totalQtyConsumed, summary.totalSqftConsumed, summary.totalValue, summary.uniqueProducts, summary.totalRows];
+
+  for (let i = 0; i < kpiLabels.length; i++) {
+    const col = i * 2 + 1;
+    const labelCell = ws.getCell(4, col);
+    labelCell.value = kpiLabels[i];
+    labelCell.font  = { bold: true, size: 9, color: { argb: 'FF374151' } };
+    labelCell.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } };
+    labelCell.border = { bottom: { style: 'thin', color: { argb: 'FFBFDBFE' } } };
+
+    const valCell = ws.getCell(5, col);
+    valCell.value = kpiValues[i];
+    valCell.font  = { bold: true, size: 11 };
+    if (i === 2) valCell.numFmt = '₹#,##0.00';
+    else         valCell.numFmt = '#,##0.##';
+  }
+  ws.getRow(4).height = 22;
+  ws.getRow(5).height = 22;
+
+  // Column headers row
+  const headerRow = ws.addRow([]);
+  const headers = [
+    { header: '#',              width: 6  },
+    { header: 'Date',          width: 14 },
+    { header: 'Product Code',  width: 14 },
+    { header: 'Product Name',  width: 28 },
+    { header: 'Warehouse',     width: 20 },
+    { header: 'Movement Type', width: 18 },
+    { header: 'Qty Consumed\n(boxes)', width: 16 },
+    { header: 'Sqft Consumed', width: 14 },
+    { header: 'Unit Cost (₹)', width: 14 },
+    { header: 'Total Value (₹)', width: 16 },
+  ];
+
+  ws.columns = headers.map((h, i) => ({ key: String(i + 1), width: h.width }));
+
+  const headerDataRow = ws.getRow(7);
+  headers.forEach((h, i) => {
+    const cell = headerDataRow.getCell(i + 1);
+    cell.value = h.header;
+    cell.font  = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+    cell.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
+    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    cell.border = { bottom: { style: 'medium', color: { argb: 'FF1E40AF' } } };
+  });
+  headerDataRow.height = 30;
+
+  // Data rows
+  rows.forEach((r, idx) => {
+    const row = ws.addRow([
+      idx + 1,
+      r.transaction_date ? new Date(r.transaction_date).toLocaleDateString('en-IN') : '',
+      r.product_code,
+      r.product_name,
+      r.warehouse_name,
+      r.transaction_type,
+      +parseFloat(r.qty_consumed  || 0).toFixed(2),
+      +parseFloat(r.sqft_consumed || 0).toFixed(2),
+      +parseFloat(r.unit_cost     || 0).toFixed(2),
+      +parseFloat(r.total_value   || 0).toFixed(2),
+    ]);
+
+    const isEven = idx % 2 === 1;
+    const bg = isEven ? 'FFF8FAFF' : 'FFFFFFFF';
+    row.eachCell((cell, colNum) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+      cell.border = { bottom: { style: 'hair', color: { argb: 'FFE5E7EB' } } };
+      if (colNum >= 7) cell.numFmt = '#,##0.##';
+      if (colNum === 10) cell.numFmt = '₹#,##0.00';
+      cell.alignment = { vertical: 'middle', horizontal: colNum <= 4 ? 'left' : 'center' };
+    });
+  });
+
+  // Totals row
+  const totalsRow = ws.addRow([
+    '', 'TOTAL', '', '', '', '',
+    +summary.totalQtyConsumed.toFixed(2),
+    +summary.totalSqftConsumed.toFixed(2),
+    '',
+    +summary.totalValue.toFixed(2),
+  ]);
+  totalsRow.eachCell((cell, colNum) => {
+    cell.font = { bold: true };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E7FF' } };
+    if (colNum === 10) cell.numFmt = '₹#,##0.00';
+    if (colNum === 7 || colNum === 8) cell.numFmt = '#,##0.##';
+    cell.border = { top: { style: 'medium', color: { argb: 'FF1E40AF' } } };
+  });
+
+  return wb;
+};
+
+module.exports = {
+  getGSTReport, getRevenueReport, getAgingReport, getStockValuation,
+  getDashboardKPIs, getDashboard,
+  getInventoryConsumptionReport, exportInventoryConsumptionExcel,
+};

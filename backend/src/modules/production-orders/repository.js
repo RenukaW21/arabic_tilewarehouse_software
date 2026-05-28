@@ -122,6 +122,133 @@ const createOutput = async (data, trx) => {
   return id;
 };
 
+// ─── CROSS-ORDER LISTS (for dedicated pages) ──────────────────────────────────
+
+const findAllMaterials = async (tenantId, queryParams) => {
+  const { parsePagination, buildSearchClause } = require('../../utils/pagination');
+  const { page, limit, offset, sortBy, sortOrder, search } = parsePagination(queryParams, ['created_at', 'product_name', 'planned_qty']);
+
+  const conditions = ['m.tenant_id = ?'];
+  const params = [tenantId];
+
+  if (queryParams.production_order_id) {
+    conditions.push('m.production_order_id = ?');
+    params.push(queryParams.production_order_id);
+  }
+  if (queryParams.product_id) {
+    conditions.push('m.product_id = ?');
+    params.push(queryParams.product_id);
+  }
+  if (search) {
+    const { clause, params: sp } = buildSearchClause(search, ['p.name', 'p.code', 'po.order_number']);
+    if (clause) { conditions.push(clause); params.push(...sp); }
+  }
+
+  const where = conditions.join(' AND ');
+  const baseSql = `
+    SELECT m.*,
+           p.name         AS product_name,
+           p.code         AS product_code,
+           po.order_number AS order_number,
+           po.status       AS order_status,
+           w.name          AS warehouse_name
+    FROM production_order_materials m
+    LEFT JOIN products          p  ON p.id  = m.product_id
+    LEFT JOIN production_orders po ON po.id = m.production_order_id
+    LEFT JOIN warehouses        w  ON w.id  = po.warehouse_id
+    WHERE ${where}`;
+
+  const [rows, countRows] = await Promise.all([
+    query(`${baseSql} ORDER BY m.created_at ${sortOrder} LIMIT ${limit} OFFSET ${offset}`, params),
+    query(`SELECT COUNT(*) AS total FROM production_order_materials m
+           LEFT JOIN products p ON p.id = m.product_id
+           LEFT JOIN production_orders po ON po.id = m.production_order_id
+           WHERE ${where}`, params),
+  ]);
+  return { rows, total: Number(countRows[0].total) };
+};
+
+const findAllOutputs = async (tenantId, queryParams) => {
+  const { parsePagination, buildSearchClause } = require('../../utils/pagination');
+  const { page, limit, offset, sortBy, sortOrder, search } = parsePagination(queryParams, ['created_at', 'product_name', 'planned_qty']);
+
+  const conditions = ['o.tenant_id = ?'];
+  const params = [tenantId];
+
+  if (queryParams.production_order_id) {
+    conditions.push('o.production_order_id = ?');
+    params.push(queryParams.production_order_id);
+  }
+  if (queryParams.product_id) {
+    conditions.push('o.product_id = ?');
+    params.push(queryParams.product_id);
+  }
+  if (search) {
+    const { clause, params: sp } = buildSearchClause(search, ['p.name', 'p.code', 'po.order_number']);
+    if (clause) { conditions.push(clause); params.push(...sp); }
+  }
+
+  const where = conditions.join(' AND ');
+  const baseSql = `
+    SELECT o.*,
+           p.name          AS product_name,
+           p.code          AS product_code,
+           po.order_number AS order_number,
+           po.status       AS order_status,
+           w.name          AS warehouse_name
+    FROM production_order_outputs o
+    LEFT JOIN products          p  ON p.id  = o.product_id
+    LEFT JOIN production_orders po ON po.id = o.production_order_id
+    LEFT JOIN warehouses        w  ON w.id  = po.warehouse_id
+    WHERE ${where}`;
+
+  const [rows, countRows] = await Promise.all([
+    query(`${baseSql} ORDER BY o.created_at ${sortOrder} LIMIT ${limit} OFFSET ${offset}`, params),
+    query(`SELECT COUNT(*) AS total FROM production_order_outputs o
+           LEFT JOIN products p ON p.id = o.product_id
+           LEFT JOIN production_orders po ON po.id = o.production_order_id
+           WHERE ${where}`, params),
+  ]);
+  return { rows, total: Number(countRows[0].total) };
+};
+
+const getCostSummary = async (tenantId, queryParams) => {
+  const { parsePagination } = require('../../utils/pagination');
+  const { page, limit, offset, sortOrder } = parsePagination(queryParams, ['created_at']);
+
+  const conditions = ['po.tenant_id = ?'];
+  const params = [tenantId];
+
+  if (queryParams.status)       { conditions.push('po.status = ?');       params.push(queryParams.status); }
+  if (queryParams.warehouse_id) { conditions.push('po.warehouse_id = ?'); params.push(queryParams.warehouse_id); }
+  if (queryParams.from_date)    { conditions.push('po.planned_date >= ?'); params.push(queryParams.from_date); }
+  if (queryParams.to_date)      { conditions.push('po.planned_date <= ?'); params.push(queryParams.to_date); }
+
+  const where = conditions.join(' AND ');
+  const baseSql = `
+    SELECT po.id, po.order_number, po.status, po.planned_date, po.completion_date,
+           po.labor_cost, po.machine_cost, po.wastage_cost,
+           po.total_material_cost, po.total_cost,
+           w.name AS warehouse_name
+    FROM production_orders po
+    LEFT JOIN warehouses w ON w.id = po.warehouse_id
+    WHERE ${where}`;
+
+  const [rows, countRows, totals] = await Promise.all([
+    query(`${baseSql} ORDER BY po.created_at ${sortOrder} LIMIT ${limit} OFFSET ${offset}`, params),
+    query(`SELECT COUNT(*) AS total FROM production_orders po WHERE ${where}`, params),
+    query(`SELECT
+             COALESCE(SUM(labor_cost), 0)          AS total_labor,
+             COALESCE(SUM(machine_cost), 0)        AS total_machine,
+             COALESCE(SUM(wastage_cost), 0)        AS total_wastage,
+             COALESCE(SUM(total_material_cost), 0) AS total_material,
+             COALESCE(SUM(total_cost), 0)          AS grand_total
+           FROM production_orders po WHERE ${where}`, params),
+  ]);
+
+  return { rows, total: Number(countRows[0].total), summary: totals[0] };
+};
+
 // ─── UPDATE ───────────────────────────────────────────────────────────────────
 
 const updateOrder = async (id, tenantId, fields, trx) => {
@@ -186,6 +313,7 @@ const deleteOrder = async (id, tenantId, trx) => {
 
 module.exports = {
   findAll, findById, findMaterials, findOutputs,
+  findAllMaterials, findAllOutputs, getCostSummary,
   createOrder, createMaterial, createOutput,
   updateOrder, recalcTotals, replaceMaterials, replaceOutputs,
   deleteOrder,

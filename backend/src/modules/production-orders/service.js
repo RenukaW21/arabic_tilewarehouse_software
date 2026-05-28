@@ -99,6 +99,56 @@ const update = async (id, tenantId, data) => {
   }
 };
 
+// ─── INTERNAL: multi-bin stock deduction ─────────────────────────────────────
+// postStockMovement requires an exact bin (shade+batch+rack). Raw-material
+// deduction must spread across whatever bins actually hold the stock.
+
+const deductMaterialStock = async (trx, { tenantId, warehouseId, productId, qty, referenceId, orderNumber, userId }) => {
+  if (!qty || qty <= 0) return;
+
+  // Lock all non-empty bins for this product in this warehouse
+  const bins = await trx.query(
+    `SELECT id, shade_id, batch_id, rack_id, total_boxes
+     FROM stock_summary
+     WHERE tenant_id = ? AND warehouse_id = ? AND product_id = ? AND total_boxes > 0
+     ORDER BY total_boxes DESC
+     FOR UPDATE`,
+    [tenantId, warehouseId, productId]
+  );
+
+  const totalAvailable = bins.reduce((s, b) => s + (parseFloat(b.total_boxes) || 0), 0);
+  if (totalAvailable + 1e-9 < qty) {
+    const { AppError } = require('../../middlewares/error.middleware');
+    throw new AppError(
+      `Insufficient stock for raw material: need ${qty} boxes but only ${totalAvailable.toFixed(2)} available in warehouse.`,
+      400, 'INSUFFICIENT_STOCK'
+    );
+  }
+
+  let remaining = qty;
+  for (const bin of bins) {
+    if (remaining <= 0) break;
+    const take = Math.min(remaining, parseFloat(bin.total_boxes) || 0);
+    if (take <= 0) continue;
+
+    await postStockMovement(trx, {
+      tenantId,
+      warehouseId,
+      rackId:          bin.rack_id  || null,
+      shadeId:         bin.shade_id || null,
+      batchId:         bin.batch_id || null,
+      productId,
+      transactionType: 'production_material',
+      referenceId,
+      referenceType:   'production_order',
+      boxesOut:        take,
+      notes:           `Production Order ${orderNumber} — material consumed`,
+      createdBy:       userId,
+    });
+    remaining -= take;
+  }
+};
+
 // ─── STATUS TRANSITION ────────────────────────────────────────────────────────
 
 const VALID_TRANSITIONS = {
@@ -137,16 +187,14 @@ const updateStatus = async (id, tenantId, newStatus, userId) => {
       for (const mat of materials) {
         const qty = parseFloat(mat.actual_qty) || parseFloat(mat.planned_qty) || 0;
         if (qty > 0) {
-          await postStockMovement(trx, {
+          await deductMaterialStock(trx, {
             tenantId,
-            warehouseId:     order.warehouse_id,
-            productId:       mat.product_id,
-            transactionType: 'production_material',
-            referenceId:     id,
-            referenceType:   'production_order',
-            boxesOut:        qty,
-            notes:           `Production Order ${order.order_number} — material consumed`,
-            createdBy:       userId,
+            warehouseId: order.warehouse_id,
+            productId:   mat.product_id,
+            qty,
+            referenceId: id,
+            orderNumber: order.order_number,
+            userId,
           });
         }
       }

@@ -9,6 +9,11 @@ const { createSchema, updateSchema, updateStatusSchema } = require('./validation
 router.use(authenticate);
 
 // ─── READ ─────────────────────────────────────────────────────────────────────
+// Named sub-routes MUST come before /:id to avoid param conflict
+router.get('/materials',    ctrl.getAllMaterials);
+router.get('/outputs',      ctrl.getAllOutputs);
+router.get('/cost-summary', ctrl.getCostSummary);
+
 router.get('/',    ctrl.getAll);
 router.get('/:id', ctrl.getById);
 
