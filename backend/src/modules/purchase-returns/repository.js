@@ -169,17 +169,16 @@ const deleteReturnItems = async (returnId, tenantId, trx) => {
   );
 };
 
-const getStockBalance = async (trx, tenantId, warehouseId, productId, shadeId, batchId) => {
-  // SUM across all rack bins — stock may be spread across multiple racks.
-  // The old query filtered rack_id IS NULL which returned 0 whenever stock
-  // had been assigned to a rack, falsely blocking valid returns.
+const getStockBalance = async (trx, tenantId, warehouseId, productId) => {
+  // Sum across ALL bins (any shade, batch, rack) — the form does not capture
+  // shade/batch on a purchase return, so filtering by them always returns 0
+  // when stock was received with shade/batch tags via GRN.
   const rows = await trx.query(
     `SELECT COALESCE(SUM(total_boxes), 0)  AS total_boxes,
             COALESCE(SUM(total_pieces), 0) AS total_pieces
      FROM stock_summary
-     WHERE tenant_id = ? AND warehouse_id = ? AND product_id = ?
-       AND (shade_id <=> ?) AND (batch_id <=> ?)`,
-    [tenantId, warehouseId, productId, shadeId || null, batchId || null]
+     WHERE tenant_id = ? AND warehouse_id = ? AND product_id = ?`,
+    [tenantId, warehouseId, productId]
   );
   return rows[0] || { total_boxes: 0, total_pieces: 0 };
 };

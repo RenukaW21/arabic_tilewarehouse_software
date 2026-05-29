@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const { getPool, query, beginTransaction } = require('../../config/db');
 const { parsePagination, buildSearchClause, buildFilterClauses } = require('../../utils/pagination');
 const { syncRackProductInventory } = require('../../utils/stockHelper');
+const { AppError } = require('../../middlewares/error.middleware');
 
 const OVERFLOW_RACK_SENTINEL = '__overflow_area__';
 const OVERFLOW_RACK_NAME = 'Overflow Area';
@@ -266,9 +267,11 @@ const moveStockBetweenRacks = async (trx, tenantId, warehouseId, productId, from
   }, 0);
 
   if (totalAvailable + 1e-9 < boxes) {
-    throw new Error(
+    throw new AppError(
       `Insufficient unallocated stock: ${boxes} boxes requested but only ${totalAvailable} boxes are available without a rack assignment in this warehouse. ` +
-      `Receive stock via GRN without selecting a rack first, then allocate here.`
+      `Receive stock via GRN without selecting a rack first, then allocate here.`,
+      400,
+      'INSUFFICIENT_STOCK'
     );
   }
 

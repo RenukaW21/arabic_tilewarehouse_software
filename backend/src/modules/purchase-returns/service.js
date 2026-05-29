@@ -47,9 +47,7 @@ const create = async (tenantId, userId, data) => {
       trx,
       tenantId,
       data.warehouse_id,
-      it.product_id,
-      it.shade_id || null,
-      it.batch_id || null
+      it.product_id
     );
 
     const available = parseFloat(balance?.total_boxes) || 0;
@@ -132,9 +130,7 @@ const dispatch = async (id, tenantId, userId) => {
         trx,
         tenantId,
         existing.warehouse_id,
-        it.product_id,
-        it.shade_id || null,
-        it.batch_id || null
+        it.product_id
       );
       const available = parseFloat(balance?.total_boxes) || 0;
       const returned  = parseFloat(it.returned_boxes)   || 0;
@@ -155,11 +151,10 @@ const dispatch = async (id, tenantId, userId) => {
       const stockRows = await trx.query(
         `SELECT id, rack_id, total_boxes FROM stock_summary
          WHERE tenant_id = ? AND warehouse_id = ? AND product_id = ?
-           AND (shade_id <=> ?) AND (batch_id <=> ?)
            AND total_boxes > 0
          ORDER BY rack_id IS NULL ASC, total_boxes DESC
          FOR UPDATE`,
-        [tenantId, existing.warehouse_id, it.product_id, it.shade_id || null, it.batch_id || null]
+        [tenantId, existing.warehouse_id, it.product_id]
       );
 
       const totalReturnedPieces = parseFloat(it.returned_pieces) || 0;

@@ -1947,6 +1947,35 @@ CREATE TABLE IF NOT EXISTS `user_dashboard_config` (
   KEY `idx_udc_tenant` (`tenant_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- --------------------------------------------------------
+--
+-- Table structure for table `approval_requests`
+--
+
+CREATE TABLE IF NOT EXISTS `approval_requests` (
+  `id`             varchar(36) NOT NULL,
+  `tenant_id`      varchar(36) NOT NULL,
+  `request_type`   enum('inventory_adjustment','production_entry','purchase_approval','pricing_change','marketplace_update','report_validation') NOT NULL,
+  `reference_id`   varchar(36) NOT NULL,
+  `reference_type` varchar(50) NOT NULL,
+  `title`          varchar(255) NOT NULL,
+  `description`    text DEFAULT NULL,
+  `payload`        longtext DEFAULT NULL,
+  `status`         enum('pending','approved','rejected') DEFAULT 'pending',
+  `submitted_by`   varchar(36) NOT NULL,
+  `reviewed_by`    varchar(36) DEFAULT NULL,
+  `submitted_at`   datetime DEFAULT current_timestamp(),
+  `reviewed_at`    datetime DEFAULT NULL,
+  `review_notes`   text DEFAULT NULL,
+  `created_at`     datetime DEFAULT current_timestamp(),
+  `updated_at`     datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_ar_tenant_status` (`tenant_id`, `status`),
+  KEY `idx_ar_tenant_type`   (`tenant_id`, `request_type`),
+  KEY `idx_ar_submitted_by`  (`submitted_by`),
+  KEY `idx_ar_reviewed_by`   (`reviewed_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

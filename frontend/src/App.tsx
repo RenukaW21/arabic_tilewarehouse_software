@@ -62,6 +62,7 @@ import ProductionMaterialsPage from "@/pages/production/ProductionMaterialsPage"
 import ProductionFinishedGoodsPage from "@/pages/production/ProductionFinishedGoodsPage";
 import ProductionCostsPage from "@/pages/production/ProductionCostsPage";
 import LoyaltyPage from "@/pages/LoyaltyPage";
+import ApprovalRequestsPage from "@/pages/ApprovalRequestsPage";
 
 const queryClient = new QueryClient();
 
@@ -149,6 +150,9 @@ function AppRoutes() {
         <Route path="/reports/revenue" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","accountant","viewer"]}><RevenueReportPage /></RoleGuard>} />
         <Route path="/reports/aging" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","accountant","viewer"]}><AgingReportPage /></RoleGuard>} />
         <Route path="/reports/inventory-consumption" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","accountant","viewer"]}><InventoryConsumptionReportPage /></RoleGuard>} />
+
+        {/* ── Admin Approvals ── */}
+        <Route path="/admin/approvals" element={<RoleGuard allow={["super_admin","admin"]}><ApprovalRequestsPage /></RoleGuard>} />
       </Route>
 
       {/* Fallback */}

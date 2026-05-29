@@ -204,7 +204,7 @@ export default function ProductInventoryPage() {
             toast.success(editing ? "Product inventory updated" : "Product allocated successfully");
         },
         onError: (e: any) => {
-            toast.error(e?.message ?? e?.response?.data?.error?.message ?? "Operation failed");
+            toast.error(e?.response?.data?.error?.message ?? e?.message ?? "Operation failed");
         },
     });
 

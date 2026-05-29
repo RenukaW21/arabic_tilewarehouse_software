@@ -75,7 +75,7 @@ const create = async (req, res, next) => {
 // ─── POST GRN ─────────────────────────────────────────────────────────────────
 const postGRN = async (req, res, next) => {
   try {
-    const grn = await service.postGRN(req.params.id, req.tenantId, req.user.id, wmScope(req));
+    const grn = await service.postGRN(req.params.id, req.tenantId, req.user.id, scopedWarehouseOpts(req));
     const meta = extractRequestMeta(req);
     await writeAuditLog({ tenantId: req.tenantId, userId: req.user.id, action: 'POST_GRN', tableName: 'grn', recordId: req.params.id, newValues: { status: 'posted' }, ...meta });
     return success(res, grn, 'GRN posted — stock updated');
@@ -107,7 +107,7 @@ const update = async (req, res, next) => {
 // ─── ADD ITEM ─────────────────────────────────────────────────────────────────
 const addItem = async (req, res, next) => {
   try {
-    const grn = await service.addItem(req.params.id, req.tenantId, req.body, wmScope(req));
+    const grn = await service.addItem(req.params.id, req.tenantId, req.body, scopedWarehouseOpts(req));
     return created(res, grn, 'GRN item added');
   } catch (err) {
     next(err);

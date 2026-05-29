@@ -50,6 +50,7 @@ const dashboardConfigRoutes = require('./modules/dashboard-config/routes');
 const productionOrderRoutes  = require('./modules/production-orders/routes');
 const productionBatchRoutes  = require('./modules/production-batches/routes');
 const loyaltyRoutes = require('./modules/loyalty/routes');
+const approvalRequestsRoutes = require('./modules/approval-requests/routes');
 
 // Inline route handlers for CRUD modules (same pattern as products)
 const buildCrudRouter = (tableName, allowedSortFields = ['created_at']) => {
@@ -228,6 +229,7 @@ app.use(`${API}/dashboard-config`, dashboardConfigRoutes);
 app.use(`${API}/production-orders`, productionOrderRoutes);
 app.use(`${API}/production-batches`, productionBatchRoutes);
 app.use(`${API}/loyalty`, loyaltyRoutes);
+app.use(`${API}/approval-requests`, approvalRequestsRoutes);
 
 // ─── Debug Stock Endpoint ─────────────────────────────────────────────────────
 // GET /api/v1/debug/stock?product_id=X[&warehouse_id=Y]

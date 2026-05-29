@@ -26,6 +26,7 @@ const pageTitles: Record<string, string> = {
   '/alerts': 'Alerts',
   '/settings': 'Settings',
   '/reports/inventory-consumption': 'Inventory Consumption Report',
+  '/admin/approvals': 'Admin Approval Requests',
 };
 
 export function DashboardLayout() {

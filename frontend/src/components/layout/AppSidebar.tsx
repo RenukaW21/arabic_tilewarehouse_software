@@ -33,13 +33,16 @@ import {
   PackageCheck,
   TrendingDown,
   Gift,
+  ShieldCheck,
 } from "lucide-react";
 
+import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import type { UserRole } from "@/api/usersApi";
 import { useTranslation } from "react-i18next";
 import { useLowStockAlerts } from "@/hooks/useLowStockAlerts";
+import { approvalApi } from "@/api/approvalApi";
 
 interface NavChild {
   labelKey: string;
@@ -91,6 +94,15 @@ export function AppSidebar({ collapsed }: AppSidebarProps) {
 
   const { data: alerts = [] } = useLowStockAlerts();
 
+  const isAdmin = user?.role === 'super_admin' || user?.role === 'admin';
+  const { data: approvalStatsData } = useQuery({
+    queryKey: ['approval-stats-sidebar'],
+    queryFn: () => approvalApi.getStats(),
+    enabled: isAdmin,
+    refetchInterval: 60_000,
+  });
+  const pendingApprovals = Number(approvalStatsData?.data?.pending ?? 0);
+
   const navItems = useMemo<NavItem[]>(
     () => [
       { labelKey: "nav.dashboard", icon: LayoutDashboard, path: "/", allowedRoles: ALL_ROLES },
@@ -106,6 +118,15 @@ export function AppSidebar({ collapsed }: AppSidebarProps) {
           { labelKey: "nav.racks",       path: "/setup/racks",       icon: Layers },
           { labelKey: "nav.users",       path: "/setup/users",       icon: Users },
         ],
+      },
+
+      // ── Admin Approvals ────────────────────────────────────────────────────
+      {
+        labelKey: "nav.approvals",
+        icon: ShieldCheck,
+        path: "/admin/approvals",
+        badge: pendingApprovals,
+        allowedRoles: ["super_admin", "admin"],
       },
 
       // ── Master data ─────────────────────────────────────────────────────────
@@ -340,7 +361,7 @@ export function AppSidebar({ collapsed }: AppSidebarProps) {
 
       { labelKey: "nav.logout", icon: LogOut },
     ],
-    [alerts.length, t]
+    [alerts.length, pendingApprovals, t]
   );
 
   const navFiltered = useMemo(
