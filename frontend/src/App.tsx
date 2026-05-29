@@ -53,6 +53,7 @@ import StockLedgerPage from "@/pages/StockLedgerPage";
 import GSTReportPage from "@/pages/GSTReportPage";
 import RevenueReportPage from "@/pages/RevenueReportPage";
 import AgingReportPage from "@/pages/AgingReportPage";
+import InventoryConsumptionReportPage from "@/pages/InventoryConsumptionReportPage";
 import WarehouseDetailPage from "@/pages/WarehouseDetailPage";
 import NotFound from "@/pages/NotFound";
 import ProductionOrdersPage from "@/pages/production/ProductionOrdersPage";
@@ -60,6 +61,7 @@ import ProductionBatchesPage from "@/pages/production/ProductionBatchesPage";
 import ProductionMaterialsPage from "@/pages/production/ProductionMaterialsPage";
 import ProductionFinishedGoodsPage from "@/pages/production/ProductionFinishedGoodsPage";
 import ProductionCostsPage from "@/pages/production/ProductionCostsPage";
+import LoyaltyPage from "@/pages/LoyaltyPage";
 
 const queryClient = new QueryClient();
 
@@ -134,6 +136,7 @@ function AppRoutes() {
         <Route path="/sales/challans" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor","warehouse_staff","accountant","viewer"]}><DeliveryChallansPage /></RoleGuard>} />
         <Route path="/sales/invoices" element={<RoleGuard allow={["super_admin","admin","accountant","viewer"]}><InvoicesPage /></RoleGuard>} />
         <Route path="/sales/returns" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor","warehouse_staff","accountant","viewer"]}><SalesReturnsPage /></RoleGuard>} />
+        <Route path="/sales/loyalty" element={<RoleGuard allow={["super_admin","admin","sales","accountant","viewer"]}><LoyaltyPage /></RoleGuard>} />
 
         {/* ── Accounts ── */}
         <Route path="/accounts/received" element={<RoleGuard allow={["super_admin","admin","accountant","viewer"]}><PaymentsReceivedPage /></RoleGuard>} />
@@ -145,6 +148,7 @@ function AppRoutes() {
         <Route path="/reports/gst" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","accountant","viewer"]}><GSTReportPage /></RoleGuard>} />
         <Route path="/reports/revenue" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","accountant","viewer"]}><RevenueReportPage /></RoleGuard>} />
         <Route path="/reports/aging" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","accountant","viewer"]}><AgingReportPage /></RoleGuard>} />
+        <Route path="/reports/inventory-consumption" element={<RoleGuard allow={["super_admin","admin","warehouse_manager","accountant","viewer"]}><InventoryConsumptionReportPage /></RoleGuard>} />
       </Route>
 
       {/* Fallback */}

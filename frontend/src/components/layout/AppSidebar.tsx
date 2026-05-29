@@ -31,6 +31,8 @@ import {
   Hammer,
   Cpu,
   PackageCheck,
+  TrendingDown,
+  Gift,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -286,6 +288,12 @@ export function AppSidebar({ collapsed }: AppSidebarProps) {
             icon: PackageMinus,
             allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "warehouse_staff", "accountant", "viewer"],
           },
+          {
+            labelKey: "nav.loyalty",
+            path: "/sales/loyalty",
+            icon: Gift,
+            allowedRoles: ["super_admin", "admin", "sales", "accountant", "viewer"],
+          },
         ],
       },
 
@@ -308,9 +316,10 @@ export function AppSidebar({ collapsed }: AppSidebarProps) {
         icon: BarChart3,
         allowedRoles: ["super_admin", "admin", "warehouse_manager", "accountant", "viewer"],
         children: [
-          { labelKey: "nav.gstReport", path: "/reports/gst",     icon: ReceiptText },
-          { labelKey: "nav.revenue",   path: "/reports/revenue", icon: BarChart3 },
-          { labelKey: "nav.aging",     path: "/reports/aging",   icon: ScrollText },
+          { labelKey: "nav.gstReport",   path: "/reports/gst",                    icon: ReceiptText },
+          { labelKey: "nav.revenue",     path: "/reports/revenue",                icon: BarChart3 },
+          { labelKey: "nav.aging",       path: "/reports/aging",                  icon: ScrollText },
+          { labelKey: "nav.consumption", path: "/reports/inventory-consumption",  icon: TrendingDown },
         ],
       },
 

@@ -25,6 +25,7 @@ const pageTitles: Record<string, string> = {
   '/accounts/paid': 'Payments Made',
   '/alerts': 'Alerts',
   '/settings': 'Settings',
+  '/reports/inventory-consumption': 'Inventory Consumption Report',
 };
 
 export function DashboardLayout() {

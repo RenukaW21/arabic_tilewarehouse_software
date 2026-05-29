@@ -67,6 +67,31 @@ export const reportApi = {
     const res = await axiosInstance.get<ApiResponse<StockValuationRow[]>>('/reports/stock-valuation', { params });
     return res.data;
   },
+
+  getInventoryConsumption: async (params?: {
+    from?: string;
+    to?: string;
+    productId?: string;
+    warehouseId?: string;
+    transactionType?: string;
+  }): Promise<ApiResponse<{ summary: Record<string, number>; rows: Record<string, unknown>[] }>> => {
+    const res = await axiosInstance.get('/reports/inventory-consumption', { params });
+    return res.data;
+  },
+
+  exportInventoryConsumption: async (params?: {
+    from?: string;
+    to?: string;
+    productId?: string;
+    warehouseId?: string;
+    transactionType?: string;
+  }): Promise<Blob> => {
+    const res = await axiosInstance.get('/reports/inventory-consumption/export', {
+      params,
+      responseType: 'blob',
+    });
+    return res.data as Blob;
+  },
 };
 
 // ─── Stock API ────────────────────────────────────────────────────────────────
