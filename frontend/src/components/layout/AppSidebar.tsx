@@ -34,6 +34,11 @@ import {
   TrendingDown,
   Gift,
   ShieldCheck,
+  Store,
+  KeyRound,
+  ShoppingBag,
+  BadgePercent,
+  Activity,
 } from "lucide-react";
 
 import { useQuery } from "@tanstack/react-query";
@@ -341,6 +346,39 @@ export function AppSidebar({ collapsed }: AppSidebarProps) {
           { labelKey: "nav.revenue",     path: "/reports/revenue",                icon: BarChart3 },
           { labelKey: "nav.aging",       path: "/reports/aging",                  icon: ScrollText },
           { labelKey: "nav.consumption", path: "/reports/inventory-consumption",  icon: TrendingDown },
+        ],
+      },
+
+      // ── Marketplace ─────────────────────────────────────────────────────────
+      {
+        labelKey: "nav.marketplace",
+        icon: Store,
+        allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "viewer"],
+        children: [
+          {
+            labelKey: "nav.marketplaceOrders",
+            path: "/marketplace/orders",
+            icon: ShoppingBag,
+            allowedRoles: ["super_admin", "admin", "warehouse_manager", "supervisor", "viewer"],
+          },
+          {
+            labelKey: "nav.marketplacePricing",
+            path: "/marketplace/pricing",
+            icon: BadgePercent,
+            allowedRoles: ["super_admin", "admin", "warehouse_manager"],
+          },
+          {
+            labelKey: "nav.marketplaceSync",
+            path: "/marketplace/sync",
+            icon: Activity,
+            allowedRoles: ["super_admin", "admin", "warehouse_manager"],
+          },
+          {
+            labelKey: "nav.marketplaceCredentials",
+            path: "/marketplace/credentials",
+            icon: KeyRound,
+            allowedRoles: ["super_admin", "admin"],
+          },
         ],
       },
 

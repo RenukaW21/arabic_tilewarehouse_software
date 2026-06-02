@@ -70,7 +70,12 @@
     "alerts": "Alerts",
     "settings": "Settings",
     "logout": "Logout",
-    "approvals": "Approvals"
+    "approvals": "Approvals",
+    "marketplace": "Marketplace",
+    "marketplaceOrders": "Orders",
+    "marketplacePricing": "Pricing",
+    "marketplaceSync": "Sync Health",
+    "marketplaceCredentials": "Credentials"
   },
   "common": {
     "addNew": "Add New",

@@ -63,6 +63,10 @@ import ProductionFinishedGoodsPage from "@/pages/production/ProductionFinishedGo
 import ProductionCostsPage from "@/pages/production/ProductionCostsPage";
 import LoyaltyPage from "@/pages/LoyaltyPage";
 import ApprovalRequestsPage from "@/pages/ApprovalRequestsPage";
+import MarketplaceCredentialsPage from "@/pages/marketplace/MarketplaceCredentialsPage";
+import MarketplaceOrdersPage from "@/pages/marketplace/MarketplaceOrdersPage";
+import MarketplacePricingPage from "@/pages/marketplace/MarketplacePricingPage";
+import MarketplaceSyncPage from "@/pages/marketplace/MarketplaceSyncPage";
 
 const queryClient = new QueryClient();
 
@@ -153,6 +157,12 @@ function AppRoutes() {
 
         {/* ── Admin Approvals ── */}
         <Route path="/admin/approvals" element={<RoleGuard allow={["super_admin","admin"]}><ApprovalRequestsPage /></RoleGuard>} />
+
+        {/* ── Marketplace Integration ── */}
+        <Route path="/marketplace/credentials" element={<RoleGuard allow={["super_admin","admin"]}><MarketplaceCredentialsPage /></RoleGuard>} />
+        <Route path="/marketplace/orders"      element={<RoleGuard allow={["super_admin","admin","warehouse_manager","supervisor","viewer"]}><MarketplaceOrdersPage /></RoleGuard>} />
+        <Route path="/marketplace/pricing"     element={<RoleGuard allow={["super_admin","admin","warehouse_manager"]}><MarketplacePricingPage /></RoleGuard>} />
+        <Route path="/marketplace/sync"        element={<RoleGuard allow={["super_admin","admin","warehouse_manager"]}><MarketplaceSyncPage /></RoleGuard>} />
       </Route>
 
       {/* Fallback */}

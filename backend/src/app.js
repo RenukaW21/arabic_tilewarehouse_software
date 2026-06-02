@@ -51,6 +51,11 @@ const productionOrderRoutes  = require('./modules/production-orders/routes');
 const productionBatchRoutes  = require('./modules/production-batches/routes');
 const loyaltyRoutes = require('./modules/loyalty/routes');
 const approvalRequestsRoutes = require('./modules/approval-requests/routes');
+const marketplaceCredentialsRoutes = require('./modules/marketplace-credentials/routes');
+const marketplacePricingRoutes = require('./modules/marketplace-pricing/routes');
+const marketplaceOrdersRoutes = require('./modules/marketplace-orders/routes');
+const marketplaceReturnsRoutes = require('./modules/marketplace-returns/routes');
+const marketplaceSyncRoutes = require('./modules/marketplace-sync/routes');
 
 // Inline route handlers for CRUD modules (same pattern as products)
 const buildCrudRouter = (tableName, allowedSortFields = ['created_at']) => {
@@ -230,6 +235,13 @@ app.use(`${API}/production-orders`, productionOrderRoutes);
 app.use(`${API}/production-batches`, productionBatchRoutes);
 app.use(`${API}/loyalty`, loyaltyRoutes);
 app.use(`${API}/approval-requests`, approvalRequestsRoutes);
+
+// ─── Marketplace Integration ──────────────────────────────────────────────────
+app.use(`${API}/marketplace/credentials`, marketplaceCredentialsRoutes);
+app.use(`${API}/marketplace/pricing`,     marketplacePricingRoutes);
+app.use(`${API}/marketplace/orders`,      marketplaceOrdersRoutes);
+app.use(`${API}/marketplace/returns`,     marketplaceReturnsRoutes);
+app.use(`${API}/marketplace/sync`,        marketplaceSyncRoutes);
 
 // ─── Debug Stock Endpoint ─────────────────────────────────────────────────────
 // GET /api/v1/debug/stock?product_id=X[&warehouse_id=Y]

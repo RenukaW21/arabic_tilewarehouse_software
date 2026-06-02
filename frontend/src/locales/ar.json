@@ -70,7 +70,12 @@
     "alerts": "التنبيهات",
     "settings": "الإعدادات",
     "logout": "تسجيل الخروج",
-    "approvals": "الموافقات"
+    "approvals": "الموافقات",
+    "marketplace": "السوق الإلكتروني",
+    "marketplaceOrders": "الطلبات",
+    "marketplacePricing": "التسعير",
+    "marketplaceSync": "حالة المزامنة",
+    "marketplaceCredentials": "بيانات الاعتماد"
   },
   "common": {
     "addNew": "إضافة جديد",

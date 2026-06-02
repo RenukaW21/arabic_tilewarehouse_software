@@ -1976,6 +1976,148 @@ CREATE TABLE IF NOT EXISTS `approval_requests` (
   KEY `idx_ar_reviewed_by`   (`reviewed_by`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- --------------------------------------------------------
+-- Marketplace Integration Module Tables
+-- Added: 2026-06-02
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `marketplace_credentials`
+--
+CREATE TABLE `marketplace_credentials` (
+  `id`               varchar(36) NOT NULL,
+  `tenant_id`        varchar(36) NOT NULL,
+  `platform`         enum('amazon','flipkart','meesho') NOT NULL,
+  `display_name`     varchar(100) DEFAULT NULL,
+  `seller_id`        varchar(255) DEFAULT NULL,
+  `api_key`          text DEFAULT NULL,
+  `api_secret`       text DEFAULT NULL,
+  `access_token`     text DEFAULT NULL,
+  `refresh_token`    text DEFAULT NULL,
+  `token_expires_at` datetime DEFAULT NULL,
+  `marketplace_id`   varchar(100) DEFAULT NULL,
+  `fulfillment_type` enum('fbm','fba') DEFAULT NULL COMMENT 'Amazon only: FBM=self-ship FBA=Amazon fulfils',
+  `is_active`        tinyint(1) DEFAULT 1,
+  `last_sync_at`     datetime DEFAULT NULL,
+  `created_at`       datetime DEFAULT current_timestamp(),
+  `updated_at`       datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_tenant_platform` (`tenant_id`, `platform`),
+  KEY `idx_mc_tenant` (`tenant_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Table structure for table `marketplace_listings`
+--
+CREATE TABLE `marketplace_listings` (
+  `id`                   varchar(36) NOT NULL,
+  `tenant_id`            varchar(36) NOT NULL,
+  `product_id`           varchar(36) NOT NULL,
+  `platform`             enum('amazon','flipkart','meesho') NOT NULL,
+  `platform_listing_id`  varchar(255) DEFAULT NULL COMMENT 'ASIN / Flipkart listing ID / Meesho product ID',
+  `platform_sku`         varchar(255) DEFAULT NULL,
+  `status`               enum('active','inactive','pending','error') DEFAULT 'pending',
+  `last_synced_at`       datetime DEFAULT NULL,
+  `sync_error`           text DEFAULT NULL,
+  `created_at`           datetime DEFAULT current_timestamp(),
+  `updated_at`           datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_product_platform` (`tenant_id`, `product_id`, `platform`),
+  KEY `idx_ml_tenant_platform` (`tenant_id`, `platform`),
+  KEY `idx_ml_product` (`product_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Table structure for table `marketplace_pricing`
+--
+CREATE TABLE `marketplace_pricing` (
+  `id`          varchar(36) NOT NULL,
+  `tenant_id`   varchar(36) NOT NULL,
+  `product_id`  varchar(36) NOT NULL,
+  `platform`    enum('amazon','flipkart','meesho') NOT NULL,
+  `price`       decimal(10,2) NOT NULL,
+  `updated_by`  varchar(36) NOT NULL,
+  `created_at`  datetime DEFAULT current_timestamp(),
+  `updated_at`  datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_pricing_product_platform` (`tenant_id`, `product_id`, `platform`),
+  KEY `idx_mp_tenant_platform` (`tenant_id`, `platform`),
+  KEY `idx_mp_product` (`product_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Table structure for table `marketplace_orders`
+--
+CREATE TABLE `marketplace_orders` (
+  `id`                  varchar(36) NOT NULL,
+  `tenant_id`           varchar(36) NOT NULL,
+  `platform`            enum('amazon','flipkart','meesho') NOT NULL,
+  `platform_order_id`   varchar(255) NOT NULL,
+  `platform_order_date` datetime DEFAULT NULL,
+  `customer_name`       varchar(255) DEFAULT NULL,
+  `customer_email`      varchar(255) DEFAULT NULL,
+  `shipping_address`    text DEFAULT NULL,
+  `status`              enum('pending','confirmed','shipped','delivered','cancelled','returned') DEFAULT 'pending',
+  `total_amount`        decimal(10,2) DEFAULT NULL,
+  `currency`            varchar(10) DEFAULT 'INR',
+  `items`               longtext DEFAULT NULL COMMENT 'JSON array of order items',
+  `tracking_number`     varchar(255) DEFAULT NULL,
+  `shipped_at`          datetime DEFAULT NULL,
+  `wms_sales_order_id`  varchar(36) DEFAULT NULL COMMENT 'linked WMS sales_order id once processed',
+  `raw_payload`         longtext DEFAULT NULL COMMENT 'original platform API response',
+  `created_at`          datetime DEFAULT current_timestamp(),
+  `updated_at`          datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_platform_order` (`tenant_id`, `platform`, `platform_order_id`),
+  KEY `idx_mo_tenant_platform` (`tenant_id`, `platform`),
+  KEY `idx_mo_status` (`tenant_id`, `status`),
+  KEY `idx_mo_wms_order` (`wms_sales_order_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Table structure for table `marketplace_returns`
+--
+CREATE TABLE `marketplace_returns` (
+  `id`                   varchar(36) NOT NULL,
+  `tenant_id`            varchar(36) NOT NULL,
+  `platform`             enum('amazon','flipkart','meesho') NOT NULL,
+  `platform_return_id`   varchar(255) NOT NULL,
+  `marketplace_order_id` varchar(36) DEFAULT NULL COMMENT 'FK to marketplace_orders.id',
+  `platform_order_id`    varchar(255) DEFAULT NULL,
+  `return_reason`        varchar(255) DEFAULT NULL,
+  `return_quantity`      int(11) DEFAULT 0,
+  `status`               enum('initiated','received','restocked','rejected') DEFAULT 'initiated',
+  `items`                longtext DEFAULT NULL COMMENT 'JSON array of returned items',
+  `wms_return_id`        varchar(36) DEFAULT NULL COMMENT 'linked WMS sales_return id once processed',
+  `restocked_at`         datetime DEFAULT NULL,
+  `raw_payload`          longtext DEFAULT NULL,
+  `created_at`           datetime DEFAULT current_timestamp(),
+  `updated_at`           datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_platform_return` (`tenant_id`, `platform`, `platform_return_id`),
+  KEY `idx_mr_tenant_platform` (`tenant_id`, `platform`),
+  KEY `idx_mr_order` (`marketplace_order_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Table structure for table `marketplace_sync_logs`
+--
+CREATE TABLE `marketplace_sync_logs` (
+  `id`          varchar(36) NOT NULL,
+  `tenant_id`   varchar(36) NOT NULL,
+  `platform`    enum('amazon','flipkart','meesho') NOT NULL,
+  `sync_type`   enum('orders','returns','listings','pricing','stock') NOT NULL,
+  `status`      enum('success','error','partial') NOT NULL,
+  `records_in`  int(11) DEFAULT 0 COMMENT 'records pulled from platform',
+  `records_out` int(11) DEFAULT 0 COMMENT 'records pushed to platform',
+  `error_msg`   text DEFAULT NULL,
+  `started_at`  datetime DEFAULT current_timestamp(),
+  `finished_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_msl_tenant_platform` (`tenant_id`, `platform`),
+  KEY `idx_msl_started` (`tenant_id`, `started_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

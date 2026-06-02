@@ -27,6 +27,10 @@ const pageTitles: Record<string, string> = {
   '/settings': 'Settings',
   '/reports/inventory-consumption': 'Inventory Consumption Report',
   '/admin/approvals': 'Admin Approval Requests',
+  '/marketplace/orders':      'Marketplace Orders',
+  '/marketplace/pricing':     'Marketplace Pricing',
+  '/marketplace/sync':        'Marketplace Sync Health',
+  '/marketplace/credentials': 'Marketplace Credentials',
 };
 
 export function DashboardLayout() {
