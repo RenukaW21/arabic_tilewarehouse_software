@@ -4,7 +4,7 @@ import { marketplaceApi, MarketplacePlatform } from '@/api/marketplaceApi';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -22,7 +22,6 @@ const PLATFORM_BADGE: Record<MarketplacePlatform, string> = {
 };
 
 export default function MarketplacePricingPage() {
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const [filterPlatform, setFilterPlatform] = useState<MarketplacePlatform | 'all'>('all');
@@ -54,12 +53,12 @@ export default function MarketplacePricingPage() {
       price:      parseFloat(form.price),
     }),
     onSuccess: () => {
-      toast({ title: 'Price saved' });
+      toast.success('Price saved');
       queryClient.invalidateQueries({ queryKey: ['marketplace-pricing'] });
       setDialogOpen(false);
     },
     onError: (err: any) => {
-      toast({ title: 'Failed to save price', description: err?.response?.data?.error?.message, variant: 'destructive' });
+      toast.error(err?.response?.data?.error?.message ?? 'Failed to save price');
     },
   });
 
@@ -67,11 +66,11 @@ export default function MarketplacePricingPage() {
     mutationFn: ({ productId, platform }: { productId: string; platform: MarketplacePlatform }) =>
       marketplaceApi.pricing.remove(productId, platform),
     onSuccess: () => {
-      toast({ title: 'Price removed' });
+      toast.success('Price removed');
       queryClient.invalidateQueries({ queryKey: ['marketplace-pricing'] });
     },
     onError: () => {
-      toast({ title: 'Failed to remove price', variant: 'destructive' });
+      toast.error('Failed to remove price');
     },
   });
 
@@ -86,9 +85,9 @@ export default function MarketplacePricingPage() {
   };
 
   const handleSave = () => {
-    if (!form.product_id.trim()) { toast({ title: 'Product ID is required', variant: 'destructive' }); return; }
-    if (!form.platform)          { toast({ title: 'Platform is required', variant: 'destructive' }); return; }
-    if (!form.price || isNaN(parseFloat(form.price))) { toast({ title: 'Valid price is required', variant: 'destructive' }); return; }
+    if (!form.product_id.trim()) { toast.error('Product ID is required'); return; }
+    if (!form.platform)          { toast.error('Platform is required'); return; }
+    if (!form.price || isNaN(parseFloat(form.price))) { toast.error('Valid price is required'); return; }
     upsertMutation.mutate();
   };
 
@@ -183,7 +182,7 @@ export default function MarketplacePricingPage() {
       )}
 
       {/* Add/Edit dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) openAdd(); else setDialogOpen(true); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>{form.product_id && form.platform ? 'Edit Price' : 'Set Marketplace Price'}</DialogTitle>

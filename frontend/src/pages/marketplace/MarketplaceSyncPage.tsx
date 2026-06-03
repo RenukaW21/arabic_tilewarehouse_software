@@ -32,7 +32,7 @@ export default function MarketplaceSyncPage() {
   const [filterPlatform, setFilterPlatform] = useState<MarketplacePlatform | 'all'>('all');
   const [page, setPage] = useState(1);
 
-  const { data: healthData, isLoading: healthLoading } = useQuery({
+  const { data: healthData, isLoading: healthLoading, isError: healthError } = useQuery({
     queryKey: ['marketplace-sync-health'],
     queryFn: () => marketplaceApi.sync.getHealth(),
     refetchInterval: 60_000,
@@ -76,6 +76,10 @@ export default function MarketplaceSyncPage() {
       {/* Health cards */}
       {healthLoading ? (
         <p className="text-sm text-muted-foreground">Loading health status...</p>
+      ) : healthError ? (
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          Could not load sync health. Please refresh the page or check the server.
+        </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-3">
           {platforms.map(platform => {

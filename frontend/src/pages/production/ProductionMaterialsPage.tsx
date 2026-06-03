@@ -96,7 +96,7 @@ export default function ProductionMaterialsPage() {
     {
       key: 'unit_cost',
       label: t('production.materials.unitCost'),
-      render: (r: MaterialRecord) => `₹${Number(r.unit_cost).toFixed(2)}`,
+      render: (r: MaterialRecord) => `₹${Number(r.unit_cost ?? 0).toFixed(2)}`,
     },
     {
       key: 'line_total',

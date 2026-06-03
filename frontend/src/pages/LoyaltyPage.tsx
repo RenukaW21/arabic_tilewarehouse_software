@@ -67,6 +67,7 @@ export default function LoyaltyPage() {
   const overviewQuery = useQuery({
     queryKey: ["loyalty", "overview"],
     queryFn: loyaltyApi.getOverview,
+    staleTime: 5 * 60 * 1000,
   });
 
   const customersQuery = useQuery({
@@ -130,6 +131,7 @@ export default function LoyaltyPage() {
       invalidateLoyalty();
       toast.success("Loyalty settings saved");
     },
+    onError: (e: any) => toast.error(e?.response?.data?.error?.message ?? "Failed to save loyalty rules"),
   });
 
   const createTransaction = useMutation({
@@ -159,6 +161,7 @@ export default function LoyaltyPage() {
       setReferralOpen(false);
       toast.success("Referral created");
     },
+    onError: (e: any) => toast.error(e?.response?.data?.error?.message ?? "Failed to create referral"),
   });
 
   const completeReferral = useMutation({
@@ -167,6 +170,7 @@ export default function LoyaltyPage() {
       invalidateLoyalty();
       toast.success("Referral reward posted");
     },
+    onError: (e: any) => toast.error(e?.response?.data?.error?.message ?? "Failed to complete referral"),
   });
 
   const customerOptions = masterCustomers.map((c) => ({ label: `${c.name}${c.code ? ` (${c.code})` : ""}`, value: c.id }));

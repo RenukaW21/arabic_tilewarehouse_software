@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -42,7 +42,6 @@ const BADGE_COLOR: Record<MarketplacePlatform, string> = {
 };
 
 export default function MarketplaceCredentialsPage() {
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -61,27 +60,23 @@ export default function MarketplaceCredentialsPage() {
     mutationFn: ({ platform, data }: { platform: MarketplacePlatform; data: SaveCredentialData }) =>
       marketplaceApi.credentials.save(platform, data),
     onSuccess: () => {
-      toast({ title: 'Credentials saved successfully' });
+      toast.success('Credentials saved successfully');
       queryClient.invalidateQueries({ queryKey: ['marketplace-credentials'] });
       setDialogOpen(false);
     },
     onError: (err: any) => {
-      toast({
-        title: 'Failed to save credentials',
-        description: err?.response?.data?.error?.message,
-        variant: 'destructive',
-      });
+      toast.error(err?.response?.data?.error?.message ?? 'Failed to save credentials');
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => marketplaceApi.credentials.remove(id),
     onSuccess: () => {
-      toast({ title: 'Credentials removed' });
+      toast.success('Credentials removed');
       queryClient.invalidateQueries({ queryKey: ['marketplace-credentials'] });
     },
     onError: () => {
-      toast({ title: 'Failed to remove credentials', variant: 'destructive' });
+      toast.error('Failed to remove credentials');
     },
   });
 

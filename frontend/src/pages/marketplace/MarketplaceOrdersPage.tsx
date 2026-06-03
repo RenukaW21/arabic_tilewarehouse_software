@@ -4,7 +4,7 @@ import { marketplaceApi, MarketplacePlatform, OrderStatus } from '@/api/marketpl
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -31,7 +31,6 @@ const PLATFORM_BADGE: Record<MarketplacePlatform, string> = {
 };
 
 export default function MarketplaceOrdersPage() {
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const [platform, setPlatform] = useState<MarketplacePlatform | 'all'>('all');
@@ -42,6 +41,7 @@ export default function MarketplaceOrdersPage() {
   const [shipDialogOpen, setShipDialogOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [trackingNumber, setTrackingNumber] = useState('');
+  const [pendingRowId, setPendingRowId] = useState<string | null>(null);
 
   const params = {
     page,
@@ -71,13 +71,15 @@ export default function MarketplaceOrdersPage() {
     mutationFn: ({ id, status, tracking_number }: { id: string; status: OrderStatus; tracking_number?: string }) =>
       marketplaceApi.orders.updateStatus(id, { status, tracking_number }),
     onSuccess: () => {
-      toast({ title: 'Order updated' });
+      toast.success('Order updated');
       queryClient.invalidateQueries({ queryKey: ['marketplace-orders'] });
       queryClient.invalidateQueries({ queryKey: ['marketplace-order-stats'] });
       setShipDialogOpen(false);
+      setPendingRowId(null);
     },
     onError: (err: any) => {
-      toast({ title: 'Update failed', description: err?.response?.data?.error?.message, variant: 'destructive' });
+      toast.error(err?.response?.data?.error?.message ?? 'Update failed');
+      setPendingRowId(null);
     },
   });
 
@@ -212,8 +214,11 @@ export default function MarketplaceOrdersPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => updateStatusMutation.mutate({ id: order.id, status: 'confirmed' })}
-                        disabled={updateStatusMutation.isPending}
+                        onClick={() => {
+                          setPendingRowId(order.id);
+                          updateStatusMutation.mutate({ id: order.id, status: 'confirmed' });
+                        }}
+                        disabled={pendingRowId === order.id}
                       >
                         Confirm
                       </Button>

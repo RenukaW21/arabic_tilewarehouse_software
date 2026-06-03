@@ -106,7 +106,7 @@ export default function ProductionFinishedGoodsPage() {
     {
       key: 'unit_cost',
       label: t('production.finishedGoods.unitCost'),
-      render: (r: OutputRecord) => `₹${Number(r.unit_cost).toFixed(2)}`,
+      render: (r: OutputRecord) => `₹${Number(r.unit_cost ?? 0).toFixed(2)}`,
     },
     {
       key: 'line_total',

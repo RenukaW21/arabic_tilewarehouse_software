@@ -33,9 +33,9 @@ const STATUS_COLORS: Record<ProductionStatus, string> = {
 
 // ─── Item row types ────────────────────────────────────────────────────────────
 
-interface ItemRow { product_id: string; planned_qty: number; actual_qty: number; wastage_qty: number; unit_cost: number; }
+interface ItemRow { tempId: string; product_id: string; planned_qty: number; actual_qty: number; wastage_qty: number; unit_cost: number; }
 
-const emptyItem = (): ItemRow => ({ product_id: '', planned_qty: 0, actual_qty: 0, wastage_qty: 0, unit_cost: 0 });
+const emptyItem = (): ItemRow => ({ tempId: crypto.randomUUID(), product_id: '', planned_qty: 0, actual_qty: 0, wastage_qty: 0, unit_cost: 0 });
 
 // ─── Sub-component: item table ─────────────────────────────────────────────────
 
@@ -67,7 +67,7 @@ function ItemTable({
         <p className="text-xs text-muted-foreground py-2 text-center border rounded-md">No items yet</p>
       )}
       {rows.map((row, i) => (
-        <div key={i} className="grid gap-1 border rounded-md p-2 bg-muted/30">
+        <div key={row.tempId} className="grid gap-1 border rounded-md p-2 bg-muted/30">
           <div className="flex gap-1 items-center">
             <Select value={row.product_id} onValueChange={(v) => updateRow(i, 'product_id', v)}>
               <SelectTrigger className="flex-1 h-7 text-xs">
@@ -151,8 +151,8 @@ export default function ProductionOrdersPage() {
   const { data: warehousesData } = useQuery({ queryKey: ['warehouses', { limit: 500 }], queryFn: () => warehouseApi.getAll({ limit: 500 }) });
   const { data: productsData }   = useQuery({ queryKey: ['products', { limit: 1000 }], queryFn: () => productApi.getAll({ limit: 1000 }) });
 
-  const warehouseOptions = warehousesData?.data?.map((w: any) => ({ value: w.id, label: w.name })) ?? [];
-  const productOptions   = productsData?.data?.map((p: any) => ({ value: p.id, label: `${p.code} — ${p.name}` })) ?? [];
+  const warehouseOptions = (warehousesData?.data ?? []).map((w: any) => ({ value: w.id, label: w.name }));
+  const productOptions   = (productsData?.data ?? []).map((p: any) => ({ value: p.id, label: `${p.code} — ${p.name}` }));
 
   // ─ List ─
   const { data, isLoading } = useQuery({
@@ -174,11 +174,11 @@ export default function ProductionOrdersPage() {
       wastage_cost: Number(order.wastage_cost) || 0,
       notes:        order.notes ?? '',
       materials: (order.materials ?? []).map((m) => ({
-        product_id: m.product_id, planned_qty: Number(m.planned_qty) || 0,
+        tempId: crypto.randomUUID(), product_id: m.product_id, planned_qty: Number(m.planned_qty) || 0,
         actual_qty: Number(m.actual_qty) || 0, wastage_qty: 0, unit_cost: Number(m.unit_cost) || 0,
       })),
       outputs: (order.outputs ?? []).map((o) => ({
-        product_id: o.product_id, planned_qty: Number(o.planned_qty) || 0,
+        tempId: crypto.randomUUID(), product_id: o.product_id, planned_qty: Number(o.planned_qty) || 0,
         actual_qty: Number(o.actual_qty) || 0, wastage_qty: Number(o.wastage_qty) || 0, unit_cost: Number(o.unit_cost) || 0,
       })),
     });
@@ -198,8 +198,8 @@ export default function ProductionOrdersPage() {
         machine_cost: form.machine_cost,
         wastage_cost: form.wastage_cost,
         notes:        form.notes || undefined,
-        materials:    form.materials.filter((m) => m.product_id),
-        outputs:      form.outputs.filter((o) => o.product_id),
+        materials:    form.materials.filter((m) => m.product_id).map(({ tempId: _, ...m }) => m),
+        outputs:      form.outputs.filter((o) => o.product_id).map(({ tempId: _, ...o }) => o),
       };
       if (editing) return productionOrderApi.update(editing.id, payload);
       return productionOrderApi.create(payload);

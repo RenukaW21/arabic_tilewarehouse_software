@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -331,9 +331,8 @@ export default function ApprovalRequestsPage() {
               <tr><td colSpan={isAdmin ? 7 : 6} className="text-center py-10 text-muted-foreground">No requests found.</td></tr>
             ) : (
               rows.map((row) => (
-                <>
+                <Fragment key={row.id}>
                   <tr
-                    key={row.id}
                     className="border-t hover:bg-muted/20 transition-colors cursor-pointer"
                     onClick={() => setExpandedId(expandedId === row.id ? null : row.id)}
                   >
@@ -378,13 +377,13 @@ export default function ApprovalRequestsPage() {
                     </td>
                   </tr>
                   {expandedId === row.id && (
-                    <tr key={`${row.id}-detail`} className="border-t">
+                    <tr className="border-t">
                       <td colSpan={isAdmin ? 7 : 6} className="p-0">
                         <ExpandedRow row={row} />
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               ))
             )}
           </tbody>

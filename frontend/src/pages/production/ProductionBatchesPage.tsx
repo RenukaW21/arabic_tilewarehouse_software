@@ -5,6 +5,7 @@ import { warehouseApi } from '@/api/warehouseApi';
 import { productApi } from '@/api/productApi';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTableShell } from '@/components/shared/DataTableShell';
+import { DeleteConfirmDialog } from '@/components/shared/DeleteConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -109,6 +110,7 @@ export default function ProductionBatchesPage() {
   const [dialogOpen,   setDialogOpen]   = useState(false);
   const [completeFor,  setCompleteFor]  = useState<ProductionBatch | null>(null);
   const [editing,      setEditing]      = useState<ProductionBatch | null>(null);
+  const [deletingBatch, setDeletingBatch] = useState<ProductionBatch | null>(null);
   const [form,         setForm]         = useState<FormState>(emptyForm());
   const [page,         setPage]         = useState(1);
   const [searchInput,  setSearchInput]  = useState('');
@@ -262,7 +264,7 @@ export default function ProductionBatchesPage() {
           )}
           {r.status === 'pending' && (
             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"
-              onClick={() => { if (confirm(t('production.batches.confirmDelete'))) deleteMut.mutate(r.id); }}
+              onClick={() => setDeletingBatch(r)}
               disabled={deleteMut.isPending}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
@@ -371,6 +373,13 @@ export default function ProductionBatchesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DeleteConfirmDialog
+        open={!!deletingBatch}
+        onClose={() => setDeletingBatch(null)}
+        onConfirm={() => { if (deletingBatch) { deleteMut.mutate(deletingBatch.id); setDeletingBatch(null); } }}
+        loading={deleteMut.isPending}
+      />
     </div>
   );
 }

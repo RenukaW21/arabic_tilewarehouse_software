@@ -14,8 +14,8 @@ import { useTranslation } from 'react-i18next';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-const fmt = (n: number) =>
-  `₹${Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+const fmt = (n: number | null | undefined) =>
+  `₹${Number(n ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
 
 const STATUS_VARIANT: Record<ProductionStatus, string> = {
   draft: 'secondary', in_progress: 'warning', completed: 'success', cancelled: 'destructive',
