@@ -23,7 +23,9 @@ const findByPlatform = async (tenantId, platform) => {
 
 const findById = async (id, tenantId) => {
   const rows = await query(
-    `SELECT * FROM marketplace_credentials WHERE id = ? AND tenant_id = ?`,
+    `SELECT id, tenant_id, platform, display_name, seller_id, marketplace_id,
+            fulfillment_type, is_active, last_sync_at, created_at, updated_at
+     FROM marketplace_credentials WHERE id = ? AND tenant_id = ?`,
     [id, tenantId]
   );
   return rows[0] || null;

@@ -252,7 +252,7 @@ const moveStockBetweenRacks = async (trx, tenantId, warehouseId, productId, from
   if (!boxes || boxes <= 0) return;
 
   // Lock source rows FOR UPDATE so no concurrent movement races
-  const sourceRows = await trx.query(
+  let sourceRows = await trx.query(
     `SELECT id, shade_id, batch_id, total_boxes, total_pieces, total_sqft, avg_cost_per_box
      FROM stock_summary
      WHERE tenant_id = ? AND warehouse_id = ? AND product_id = ?
@@ -262,14 +262,25 @@ const moveStockBetweenRacks = async (trx, tenantId, warehouseId, productId, from
     [tenantId, warehouseId, productId, fromRackId]
   );
 
-  const totalAvailable = sourceRows.reduce((sum, row) => {
-    return sum + (parseFloat(row.total_boxes || 0));
-  }, 0);
+  let totalAvailable = sourceRows.reduce((sum, row) => sum + parseFloat(row.total_boxes || 0), 0);
+
+  // Fallback: when allocating from unallocated (rack=NULL) but all stock is already
+  // in racks, redistribute from any existing rack in the warehouse.
+  if (fromRackId === null && totalAvailable + 1e-9 < boxes) {
+    sourceRows = await trx.query(
+      `SELECT id, shade_id, batch_id, total_boxes, total_pieces, total_sqft, avg_cost_per_box
+       FROM stock_summary
+       WHERE tenant_id = ? AND warehouse_id = ? AND product_id = ? AND total_boxes > 0
+       ORDER BY total_boxes DESC
+       FOR UPDATE`,
+      [tenantId, warehouseId, productId]
+    );
+    totalAvailable = sourceRows.reduce((sum, row) => sum + parseFloat(row.total_boxes || 0), 0);
+  }
 
   if (totalAvailable + 1e-9 < boxes) {
     throw new AppError(
-      `Insufficient unallocated stock: ${boxes} boxes requested but only ${totalAvailable} boxes are available without a rack assignment in this warehouse. ` +
-      `Receive stock via GRN without selecting a rack first, then allocate here.`,
+      `Insufficient stock: ${boxes} boxes requested but only ${Math.floor(totalAvailable)} boxes are available in this warehouse.`,
       400,
       'INSUFFICIENT_STOCK'
     );

@@ -27,13 +27,10 @@ const apiLimiter = rateLimit({
     return `${req.ip}_${req.tenantId || 'anon'}`;
   },
 
-  /**
-   * IMPORTANT:
-   * Agar user authenticated hai (req.user exist karta hai)
-   * to rate limiter skip ho jayega
-   */
+  // Skip rate limiting for authenticated requests — req.user is not yet set
+  // at this middleware stage, so check the Authorization header directly.
   skip: (req) => {
-    return !!req.user;
+    return !!req.headers.authorization;
   }
 });
 

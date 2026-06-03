@@ -45,7 +45,7 @@ const update = async (id, tenantId, data) => {
   return repo.findById(id, tenantId);
 };
 
-const approve = async (id, tenantId, userId) => {
+const approve = async (id, tenantId, userId, externalTrx = null) => {
   const existing = await repo.findById(id, tenantId);
   if (!existing) throw new AppError('Stock adjustment not found', 404, 'NOT_FOUND');
   if (existing.status !== 'pending') {
@@ -59,7 +59,8 @@ const approve = async (id, tenantId, userId) => {
   const piecesIn = existing.adjustment_type === 'add' ? pieces : 0;
   const piecesOut = existing.adjustment_type === 'deduct' ? pieces : 0;
 
-  const trx = await beginTransaction();
+  const ownTrx = !externalTrx;
+  const trx = externalTrx || await beginTransaction();
   try {
     const productRows = await trx.query('SELECT sqft_per_box FROM products WHERE id = ? AND tenant_id = ?', [existing.product_id, tenantId]);
     const sqftPerBox = productRows[0] ? parseFloat(productRows[0].sqft_per_box) || 0 : 0;
@@ -108,14 +109,14 @@ const approve = async (id, tenantId, userId) => {
       createdBy: userId,
     });
 
-    await repo.setApproved(id, tenantId, userId);
-    await trx.commit();
+    await repo.setApproved(id, tenantId, userId, trx);
+    if (ownTrx) await trx.commit();
     return repo.findById(id, tenantId);
   } catch (err) {
-    await trx.rollback();
+    if (ownTrx) await trx.rollback();
     throw err;
   } finally {
-    trx.release();
+    if (ownTrx) trx.release();
   }
 };
 

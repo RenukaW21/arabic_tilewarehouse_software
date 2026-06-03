@@ -83,8 +83,9 @@ const update = async (id, tenantId, data) => {
   await query(`UPDATE stock_adjustments SET ${updates.join(', ')} WHERE id = ? AND tenant_id = ?`, params);
 };
 
-const setApproved = async (id, tenantId, approvedBy) => {
-  await query(
+const setApproved = async (id, tenantId, approvedBy, trx = null) => {
+  const exec = trx ? trx.query.bind(trx) : query;
+  await exec(
     `UPDATE stock_adjustments SET status = 'approved', approved_by = ?, approved_at = NOW() WHERE id = ? AND tenant_id = ?`,
     [approvedBy, id, tenantId]
   );

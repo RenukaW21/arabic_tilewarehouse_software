@@ -5,15 +5,18 @@ const { beginTransaction } = require('../config/db');
  * Generate atomic sequential document numbers per tenant per doc type.
  * Uses document_counters table with row-level locking (FOR UPDATE).
  *
- * Examples: PO-2024-0001, GRN-2024-0042, INV-2024-0100
+ * Pass `externalTrx` to participate in an outer transaction — the counter
+ * increment will commit/rollback together with the caller's transaction.
  *
  * @param {string} tenantId
- * @param {string} docType  - 'PO' | 'GRN' | 'SO' | 'INV' | 'DC' | 'CN' | 'DN' | 'PR' | 'SR' | 'TR' | 'SC'
+ * @param {string} docType  - 'PO' | 'GRN' | 'SO' | 'INV' | 'DC' | 'CN' | 'DN' | 'PR' | 'SR' | 'TR' | 'SC' | 'PROD' | 'BATCH'
  * @param {string} prefix   - e.g. 'PO', 'GRN', 'INV'
+ * @param {object} [externalTrx] - optional transaction from beginTransaction()
  * @returns {Promise<string>} formatted document number
  */
-const generateDocNumber = async (tenantId, docType, prefix) => {
-  const trx = await beginTransaction();
+const generateDocNumber = async (tenantId, docType, prefix, externalTrx = null) => {
+  const ownTrx = !externalTrx;
+  const trx = externalTrx || await beginTransaction();
   try {
     const year = new Date().getFullYear();
 
@@ -41,14 +44,14 @@ const generateDocNumber = async (tenantId, docType, prefix) => {
       );
     }
 
-    await trx.commit();
+    if (ownTrx) await trx.commit();
     const padded = String(lastNumber).padStart(4, '0');
     return `${prefix}-${year}-${padded}`;
   } catch (err) {
-    await trx.rollback();
+    if (ownTrx) await trx.rollback();
     throw err;
   } finally {
-    trx.release();
+    if (ownTrx) trx.release();
   }
 };
 

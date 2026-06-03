@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invoiceApi } from '@/api/salesApi';
 import { salesOrdersApi } from '@/api/salesApi';
@@ -38,7 +38,12 @@ export default function InvoicesPage() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<Invoice | null>(null);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
-  const [editForm, setEditForm] = useState({ due_date: '', billing_address: '', shipping_address: '' });
+  const [editForm, setEditForm] = useState({
+    invoice_date: '', due_date: '', billing_address: '', shipping_address: '',
+    notes: '', place_of_supply: '', is_igst: false,
+  });
+  type EditItem = { product_id: string; product_name: string; product_code: string; shade_id: string | null; hsn_code: string; quantity_boxes: number; unit_price: number; discount_pct: number; gst_rate: number; };
+  const [editItems, setEditItems] = useState<EditItem[]>([]);
   const [paymentDialogInvoice, setPaymentDialogInvoice] = useState<Invoice | null>(null);
   const [paymentDialogValue, setPaymentDialogValue] = useState<'pending' | 'partial' | 'paid'>('pending');
   const applySearch = useCallback((value: string) => {
@@ -68,7 +73,7 @@ export default function InvoicesPage() {
     queryFn: () => salesOrdersApi.getAll({ limit: 100 }),
   });
   const orderOptions = (soList?.data ?? []).filter(
-    (so) => so.status === 'pick_ready' || so.status === 'dispatched'
+    (so) => ['confirmed', 'pick_ready', 'dispatched'].includes(so.status)
   );
 
   const { data: detailRes } = useQuery({
@@ -114,9 +119,14 @@ export default function InvoicesPage() {
     mutationFn: () =>
       editingInvoice
         ? invoiceApi.update(editingInvoice.id, {
+            invoice_date: editForm.invoice_date || undefined,
             due_date: editForm.due_date || undefined,
             billing_address: editForm.billing_address || undefined,
             shipping_address: editForm.shipping_address || undefined,
+            notes: editForm.notes || undefined,
+            place_of_supply: editForm.place_of_supply || undefined,
+            is_igst: editForm.is_igst,
+            items: editItems,
           })
         : Promise.reject(new Error('No invoice')),
     onSuccess: () => {
@@ -181,7 +191,7 @@ export default function InvoicesPage() {
               <Download className="h-4 w-4" />
             </Button>
           )}
-          {r.status === 'draft' && (
+          {r.status !== 'cancelled' && (
             <>
               <Button
                 variant="outline"
@@ -189,37 +199,51 @@ export default function InvoicesPage() {
                 onClick={async () => {
                   try {
                     const full = await invoiceApi.getById(r.id);
-                    const inv = full?.data ?? r;
+                    const inv = (full?.data ?? r) as any;
                     setEditingInvoice(inv as Invoice);
                     setEditForm({
-                      due_date: (inv as any).due_date ? String((inv as any).due_date).slice(0, 10) : '',
-                      billing_address: (inv as any).billing_address ?? '',
-                      shipping_address: (inv as any).shipping_address ?? '',
+                      invoice_date: inv.invoice_date ? String(inv.invoice_date).slice(0, 10) : '',
+                      due_date: inv.due_date ? String(inv.due_date).slice(0, 10) : '',
+                      billing_address: inv.billing_address ?? '',
+                      shipping_address: inv.shipping_address ?? '',
+                      notes: inv.notes ?? '',
+                      place_of_supply: inv.place_of_supply ?? '',
+                      is_igst: !!inv.is_igst,
                     });
+                    setEditItems((inv.items ?? []).map((it: any) => ({
+                      product_id: it.product_id,
+                      product_name: it.product_name ?? '',
+                      product_code: it.product_code ?? '',
+                      shade_id: it.shade_id ?? null,
+                      hsn_code: it.hsn_code ?? '',
+                      quantity_boxes: Number(it.quantity_boxes ?? 0),
+                      unit_price: Number(it.unit_price ?? 0),
+                      discount_pct: Number(it.discount_pct ?? 0),
+                      gst_rate: Number(it.gst_rate ?? 0),
+                    })));
                   } catch {
                     setEditingInvoice(r as Invoice);
-                    setEditForm({
-                      due_date: (r as any).due_date ? String((r as any).due_date).slice(0, 10) : '',
-                      billing_address: (r as any).billing_address ?? '',
-                      shipping_address: (r as any).shipping_address ?? '',
-                    });
                   }
                 }}
                 title={t('common.edit')}
               >
                 <Pencil className="h-4 w-4 mr-1" /> {t('common.edit')}
               </Button>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => issueMutation.mutate(r.id)}
-                disabled={issueMutation.isPending}
-              >
-                <FileCheck className="h-4 w-4 mr-1" /> {t('invoicesPage.issue')}
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleting(r)} title={t('common.delete')}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              {r.status === 'draft' && (
+                <>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => issueMutation.mutate(r.id)}
+                    disabled={issueMutation.isPending}
+                  >
+                    <FileCheck className="h-4 w-4 mr-1" /> {t('invoicesPage.issue')}
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleting(r)} title={t('common.delete')}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
             </>
           )}
         </div>
@@ -459,43 +483,170 @@ export default function InvoicesPage() {
       </Dialog>
 
       <Dialog open={!!editingInvoice} onOpenChange={(open) => !open && setEditingInvoice(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{t('invoicesPage.editInvoice')}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <Pencil className="h-4 w-4" />
+              Edit Invoice —
+              <span className="font-mono text-primary">{(editingInvoice as any)?.invoice_number}</span>
+              <StatusBadge status={editingInvoice?.status ?? 'draft'} />
+            </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>{t('invoicesPage.dueDate')}</Label>
-              <Input
-                type="date"
-                value={editForm.due_date}
-                onChange={(e) => setEditForm((f) => ({ ...f, due_date: e.target.value }))}
-              />
+
+          <div className="space-y-5">
+            {/* ── Header fields ── */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 rounded-lg border p-4">
+              <div className="space-y-1.5">
+                <Label>Customer</Label>
+                <Input value={(editingInvoice as any)?.customer_name ?? '—'} disabled className="bg-muted/40" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Sales Order</Label>
+                <Input value={(editingInvoice as any)?.so_number ?? '—'} disabled className="bg-muted/40 font-mono" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Invoice Date</Label>
+                <Input type="date" value={editForm.invoice_date}
+                  onChange={(e) => setEditForm((f) => ({ ...f, invoice_date: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Due Date</Label>
+                <Input type="date" value={editForm.due_date}
+                  onChange={(e) => setEditForm((f) => ({ ...f, due_date: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Place of Supply</Label>
+                <Input value={editForm.place_of_supply} placeholder="e.g. Gujarat"
+                  onChange={(e) => setEditForm((f) => ({ ...f, place_of_supply: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5 flex flex-col justify-end">
+                <Label>Tax Type</Label>
+                <Select value={editForm.is_igst ? 'igst' : 'cgst_sgst'}
+                  onValueChange={(v) => setEditForm((f) => ({ ...f, is_igst: v === 'igst' }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cgst_sgst">CGST + SGST (Intrastate)</SelectItem>
+                    <SelectItem value="igst">IGST (Interstate)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5 col-span-2">
+                <Label>Notes</Label>
+                <Input value={editForm.notes} placeholder="Optional notes..."
+                  onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))} />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>{t('invoicesPage.billingAddress')}</Label>
-              <Textarea
-                value={editForm.billing_address}
-                onChange={(e) => setEditForm((f) => ({ ...f, billing_address: e.target.value }))}
-                placeholder={t('invoicesPage.billingAddr')}
-                rows={2}
-              />
+
+            {/* ── Addresses ── */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Billing Address</Label>
+                <Textarea value={editForm.billing_address} rows={3} className="resize-none"
+                  placeholder="Billing address..."
+                  onChange={(e) => setEditForm((f) => ({ ...f, billing_address: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Shipping Address</Label>
+                <Textarea value={editForm.shipping_address} rows={3} className="resize-none"
+                  placeholder="Shipping address..."
+                  onChange={(e) => setEditForm((f) => ({ ...f, shipping_address: e.target.value }))} />
+              </div>
             </div>
+
+            {/* ── Line items (read-only) ── */}
             <div className="space-y-2">
-              <Label>{t('invoicesPage.shippingAddress')}</Label>
-              <Textarea
-                value={editForm.shipping_address}
-                onChange={(e) => setEditForm((f) => ({ ...f, shipping_address: e.target.value }))}
-                placeholder={t('invoicesPage.shippingAddr')}
-                rows={2}
-              />
+              <Label className="text-sm font-semibold">Line Items</Label>
+              <div className="rounded-md border overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50 text-xs text-muted-foreground">
+                      <th className="px-3 py-2 text-left">Product</th>
+                      <th className="px-3 py-2 text-left">HSN</th>
+                      <th className="px-3 py-2 text-right">Qty</th>
+                      <th className="px-3 py-2 text-right">Unit Price</th>
+                      <th className="px-3 py-2 text-right">Disc %</th>
+                      <th className="px-3 py-2 text-right">GST %</th>
+                      <th className="px-3 py-2 text-right">Taxable Amt</th>
+                      <th className="px-3 py-2 text-right">Line Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {editItems.map((item, idx) => {
+                      const taxable = item.quantity_boxes * item.unit_price * (1 - item.discount_pct / 100);
+                      const lineTotal = taxable * (1 + item.gst_rate / 100);
+                      return (
+                        <tr key={idx} className="border-b last:border-0">
+                          <td className="px-3 py-2">
+                            <div className="font-medium">{item.product_name || '—'}</div>
+                            <div className="text-xs text-muted-foreground">{item.product_code}</div>
+                          </td>
+                          <td className="px-3 py-2 text-muted-foreground">{item.hsn_code || '—'}</td>
+                          <td className="px-3 py-2 text-right">{item.quantity_boxes}</td>
+                          <td className="px-3 py-2 text-right">₹{Number(item.unit_price).toLocaleString('en-IN')}</td>
+                          <td className="px-3 py-2 text-right">{item.discount_pct}%</td>
+                          <td className="px-3 py-2 text-right">{item.gst_rate}%</td>
+                          <td className="px-3 py-2 text-right">₹{taxable.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                          <td className="px-3 py-2 text-right font-medium">₹{lineTotal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                        </tr>
+                      );
+                    })}
+                    {editItems.length === 0 && (
+                      <tr><td colSpan={8} className="px-4 py-6 text-center text-sm text-muted-foreground">No line items found.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Totals */}
+              {editItems.length > 0 && (() => {
+                const subTotal = editItems.reduce((s, it) => s + it.quantity_boxes * it.unit_price * (1 - it.discount_pct / 100), 0);
+                const grandTotal = editItems.reduce((s, it) => {
+                  const taxable = it.quantity_boxes * it.unit_price * (1 - it.discount_pct / 100);
+                  return s + taxable * (1 + it.gst_rate / 100);
+                }, 0);
+                const taxTotal = grandTotal - subTotal;
+                return (
+                  <div className="flex flex-col items-end gap-1 pt-2 text-sm">
+                    <div className="flex gap-12"><span className="text-muted-foreground w-28">Subtotal</span><span>₹{subTotal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span></div>
+                    <div className="flex gap-12"><span className="text-muted-foreground w-28">{editForm.is_igst ? 'IGST' : 'CGST + SGST'}</span><span>₹{taxTotal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span></div>
+                    <div className="flex gap-12 font-semibold border-t pt-1"><span className="w-28">Grand Total</span><span className="text-green-700 dark:text-green-400">₹{grandTotal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span></div>
+                  </div>
+                );
+              })()}
             </div>
+
+            {/* ── Loyalty Rewards ── */}
+            {(() => {
+              const earned   = Number((editingInvoice as any)?.loyalty_points_earned   ?? 0);
+              const redeemed = Number((editingInvoice as any)?.loyalty_points_redeemed ?? 0);
+              const balance  = Number((editingInvoice as any)?.loyalty_points_balance  ?? 0);
+              if (earned === 0 && redeemed === 0 && balance === 0) return null;
+              return (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-4 py-3 flex flex-wrap items-center gap-6 text-sm">
+                  <span className="font-semibold text-amber-700 dark:text-amber-400">🎁 Loyalty Rewards</span>
+                  {earned > 0 && (
+                    <span className="text-muted-foreground">
+                      Points Earned: <span className="font-medium text-foreground">{earned.toLocaleString('en-IN')}</span>
+                    </span>
+                  )}
+                  {redeemed > 0 && (
+                    <span className="text-muted-foreground">
+                      Points Redeemed: <span className="font-medium text-foreground">{redeemed.toLocaleString('en-IN')}</span>
+                    </span>
+                  )}
+                  <span className="text-muted-foreground">
+                    Current Balance: <span className="font-medium text-amber-700 dark:text-amber-400">{balance.toLocaleString('en-IN')} pts</span>
+                  </span>
+                </div>
+              );
+            })()}
           </div>
-          <DialogFooter>
+
+          <DialogFooter className="pt-2">
             <Button variant="outline" onClick={() => setEditingInvoice(null)}>{t('common.cancel')}</Button>
             <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending}>
               {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              {t('common.saveChanges')}
+              Save Invoice
             </Button>
           </DialogFooter>
         </DialogContent>

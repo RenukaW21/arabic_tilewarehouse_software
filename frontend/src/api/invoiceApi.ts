@@ -48,7 +48,26 @@ export const invoiceApi = {
     return res.data;
   },
 
-  update: async (id: string, data: { due_date?: string; billing_address?: string; shipping_address?: string }): Promise<ApiResponse<Invoice>> => {
+  update: async (id: string, data: {
+    invoice_date?: string;
+    due_date?: string;
+    billing_address?: string;
+    shipping_address?: string;
+    notes?: string;
+    place_of_supply?: string;
+    is_igst?: boolean;
+    items?: Array<{
+      product_id: string;
+      product_name?: string;
+      product_code?: string;
+      shade_id?: string | null;
+      hsn_code?: string | null;
+      quantity_boxes: number;
+      unit_price: number;
+      discount_pct?: number;
+      gst_rate?: number;
+    }>;
+  }): Promise<ApiResponse<Invoice>> => {
     const res = await axiosInstance.put<ApiResponse<Invoice>>(`/invoices/${id}`, data);
     return res.data;
   },

@@ -1,6 +1,6 @@
 'use strict';
 
-const { query } = require('../../config/db');
+const { query, beginTransaction } = require('../../config/db');
 const { parsePagination } = require('../../utils/pagination');
 const { v4: uuidv4 } = require('uuid');
 const { AppError } = require('../../middlewares/error.middleware');
@@ -103,8 +103,24 @@ const upsertSettings = async (tenantId, userId, data) => {
 };
 
 const getBalance = async (tenantId, customerId, trx = null) => {
-  const executor = trx ?? { query };
-  const rows = await executor.query(
+  if (!trx) throw new AppError('getBalance must be called within a transaction', 500, 'INTERNAL');
+  const rows = await trx.query(
+    `SELECT
+       COALESCE(SUM(points_delta), 0) AS points_balance,
+       COALESCE(SUM(cashback_delta), 0) AS cashback_balance
+     FROM loyalty_transactions
+     WHERE tenant_id = ? AND customer_id = ? AND status = 'posted'
+     FOR UPDATE`,
+    [tenantId, customerId]
+  );
+  return {
+    points_balance: toNumber(rows[0]?.points_balance),
+    cashback_balance: toNumber(rows[0]?.cashback_balance),
+  };
+};
+
+const getBalanceReadOnly = async (tenantId, customerId) => {
+  const rows = await query(
     `SELECT
        COALESCE(SUM(points_delta), 0) AS points_balance,
        COALESCE(SUM(cashback_delta), 0) AS cashback_balance
@@ -133,7 +149,8 @@ const calculateCashback = (settings, amount) => {
   return Math.round((Math.max(0, toNumber(amount)) * toNumber(settings.cashback_percent)) / 100 * 100) / 100;
 };
 
-const calculateRedemption = async (tenantId, customerId, requestedPoints, orderAmount, trx = null) => {
+const calculateRedemption = async (tenantId, customerId, requestedPoints, orderAmount, trx) => {
+  if (!trx) throw new AppError('calculateRedemption must be called within a transaction', 500, 'INTERNAL');
   const settings = await getSettings(tenantId);
   const points = Math.floor(Math.max(0, toNumber(requestedPoints)));
   if (points <= 0) return { points, discount: 0 };
@@ -231,7 +248,13 @@ const getCustomerSummaries = async (tenantId, params = {}) => {
     values.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
   }
   const where = conditions.join(' AND ');
-  const orderColumn = sortBy === 'points_balance' || sortBy === 'cashback_balance' ? sortBy : `c.${sortBy}`;
+  const CUSTOMER_SORT_MAP = {
+    name:             'c.name',
+    points_balance:   'points_balance',
+    cashback_balance: 'cashback_balance',
+    created_at:       'c.created_at',
+  };
+  const orderColumn = CUSTOMER_SORT_MAP[sortBy] || 'c.created_at';
   const settings = await getSettings(tenantId);
 
   const [rows, count] = await Promise.all([
@@ -323,6 +346,12 @@ const getTransactions = async (tenantId, params = {}) => {
     values.push(`%${search}%`, `%${search}%`, `%${search}%`);
   }
   const where = conditions.join(' AND ');
+  const TXN_SORT_MAP = {
+    created_at:   'lt.created_at',
+    type:         'lt.type',
+    points_delta: 'lt.points_delta',
+  };
+  const txnOrderColumn = TXN_SORT_MAP[sortBy] || 'lt.created_at';
   const [rows, count] = await Promise.all([
     query(
       `SELECT lt.*, c.name AS customer_name, so.so_number
@@ -330,7 +359,7 @@ const getTransactions = async (tenantId, params = {}) => {
        JOIN customers c ON c.id = lt.customer_id
        LEFT JOIN sales_orders so ON so.id = lt.sales_order_id
        WHERE ${where}
-       ORDER BY lt.${sortBy} ${sortOrder}
+       ORDER BY ${txnOrderColumn} ${sortOrder}
        LIMIT ${limit} OFFSET ${offset}`,
       values
     ),
@@ -444,19 +473,29 @@ const completeReferral = async (tenantId, userId, id) => {
   if (!referral) throw new AppError('Referral not found', 404, 'NOT_FOUND');
   if (referral.status === 'rewarded') return referral;
 
-  await addTransaction(tenantId, userId, {
-    customer_id: referral.referrer_customer_id,
-    type: 'referral',
-    points_delta: referral.reward_points,
-    cashback_delta: 0,
-    description: `Referral reward ${referral.referral_code}`,
-  });
-  await query(
-    `UPDATE loyalty_referrals
-     SET status = 'rewarded', rewarded_at = NOW()
-     WHERE id = ? AND tenant_id = ?`,
-    [id, tenantId]
-  );
+  const trx = await beginTransaction();
+  try {
+    await addTransaction(tenantId, userId, {
+      customer_id: referral.referrer_customer_id,
+      type: 'referral',
+      points_delta: referral.reward_points,
+      cashback_delta: 0,
+      description: `Referral reward ${referral.referral_code}`,
+    }, trx);
+    await trx.query(
+      `UPDATE loyalty_referrals
+       SET status = 'rewarded', rewarded_at = NOW()
+       WHERE id = ? AND tenant_id = ?`,
+      [id, tenantId]
+    );
+    await trx.commit();
+  } catch (err) {
+    await trx.rollback();
+    throw err;
+  } finally {
+    trx.release();
+  }
+
   const updated = await query('SELECT * FROM loyalty_referrals WHERE id = ? AND tenant_id = ?', [id, tenantId]);
   return updated[0];
 };
@@ -465,6 +504,7 @@ module.exports = {
   getSettings,
   upsertSettings,
   getBalance,
+  getBalanceReadOnly,
   calculateRedemption,
   postSalesOrderRewards,
   getCustomerSummaries,

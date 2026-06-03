@@ -30,10 +30,11 @@ const findAll = async (tenantId, queryParams) => {
   const where = conditions.join(' AND ');
   const [rows, countResult] = await Promise.all([
     query(
-      `SELECT pl.*, so.so_number, w.name AS warehouse_name
+      `SELECT pl.*, so.so_number, w.name AS warehouse_name, u.name AS assigned_to_name
        FROM pick_lists pl
        JOIN sales_orders so ON pl.sales_order_id = so.id AND so.tenant_id = pl.tenant_id
        LEFT JOIN warehouses w ON w.id = pl.warehouse_id
+       LEFT JOIN users u ON u.id = pl.assigned_to
        WHERE ${where}
        ORDER BY pl.${sortBy} ${sortOrder}
        LIMIT ${limit} OFFSET ${offset}`,
@@ -51,10 +52,11 @@ const findAll = async (tenantId, queryParams) => {
 
 const findById = async (id, tenantId) => {
   const rows = await query(
-    `SELECT pl.*, so.so_number, so.customer_id, w.name AS warehouse_name
+    `SELECT pl.*, so.so_number, so.customer_id, w.name AS warehouse_name, u.name AS assigned_to_name
      FROM pick_lists pl
      JOIN sales_orders so ON pl.sales_order_id = so.id AND so.tenant_id = pl.tenant_id
      LEFT JOIN warehouses w ON pl.warehouse_id = w.id
+     LEFT JOIN users u ON u.id = pl.assigned_to
      WHERE pl.id = ? AND pl.tenant_id = ?`,
     [id, tenantId]
   );

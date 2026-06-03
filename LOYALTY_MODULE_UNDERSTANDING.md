@@ -78,6 +78,26 @@ The default rule assumption is:
 - Referral rewards are posted when a referral is marked as rewarded.
 - Membership tier is calculated from current points balance.
 
+## Customer Notification Gap
+
+Currently the customer has no way of knowing they received a loyalty reward. Points are earned and recorded internally but no outbound notification is sent to the customer.
+
+**What is missing:**
+- No SMS, WhatsApp, or email is sent to the customer after points are earned
+- No customer-facing portal or screen where they can check their own balance or history
+- No invoice or receipt annotation showing points earned on that order
+
+**Practical options to bridge this gap:**
+
+| Option | Effort | How it works |
+|---|---|---|
+| Print on invoice | Low | Show "Points earned: X — Balance: Y" on the sales order PDF/receipt |
+| SMS / WhatsApp at billing | Medium | Trigger a message when points are posted after order confirmation |
+| Staff informs verbally | Zero (process) | Staff reads the screen and tells the customer at the time of billing |
+| Customer portal | High | A separate login where customers can check their own balance and history |
+
+The quickest win is printing earned points on the invoice so customers see it at the time of purchase with no extra infrastructure required.
+
 ## Non-Breaking Approach
 
 The loyalty module is designed as an additive feature. Existing customer, sales order, inventory, pick list, invoice, and payment flows remain unchanged unless loyalty fields are explicitly used.

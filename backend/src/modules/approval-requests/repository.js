@@ -84,8 +84,9 @@ const create = async (data) => {
   return id;
 };
 
-const setApproved = async (id, tenantId, reviewedBy, reviewNotes) => {
-  await query(
+const setApproved = async (id, tenantId, reviewedBy, reviewNotes, trx = null) => {
+  const exec = trx ? trx.query.bind(trx) : query;
+  await exec(
     `UPDATE approval_requests
      SET status = 'approved', reviewed_by = ?, reviewed_at = NOW(), review_notes = ?, updated_at = NOW()
      WHERE id = ? AND tenant_id = ?`,

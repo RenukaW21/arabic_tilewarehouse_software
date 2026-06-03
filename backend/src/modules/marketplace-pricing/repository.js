@@ -38,19 +38,12 @@ const findByProductAndPlatform = async (tenantId, productId, platform) => {
 };
 
 const upsert = async (tenantId, productId, platform, price, userId) => {
-  const existing = await findByProductAndPlatform(tenantId, productId, platform);
-  if (existing) {
-    await query(
-      `UPDATE marketplace_pricing SET price = ?, updated_by = ?, updated_at = NOW()
-       WHERE tenant_id = ? AND product_id = ? AND platform = ?`,
-      [price, userId, tenantId, productId, platform]
-    );
-    return findByProductAndPlatform(tenantId, productId, platform);
-  }
   const id = uuidv4();
+  // Requires a unique constraint on (tenant_id, product_id, platform) to be race-safe.
   await query(
     `INSERT INTO marketplace_pricing (id, tenant_id, product_id, platform, price, updated_by)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE price = VALUES(price), updated_by = VALUES(updated_by), updated_at = NOW()`,
     [id, tenantId, productId, platform, price, userId]
   );
   return findByProductAndPlatform(tenantId, productId, platform);

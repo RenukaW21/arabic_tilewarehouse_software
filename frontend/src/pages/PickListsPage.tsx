@@ -186,7 +186,7 @@ export default function PickListsPage() {
     { key: 'so_number', label: t('pickLists.salesOrder'), render: (r: PickList) => r.so_number ?? '—' },
     { key: 'warehouse_name', label: t('pickLists.warehouse'), render: (r: PickList) => r.warehouse_name ?? '—' },
     { key: 'status', label: t('pickLists.status'), render: (r: PickList) => <StatusBadge status={r.status} /> },
-    { key: 'assigned_to', label: t('common.name', 'Assigned'), render: (r: PickList) => r.assigned_to ?? '—' },
+    { key: 'assigned_to', label: t('common.name', 'Assigned'), render: (r: PickList) => (r as any).assigned_to_name ?? '—' },
     {
       key: 'actions',
       label: t('common.actions'),
@@ -245,7 +245,7 @@ export default function PickListsPage() {
               <DialogTitle>{detail.pick_number} — {detail.so_number}</DialogTitle>
             </DialogHeader>
             <p className="text-sm text-muted-foreground">
-              {t('pickLists.warehouse')}: {detail.warehouse_name} · {t('pickLists.status')}: {detail.status} · {t('common.name', 'Assigned')}: {detail.assigned_to ?? '—'}
+              {t('pickLists.warehouse')}: {detail.warehouse_name} · {t('pickLists.status')}: {detail.status} · {t('common.name', 'Assigned')}: {(detail as any).assigned_to_name ?? '—'}
             </p>
             {detail.status === 'completed' && !(detail.items ?? []).some((item) => Number(item.picked_boxes) > 0) && (
               <div className="rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-3 text-sm">

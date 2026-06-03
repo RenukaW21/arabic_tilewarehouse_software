@@ -21,9 +21,9 @@ const getById = async (id, tenantId) => {
 };
 
 const create = async (tenantId, userId, data) => {
-  const batchNumber = await generateDocNumber(tenantId, 'BATCH', 'BATCH');
   const trx = await beginTransaction();
   try {
+    const batchNumber = await generateDocNumber(tenantId, 'BATCH', 'BATCH', trx);
     const id = await repo.create({
       tenant_id:           tenantId,
       batch_number:        batchNumber,

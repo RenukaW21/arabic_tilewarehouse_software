@@ -61,6 +61,7 @@ const marketplaceSyncRoutes = require('./modules/marketplace-sync/routes');
 const buildCrudRouter = (tableName, allowedSortFields = ['created_at']) => {
   const router = express.Router();
   const { authenticate } = require('./middlewares/auth.middleware');
+  const { requireMinRole } = require('./middlewares/role.middleware');
   const { query } = require('./config/db');
   const { success, created, paginated } = require('./utils/response');
   const { parsePagination } = require('./utils/pagination');
@@ -89,7 +90,7 @@ const buildCrudRouter = (tableName, allowedSortFields = ['created_at']) => {
   });
 
   // POST — create record
-  router.post('/', async (req, res) => {
+  router.post('/', requireMinRole('admin'), async (req, res) => {
     const id = uuidv4();
     const body = { ...req.body, id, tenant_id: req.tenantId };
     delete body.created_at;
@@ -106,7 +107,7 @@ const buildCrudRouter = (tableName, allowedSortFields = ['created_at']) => {
   });
 
   // PUT — update record
-  router.put('/:id', async (req, res) => {
+  router.put('/:id', requireMinRole('admin'), async (req, res) => {
     const existing = await query(`SELECT id FROM ${tableName} WHERE id = ? AND tenant_id = ?`, [req.params.id, req.tenantId]);
     if (!existing.length) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Record not found' } });
     const body = { ...req.body };
@@ -126,7 +127,7 @@ const buildCrudRouter = (tableName, allowedSortFields = ['created_at']) => {
   });
 
   // DELETE — soft delete if is_active column exists, otherwise hard delete
-  router.delete('/:id', async (req, res) => {
+  router.delete('/:id', requireMinRole('admin'), async (req, res) => {
     const existing = await query(`SELECT id FROM ${tableName} WHERE id = ? AND tenant_id = ?`, [req.params.id, req.tenantId]);
     if (!existing.length) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Record not found' } });
     const columns = await query(`SHOW COLUMNS FROM ${tableName} LIKE 'is_active'`);
@@ -150,9 +151,14 @@ const API = `/api/${env.API_VERSION}`;
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // ─── Global Middleware ─────────────────────────────────────────────────────────
+const _allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean);
 const corsOptions = {
   origin(origin, callback) {
-    return callback(null, true);
+    if (!origin) return callback(null, true); // same-origin / server-to-server
+    if (_allowedOrigins.length === 0 || _allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS: origin ${origin} not allowed`));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -168,7 +174,7 @@ app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 app.use(morgan(env.isProd ? 'combined' : 'dev', {
   stream: { write: (msg) => logger.http(msg.trim()) },
 }));
-// app.use(`${API}/`, apiLimiter); 
+app.use(`${API}/`, apiLimiter);
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
 app.get('/health', async (req, res) => {
@@ -227,7 +233,6 @@ app.use(`${API}/credit-notes`, buildCrudRouter('credit_notes', ['cn_date', 'crea
 app.use(`${API}/debit-notes`, buildCrudRouter('debit_notes', ['dn_date', 'created_at']));
 app.use(`${API}/customer-payments`, customerPaymentsRoutes);
 app.use(`${API}/vendor-payments`, vendorPaymentsRoutes);
-app.use(`${API}/alerts`, buildCrudRouter('low_stock_alerts', ['alerted_at']));
 app.use(`${API}/notifications`, buildCrudRouter('notifications', ['created_at']));
 app.use(`${API}/audit-logs`, buildCrudRouter('audit_logs', ['created_at']));
 app.use(`${API}/dashboard-config`, dashboardConfigRoutes);

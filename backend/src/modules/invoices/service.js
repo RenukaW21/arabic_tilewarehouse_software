@@ -28,21 +28,35 @@ const getById = async (id, tenantId) => {
   const rows = await query(
     `SELECT i.*, c.name AS customer_name, c.gstin AS customer_gstin,
             c.billing_address, c.shipping_address,
-            gc.gstin AS company_gstin, gc.legal_name, gc.state_code AS company_state_code
+            gc.gstin AS company_gstin, gc.legal_name, gc.state_code AS company_state_code,
+            so.so_number, so.loyalty_points_earned, so.loyalty_points_redeemed
      FROM invoices i
      JOIN customers c ON i.customer_id = c.id
      LEFT JOIN gst_configurations gc ON gc.tenant_id = i.tenant_id
+     LEFT JOIN sales_orders so ON so.id = i.sales_order_id
      WHERE i.id = ? AND i.tenant_id = ?`,
     [id, tenantId]
   );
   if (!rows.length) throw new AppError('Invoice not found', 404, 'NOT_FOUND');
-  const items = await query(
-    `SELECT ii.*, p.name AS product_name, p.code AS product_code, p.hsn_code
-     FROM invoice_items ii JOIN products p ON ii.product_id = p.id
-     WHERE ii.invoice_id = ? AND ii.tenant_id = ?`,
-    [id, tenantId]
-  );
-  return { ...rows[0], items };
+  const [items, balanceRows] = await Promise.all([
+    query(
+      `SELECT ii.*, p.name AS product_name, p.code AS product_code, p.hsn_code
+       FROM invoice_items ii JOIN products p ON ii.product_id = p.id
+       WHERE ii.invoice_id = ? AND ii.tenant_id = ?`,
+      [id, tenantId]
+    ),
+    query(
+      `SELECT COALESCE(SUM(points_delta), 0) AS loyalty_points_balance
+       FROM loyalty_transactions
+       WHERE tenant_id = ? AND customer_id = ? AND status = 'posted'`,
+      [tenantId, rows[0].customer_id]
+    ),
+  ]);
+  return {
+    ...rows[0],
+    items,
+    loyalty_points_balance: Number(balanceRows[0]?.loyalty_points_balance ?? 0),
+  };
 };
 
 /**
@@ -206,29 +220,84 @@ const updatePaymentStatus = async (id, tenantId, paymentStatus, userId) => {
 
 const update = async (id, tenantId, data) => {
   const inv = await getById(id, tenantId);
-  if (inv.status !== 'draft') throw new AppError('Only draft invoices can be updated', 400, 'INVALID_STATUS');
-  const allowed = ['due_date', 'billing_address', 'shipping_address'];
-  const setClause = [];
-  const values = [];
-  for (const key of allowed) {
-    if (data[key] !== undefined) {
-      setClause.push(`${key} = ?`);
-      values.push(data[key]);
+  if (inv.status === 'cancelled') throw new AppError('Cancelled invoices cannot be edited', 400, 'INVALID_STATUS');
+
+  const isIgst = data.is_igst !== undefined ? !!data.is_igst : !!inv.is_igst;
+
+  // Recalculate items if provided
+  if (Array.isArray(data.items) && data.items.length > 0) {
+    let subTotal = 0; let totalCgst = 0; let totalSgst = 0; let totalIgst = 0; let grandTotal = 0;
+
+    const lineItems = data.items.map((item) => {
+      const qty = parseFloat(item.quantity_boxes) || 0;
+      const price = parseFloat(item.unit_price) || 0;
+      const discPct = parseFloat(item.discount_pct) || 0;
+      const gstRate = parseFloat(item.gst_rate) || 0;
+      const taxableAmt = qty * price * (1 - discPct / 100);
+      const cgstPct = isIgst ? 0 : gstRate / 2;
+      const sgstPct = isIgst ? 0 : gstRate / 2;
+      const igstPct = isIgst ? gstRate : 0;
+      const cgstAmt = taxableAmt * cgstPct / 100;
+      const sgstAmt = taxableAmt * sgstPct / 100;
+      const igstAmt = taxableAmt * igstPct / 100;
+      const lineTotal = taxableAmt + cgstAmt + sgstAmt + igstAmt;
+      subTotal += taxableAmt; totalCgst += cgstAmt; totalSgst += sgstAmt; totalIgst += igstAmt; grandTotal += lineTotal;
+      return { ...item, taxableAmt, cgstPct, sgstPct, igstPct, cgstAmt, sgstAmt, igstAmt, lineTotal };
+    });
+
+    await query('DELETE FROM invoice_items WHERE invoice_id = ? AND tenant_id = ?', [id, tenantId]);
+    for (const item of lineItems) {
+      await query(
+        `INSERT INTO invoice_items
+           (id, tenant_id, invoice_id, product_id, shade_id, hsn_code, quantity_boxes,
+            unit_price, discount_pct, taxable_amount, gst_rate, cgst_pct, sgst_pct, igst_pct,
+            cgst_amount, sgst_amount, igst_amount, line_total)
+         VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [tenantId, id, item.product_id, item.shade_id || null, item.hsn_code || null,
+          item.quantity_boxes, item.unit_price, item.discount_pct || 0,
+          item.taxableAmt, item.gst_rate || 0, item.cgstPct, item.sgstPct, item.igstPct,
+          item.cgstAmt, item.sgstAmt, item.igstAmt, item.lineTotal]
+      );
     }
+
+    await query(
+      `UPDATE invoices SET
+         invoice_date = ?, due_date = ?, billing_address = ?, shipping_address = ?,
+         notes = ?, place_of_supply = ?, is_igst = ?,
+         sub_total = ?, cgst_amount = ?, sgst_amount = ?, igst_amount = ?,
+         grand_total = ?, updated_at = NOW()
+       WHERE id = ? AND tenant_id = ?`,
+      [
+        data.invoice_date || inv.invoice_date,
+        data.due_date !== undefined ? (data.due_date || null) : inv.due_date,
+        data.billing_address !== undefined ? data.billing_address : inv.billing_address,
+        data.shipping_address !== undefined ? data.shipping_address : inv.shipping_address,
+        data.notes !== undefined ? data.notes : inv.notes,
+        data.place_of_supply !== undefined ? data.place_of_supply : inv.place_of_supply,
+        isIgst ? 1 : 0,
+        subTotal, totalCgst, totalSgst, totalIgst, grandTotal,
+        id, tenantId,
+      ]
+    );
+  } else {
+    // Header-only update (no items change)
+    const setClause = ['updated_at = NOW()'];
+    const values = [];
+    const headerFields = { invoice_date: data.invoice_date, due_date: data.due_date, billing_address: data.billing_address, shipping_address: data.shipping_address, notes: data.notes, place_of_supply: data.place_of_supply };
+    for (const [key, val] of Object.entries(headerFields)) {
+      if (val !== undefined) { setClause.push(`${key} = ?`); values.push(val || null); }
+    }
+    if (data.is_igst !== undefined) { setClause.push('is_igst = ?'); values.push(isIgst ? 1 : 0); }
+    values.push(id, tenantId);
+    await query(`UPDATE invoices SET ${setClause.join(', ')} WHERE id = ? AND tenant_id = ?`, values);
   }
-  if (setClause.length === 0) return getById(id, tenantId);
-  values.push(id, tenantId);
-  await query(
-    `UPDATE invoices SET ${setClause.join(', ')}, updated_at = NOW() WHERE id = ? AND tenant_id = ?`,
-    values
-  );
+
   return getById(id, tenantId);
 };
 
 const remove = async (id, tenantId) => {
   const inv = await getById(id, tenantId);
   if (inv.status !== 'draft') throw new AppError('Only draft invoices can be deleted', 400, 'INVALID_STATUS');
-  await query('UPDATE sales_orders SET invoice_id = NULL, updated_at = NOW() WHERE invoice_id = ? AND tenant_id = ?', [id, tenantId]);
   await query('DELETE FROM invoice_items WHERE invoice_id = ? AND tenant_id = ?', [id, tenantId]);
   await query('DELETE FROM invoices WHERE id = ? AND tenant_id = ?', [id, tenantId]);
 };

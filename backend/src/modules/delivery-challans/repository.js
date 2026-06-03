@@ -96,17 +96,15 @@ const create = async (trx, data) => {
 const createItem = async (trx, data) => {
   await trx.query(
     `INSERT INTO delivery_challan_items
-       (id, tenant_id, delivery_challan_id, sales_order_item_id, product_id, shade_id, batch_id, rack_id,
+       (id, tenant_id, delivery_challan_id, product_id, shade_id, batch_id,
         dispatched_boxes, dispatched_pieces, dispatched_sqft, unit_price)
-     VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.tenant_id,
       data.delivery_challan_id,
-      data.sales_order_item_id || null,
       data.product_id,
       data.shade_id || null,
       data.batch_id || null,
-      data.rack_id || null,
       data.dispatched_boxes,
       data.dispatched_pieces || 0,
       data.dispatched_sqft || 0,

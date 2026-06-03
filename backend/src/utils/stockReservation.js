@@ -3,25 +3,32 @@
 const { AppError } = require('../middlewares/error.middleware');
 
 async function getPhysicalStock(trx, tenantId, warehouseId, productId, shadeId, batchId) {
+  // When shade/batch not specified on the SO line, sum across all shade/batch variants
+  // (matches how the inventory page aggregates stock). When specified, match exactly.
+  const conditions = ['tenant_id = ?', 'warehouse_id = ?', 'product_id = ?'];
+  const params = [tenantId, warehouseId, productId];
+  if (shadeId) { conditions.push('(shade_id <=> ?)'); params.push(shadeId); }
+  if (batchId) { conditions.push('(batch_id <=> ?)'); params.push(batchId); }
+
   const rows = await trx.query(
-    `SELECT COALESCE(SUM(total_boxes), 0) AS total_boxes
-     FROM stock_summary
-     WHERE tenant_id = ? AND warehouse_id = ? AND product_id = ?
-       AND (shade_id <=> ?) AND (batch_id <=> ?)`,
-    [tenantId, warehouseId, productId, shadeId || null, batchId || null]
+    `SELECT COALESCE(SUM(total_boxes), 0) AS total_boxes FROM stock_summary WHERE ${conditions.join(' AND ')}`,
+    params
   );
   return parseFloat(rows[0]?.total_boxes) || 0;
 }
 
 /** Sum of reservations for this SKU in warehouse, excluding one sales order (for ATP checks). */
 async function getReservedByOthers(trx, tenantId, warehouseId, productId, shadeId, batchId, excludeSalesOrderId) {
+  const conditions = [
+    'tenant_id = ?', 'warehouse_id = ?', 'product_id = ?', 'sales_order_id != ?',
+  ];
+  const params = [tenantId, warehouseId, productId, excludeSalesOrderId];
+  if (shadeId) { conditions.push('(shade_id <=> ?)'); params.push(shadeId); }
+  if (batchId) { conditions.push('(batch_id <=> ?)'); params.push(batchId); }
+
   const rows = await trx.query(
-    `SELECT COALESCE(SUM(boxes_reserved), 0) AS r
-     FROM stock_reservations
-     WHERE tenant_id = ? AND warehouse_id = ? AND product_id = ?
-       AND (shade_id <=> ?) AND (batch_id <=> ?)
-       AND sales_order_id != ?`,
-    [tenantId, warehouseId, productId, shadeId || null, batchId || null, excludeSalesOrderId]
+    `SELECT COALESCE(SUM(boxes_reserved), 0) AS r FROM stock_reservations WHERE ${conditions.join(' AND ')}`,
+    params
   );
   return parseFloat(rows[0]?.r) || 0;
 }

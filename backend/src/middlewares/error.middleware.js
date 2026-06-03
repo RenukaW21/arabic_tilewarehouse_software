@@ -38,7 +38,7 @@ const errorHandler = (err, req, res, next) => {
   // MySQL duplicate entry
   if (err.code === 'ER_DUP_ENTRY') {
     return res.status(409).json(
-      errBody('DUPLICATE_ENTRY', 'A record with this value already exists.', 'Use a different value or edit the existing record.')
+      errBody('DUPLICATE_ENTRY', 'A record with this value already exists.', 'Use a different value or edit the existing record.', { detail: err.message })
     );
   }
 

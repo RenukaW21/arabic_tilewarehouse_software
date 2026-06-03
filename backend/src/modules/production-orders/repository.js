@@ -158,8 +158,10 @@ const findAllMaterials = async (tenantId, queryParams) => {
     LEFT JOIN warehouses        w  ON w.id  = po.warehouse_id
     WHERE ${where}`;
 
+  const MAT_SORT_MAP = { created_at: 'm.created_at', product_name: 'p.name', planned_qty: 'm.planned_qty' };
+  const matOrderCol = MAT_SORT_MAP[sortBy] || 'm.created_at';
   const [rows, countRows] = await Promise.all([
-    query(`${baseSql} ORDER BY m.created_at ${sortOrder} LIMIT ${limit} OFFSET ${offset}`, params),
+    query(`${baseSql} ORDER BY ${matOrderCol} ${sortOrder} LIMIT ${limit} OFFSET ${offset}`, params),
     query(`SELECT COUNT(*) AS total FROM production_order_materials m
            LEFT JOIN products p ON p.id = m.product_id
            LEFT JOIN production_orders po ON po.id = m.production_order_id
@@ -202,8 +204,10 @@ const findAllOutputs = async (tenantId, queryParams) => {
     LEFT JOIN warehouses        w  ON w.id  = po.warehouse_id
     WHERE ${where}`;
 
+  const OUT_SORT_MAP = { created_at: 'o.created_at', product_name: 'p.name', planned_qty: 'o.planned_qty' };
+  const outOrderCol = OUT_SORT_MAP[sortBy] || 'o.created_at';
   const [rows, countRows] = await Promise.all([
-    query(`${baseSql} ORDER BY o.created_at ${sortOrder} LIMIT ${limit} OFFSET ${offset}`, params),
+    query(`${baseSql} ORDER BY ${outOrderCol} ${sortOrder} LIMIT ${limit} OFFSET ${offset}`, params),
     query(`SELECT COUNT(*) AS total FROM production_order_outputs o
            LEFT JOIN products p ON p.id = o.product_id
            LEFT JOIN production_orders po ON po.id = o.production_order_id

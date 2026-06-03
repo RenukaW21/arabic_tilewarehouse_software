@@ -7,12 +7,15 @@ const getHealth = async (tenantId) => {
   const [logs, creds] = await Promise.all([
     query(
       `SELECT platform, sync_type, status, records_in, records_out, error_msg, started_at, finished_at
-       FROM marketplace_sync_logs
-       WHERE id IN (
-         SELECT MAX(id) FROM marketplace_sync_logs
-         WHERE tenant_id = ?
-         GROUP BY platform, sync_type
-       )
+       FROM marketplace_sync_logs msl
+       WHERE tenant_id = ?
+         AND started_at = (
+           SELECT MAX(msl2.started_at)
+           FROM marketplace_sync_logs msl2
+           WHERE msl2.tenant_id = msl.tenant_id
+             AND msl2.platform  = msl.platform
+             AND msl2.sync_type = msl.sync_type
+         )
        ORDER BY platform, sync_type`,
       [tenantId]
     ),
@@ -50,7 +53,7 @@ const createLog = async (tenantId, platform, syncType) => {
   const id = uuidv4();
   await query(
     `INSERT INTO marketplace_sync_logs (id, tenant_id, platform, sync_type, status)
-     VALUES (?, ?, ?, ?, 'partial')`,
+     VALUES (?, ?, ?, ?, 'running')`,
     [id, tenantId, platform, syncType]
   );
   return id;

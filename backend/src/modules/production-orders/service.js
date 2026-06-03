@@ -29,9 +29,9 @@ const getById = async (id, tenantId) => getFullOrder(id, tenantId);
 // ─── CREATE ───────────────────────────────────────────────────────────────────
 
 const create = async (tenantId, userId, data) => {
-  const orderNumber = await generateDocNumber(tenantId, 'PROD', 'PROD');
   const trx = await beginTransaction();
   try {
+    const orderNumber = await generateDocNumber(tenantId, 'PROD', 'PROD', trx);
     const id = await repo.createOrder({
       tenant_id:    tenantId,
       order_number: orderNumber,

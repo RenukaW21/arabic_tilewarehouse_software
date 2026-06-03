@@ -17,6 +17,9 @@ export interface InvoiceData {
   sgst_amount: number;
   igst_amount: number;
   grand_total: number;
+  loyalty_points_earned?: number;
+  loyalty_points_redeemed?: number;
+  loyalty_points_balance?: number;
   items: Array<{
     product_code: string;
     product_name: string;
@@ -104,6 +107,30 @@ export const generateInvoicePDF = (data: InvoiceData) => {
   const finalY = (doc as any).lastAutoTable.finalY + 10;
   doc.setFontSize(9);
   doc.text('Notes: This is a computer generated invoice and does not require a physical signature.', 14, finalY);
+
+  // Loyalty rewards section
+  const pointsEarned = data.loyalty_points_earned ?? 0;
+  const pointsRedeemed = data.loyalty_points_redeemed ?? 0;
+  const pointsBalance = data.loyalty_points_balance ?? 0;
+  if (pointsEarned > 0 || pointsRedeemed > 0 || pointsBalance > 0) {
+    const loyaltyY = finalY + 10;
+    doc.setFillColor(255, 248, 220);
+    doc.roundedRect(14, loyaltyY, pageWidth - 28, pointsRedeemed > 0 ? 22 : 16, 2, 2, 'F');
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(180, 120, 0);
+    doc.text('Loyalty Rewards', 19, loyaltyY + 6);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    let loyaltyLine = `Points Earned on this order: ${pointsEarned.toLocaleString('en-IN')}`;
+    if (pointsRedeemed > 0) loyaltyLine += `   |   Points Redeemed: ${pointsRedeemed.toLocaleString('en-IN')}`;
+    loyaltyLine += `   |   Total Balance: ${pointsBalance.toLocaleString('en-IN')} pts`;
+    doc.text(loyaltyLine, 19, loyaltyY + 12);
+    if (pointsRedeemed > 0) {
+      doc.text('Thank you for redeeming your loyalty points!', 19, loyaltyY + 18);
+    }
+    doc.setTextColor(0);
+  }
 
   doc.save(`${data.invoice_number}.pdf`);
 };

@@ -75,16 +75,18 @@ const create = async (tenantId, userId, data) => {
     return { ...item, lineTotal };
   });
   const discountAmountHeader = parseFloat(data.discountAmount) || 0;
-  const loyalty = await loyaltyService.calculateRedemption(
-    tenantId,
-    data.customerId,
-    data.loyaltyPointsRedeemed ?? data.loyalty_points_redeemed,
-    Math.max(0, subTotal - discountAmountHeader)
-  );
-  const finalGrandTotal = Math.max(0, subTotal - discountAmountHeader - loyalty.discount);
 
   const trx = await beginTransaction();
   try {
+    const loyalty = await loyaltyService.calculateRedemption(
+      tenantId,
+      data.customerId,
+      data.loyaltyPointsRedeemed ?? data.loyalty_points_redeemed,
+      Math.max(0, subTotal - discountAmountHeader),
+      trx
+    );
+    const finalGrandTotal = Math.max(0, subTotal - discountAmountHeader - loyalty.discount);
+
     await trx.query(
       `INSERT INTO sales_orders
          (id, tenant_id, so_number, customer_id, warehouse_id, status, order_date,
@@ -133,16 +135,18 @@ const update = async (id, tenantId, userId, data) => {
       return { ...item, lineTotal };
     });
     const discountAmountHeader = parseFloat(data.discountAmount) || 0;
-    const loyalty = await loyaltyService.calculateRedemption(
-      tenantId,
-      data.customerId ?? so.customer_id,
-      data.loyaltyPointsRedeemed ?? data.loyalty_points_redeemed,
-      Math.max(0, subTotal - discountAmountHeader)
-    );
-    const finalGrandTotal = Math.max(0, subTotal - discountAmountHeader - loyalty.discount);
 
     const trx = await beginTransaction();
     try {
+      const loyalty = await loyaltyService.calculateRedemption(
+        tenantId,
+        data.customerId ?? so.customer_id,
+        data.loyaltyPointsRedeemed ?? data.loyalty_points_redeemed,
+        Math.max(0, subTotal - discountAmountHeader),
+        trx
+      );
+      const finalGrandTotal = Math.max(0, subTotal - discountAmountHeader - loyalty.discount);
+
       await trx.query(
         `UPDATE sales_orders SET
            customer_id = ?, warehouse_id = ?, order_date = ?, expected_delivery_date = ?,

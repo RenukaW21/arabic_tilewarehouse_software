@@ -1,5 +1,6 @@
 'use strict';
 const repo = require('./repository');
+const { beginTransaction } = require('../../config/db');
 const { AppError } = require('../../middlewares/error.middleware');
 const { writeAuditLog } = require('../../utils/auditLog');
 
@@ -68,16 +69,26 @@ const approve = async (id, tenantId, userId, reviewNotes) => {
     throw new AppError(`Cannot approve a request with status "${row.status}"`, 400, 'INVALID_STATUS');
   }
 
-  // Execute the underlying operation if it is a type with a direct execution hook
-  if (row.request_type === 'inventory_adjustment') {
-    const adjService = require('../stock-adjustments/service');
-    await adjService.approve(row.reference_id, tenantId, userId);
-  }
-  // Other types: purchase_approval, production_entry etc. are approved in-system
-  // and their modules check approval status independently. No cascading call needed
-  // for types without a dedicated execution hook.
+  const trx = await beginTransaction();
+  try {
+    // Execute the underlying operation inside the same transaction so both
+    // the stock action and the status update commit or roll back together.
+    if (row.request_type === 'inventory_adjustment') {
+      const adjService = require('../stock-adjustments/service');
+      await adjService.approve(row.reference_id, tenantId, userId, trx);
+    }
+    // Other types: purchase_approval, production_entry etc. are approved in-system
+    // and their modules check approval status independently. No cascading call needed
+    // for types without a dedicated execution hook.
 
-  await repo.setApproved(id, tenantId, userId, reviewNotes);
+    await repo.setApproved(id, tenantId, userId, reviewNotes, trx);
+    await trx.commit();
+  } catch (err) {
+    await trx.rollback();
+    throw err;
+  } finally {
+    trx.release();
+  }
 
   await writeAuditLog({
     tenantId,

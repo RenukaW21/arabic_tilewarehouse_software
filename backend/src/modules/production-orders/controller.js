@@ -61,8 +61,8 @@ const updateStatus = async (req, res, next) => {
 
 const remove = async (req, res, next) => {
   try {
-    const result = await service.remove(req.params.id, req.tenantId);
-    return success(res, result, 'Production order deleted');
+    await service.remove(req.params.id, req.tenantId);
+    return res.status(204).send();
   } catch (err) { next(err); }
 };
 
